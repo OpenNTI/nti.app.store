@@ -1,0 +1,8 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:zcml="http://namespaces.zope.org/zcml"
+			zcml:condition="have devmode" >
+	
+	<subscriber handler=".store_views._purchase_attempt_successful" />
+
+</configure>
