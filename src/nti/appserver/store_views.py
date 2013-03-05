@@ -5,7 +5,6 @@ Views and other objects relating to NTI store
 
 $Id$
 """
-
 from __future__ import print_function, unicode_literals, absolute_import
 __docformat__ = "restructuredtext en"
 
@@ -30,7 +29,7 @@ def _purchase_attempt_successful( event ):
 @view_config( context=store_interfaces.IPurchaseAttempt )
 @view_defaults( route_name='objects.generic.traversal',
 				renderer='rest',
-				permission=nauth.ACT_READ,
+				permission=nauth.ACT_PURCHASE,
 				request_method='GET' )
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttempt):
-	""" Support for simply returning the blog item """
+	""" Support for simply returning a purchase item """
