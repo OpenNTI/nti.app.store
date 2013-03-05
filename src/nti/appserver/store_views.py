@@ -13,7 +13,6 @@ logger = __import__('logging').getLogger(__name__)
 from zope import component
 
 from pyramid.view import view_config
-from pyramid.view import view_defaults
 
 from nti.dataserver import authorization as nauth
 
@@ -26,10 +25,10 @@ def _purchase_attempt_successful( event ):
 	get_purchase_attempt(event.purchase_id, event.username)
 	# TODO: send email
 
-@view_config( context=store_interfaces.IPurchaseAttempt )
-@view_defaults( route_name='objects.generic.traversal',
+@view_config( 	route_name='objects.generic.traversal',
 				renderer='rest',
 				permission=nauth.ACT_READ,
+				context=store_interfaces.IPurchaseAttempt,
 				request_method='GET' )
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttempt):
 	""" Support for simply returning a purchase item """
