@@ -17,7 +17,7 @@ from pyramid.view import view_defaults
 
 from nti.dataserver import authorization as nauth
 
-from ..store import pyramid_views 
+from ..store import pyramid_views
 from ..store import get_purchase_attempt
 from ..store import interfaces as store_interfaces
 
@@ -29,7 +29,7 @@ def _purchase_attempt_successful( event ):
 @view_config( context=store_interfaces.IPurchaseAttempt )
 @view_defaults( route_name='objects.generic.traversal',
 				renderer='rest',
-				permission=nauth.ACT_PURCHASE,
+				permission=nauth.ACT_READ,
 				request_method='GET' )
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttempt):
 	""" Support for simply returning a purchase item """
