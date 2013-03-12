@@ -30,5 +30,5 @@ def _purchase_attempt_successful( event ):
 				permission=nauth.ACT_READ,
 				context=store_interfaces.IPurchaseAttempt,
 				request_method='GET' )
-class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttempt):
+class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Support for simply returning a purchase item """
