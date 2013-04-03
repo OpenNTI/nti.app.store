@@ -21,14 +21,14 @@ from ..store import get_purchase_attempt
 from ..store import interfaces as store_interfaces
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
-def _purchase_attempt_successful( event ):
+def _purchase_attempt_successful(event):
 	get_purchase_attempt(event.purchase_id, event.username)
 	# TODO: send email
 
-@view_config( 	route_name='objects.generic.traversal',
-				renderer='rest',
-				permission=nauth.ACT_READ,
-				context=store_interfaces.IPurchaseAttempt,
-				request_method='GET' )
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='GET')
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Support for simply returning a purchase item """
