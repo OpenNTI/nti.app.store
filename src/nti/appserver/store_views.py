@@ -29,6 +29,52 @@ def _purchase_attempt_successful(event):
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
-			 request_method='GET')
+			 request_method='GET',
+			 name="get-purchase-attempt")
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
-	""" Support for simply returning a purchase item """
+	""" Returning a purchase attempt """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='GET',
+			 name="get-pending-purchases")
+class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
+	""" Return all pending purchases items """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='GET',
+			 name="get-purchase-history")
+class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
+	""" Return purchase history """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='GET',
+			 name="get-purchasables")
+class GetPurchasablesView(pyramid_views.GetPurchasablesView):
+	""" Return all purchasables items """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='GET',
+			 name="get-stripe-connect-key")
+class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
+	""" Return the stripe connect key """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='POST',
+			 name="post-stripe-payment")
+class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
+	""" Process a payment using stripe "
