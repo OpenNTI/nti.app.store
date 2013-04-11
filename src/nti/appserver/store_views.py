@@ -77,4 +77,13 @@ class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
 			 request_method='POST',
 			 name="post-stripe-payment")
 class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
-	""" Process a payment using stripe "
+	""" Process a payment using stripe """
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 permission=nauth.ACT_READ,
+			 context=store_interfaces.IPurchaseAttempt,
+			 request_method='POST',
+			 name="validate-stripe-token")
+class ValidateStripeCouponView(pyramid_views.ValidateStripeCouponView):
+	""" Validate a stripe token """
