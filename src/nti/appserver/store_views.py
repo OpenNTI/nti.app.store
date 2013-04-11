@@ -31,7 +31,7 @@ def _purchase_attempt_successful(event):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
-			 name="get-purchase-attempt")
+			 name="get_purchase_attempt")
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Returning a purchase attempt """
 
@@ -40,7 +40,7 @@ class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
-			 name="get-pending-purchases")
+			 name="get_pending_purchases")
 class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
 	""" Return all pending purchases items """
 
@@ -49,7 +49,7 @@ class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
-			 name="get-purchase-history")
+			 name="get_purchase_history")
 class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
 	""" Return purchase history """
 
@@ -58,7 +58,7 @@ class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchasable,
 			 request_method='GET',
-			 name="get-purchasables")
+			 name="get_purchasables")
 class GetPurchasablesView(pyramid_views.GetPurchasablesView):
 	""" Return all purchasables items """
 
@@ -67,7 +67,7 @@ class GetPurchasablesView(pyramid_views.GetPurchasablesView):
 			 permission=nauth.ACT_READ,
 			 context=stripe_interfaces.IStripeConnectKey,
 			 request_method='GET',
-			 name="get-stripe-connect-key")
+			 name="get_stripe_connect_key")
 class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
 	""" Return the stripe connect key """
 
@@ -76,7 +76,7 @@ class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='POST',
-			 name="post-stripe-payment")
+			 name="post_stripe_payment")
 class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
 	""" Process a payment using stripe """
 
@@ -85,6 +85,6 @@ class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='POST',
-			 name="validate-stripe-coupon")
+			 name="validate_stripe_coupon")
 class ValidateStripeCouponView(pyramid_views.ValidateStripeCouponView):
 	""" Validate a stripe token """
