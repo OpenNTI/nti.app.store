@@ -1,7 +1,13 @@
 <!-- -*- mode: nxml -*- -->
 <configure	xmlns="http://namespaces.zope.org/zope"
-			xmlns:zcml="http://namespaces.zope.org/zcml"
-			zcml:condition="have devmode" >
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml">
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+			 	
+	<include package="nti.store" file="configure.zcml" />
 	
 	<subscriber handler=".store_views._purchase_attempt_successful" />
 

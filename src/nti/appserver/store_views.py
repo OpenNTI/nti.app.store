@@ -19,6 +19,7 @@ from nti.dataserver import authorization as nauth
 from ..store import pyramid_views
 from ..store import get_purchase_attempt
 from ..store import interfaces as store_interfaces
+from ..store.payments.stripe import interfaces as stripe_interfaces
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
@@ -55,7 +56,7 @@ class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
+			 context=store_interfaces.IPurchasable,
 			 request_method='GET',
 			 name="get-purchasables")
 class GetPurchasablesView(pyramid_views.GetPurchasablesView):
@@ -64,7 +65,7 @@ class GetPurchasablesView(pyramid_views.GetPurchasablesView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
+			 context=stripe_interfaces.IStripeConnectKey,
 			 request_method='GET',
 			 name="get-stripe-connect-key")
 class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
@@ -84,6 +85,6 @@ class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
 			 permission=nauth.ACT_READ,
 			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='POST',
-			 name="validate-stripe-token")
+			 name="validate-stripe-coupon")
 class ValidateStripeCouponView(pyramid_views.ValidateStripeCouponView):
 	""" Validate a stripe token """
