@@ -19,7 +19,6 @@ from nti.dataserver import authorization as nauth
 from ..store import pyramid_views
 from ..store import get_purchase_attempt
 from ..store import interfaces as store_interfaces
-from ..store.payments.stripe import interfaces as stripe_interfaces
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
@@ -29,7 +28,6 @@ def _purchase_attempt_successful(event):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
 			 name="get_purchase_attempt")
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
@@ -38,7 +36,6 @@ class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
 			 name="get_pending_purchases")
 class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
@@ -47,7 +44,6 @@ class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='GET',
 			 name="get_purchase_history")
 class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
@@ -56,7 +52,6 @@ class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchasable,
 			 request_method='GET',
 			 name="get_purchasables")
 class GetPurchasablesView(pyramid_views.GetPurchasablesView):
@@ -65,7 +60,6 @@ class GetPurchasablesView(pyramid_views.GetPurchasablesView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=stripe_interfaces.IStripeConnectKey,
 			 request_method='GET',
 			 name="get_stripe_connect_key")
 class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
@@ -74,7 +68,6 @@ class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='POST',
 			 name="post_stripe_payment")
 class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
@@ -83,7 +76,6 @@ class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 permission=nauth.ACT_READ,
-			 context=store_interfaces.IPurchaseAttempt,
 			 request_method='POST',
 			 name="validate_stripe_coupon")
 class ValidateStripeCouponView(pyramid_views.ValidateStripeCouponView):
