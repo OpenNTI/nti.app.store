@@ -1,0 +1,26 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml"
+			xmlns:pcs="http://nextthought.com/ntp/purchasable"
+			i18n_domain='nti.dataserver'>
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+
+	<include package="nti.store" file="meta.zcml" />
+		
+	<pcs:registerPurchasable
+		ntiid="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
+		title="04-630: Computer Science for Practicing Engineers"
+		description="04-630: Computer Science for Practicing Engineers"
+		provider="CMU"
+		amount="90"
+		currency="USD"
+		discountable="True"
+		bulk_purchase="True"
+		url="http://cmu.edu/"
+		items="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers" />
+
+</configure>
