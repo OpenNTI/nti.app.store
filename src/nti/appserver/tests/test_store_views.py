@@ -11,14 +11,14 @@ from nti.appserver.tests.test_application import SharedApplicationTestBase, With
 
 from hamcrest import (assert_that, is_, has_length)
 
-class TestApplicationUserExporViews(SharedApplicationTestBase):
+class TestApplicationStoreViews(SharedApplicationTestBase):
 
 	set_up_packages = SharedApplicationTestBase.set_up_packages + (('purchasables.zcml', 'nti.appserver.tests'),)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):
 
-		url = '/dataserver2/@@get_purchasables'
+		url = '/dataserver2/store/get_purchasables'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_length(1))
