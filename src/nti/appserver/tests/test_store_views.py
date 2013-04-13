@@ -9,7 +9,7 @@ __docformat__ = "restructuredtext en"
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 
-from hamcrest import (assert_that, is_, has_length)
+from hamcrest import (assert_that, is_, has_length, has_entry)
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
@@ -26,17 +26,17 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 					is_("tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def xtest_validate_stripe_copoun(self):
+	def test_validate_stripe_copoun(self):
 		url = '/dataserver2/store/validate_stripe_coupon'
 		params = {'coupon':'TESTCOUPON', 'amount':300, 'provider':'NTI-TEST'}
-		res = self.testapp.post(url, params, status=201)
+		res = self.testapp.post(url, params, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_length(1))
-		assert_that(json_body[0]['NTIID'],
-					is_("tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
+		assert_that(json_body, has_length(2))
+		assert_that(json_body, has_entry('Amount', 270.0))
+		assert_that(json_body, has_entry('Coupon', 'TESTCOUPON'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def xtest_get_purchase_history(self):
+	def test_get_purchase_history(self):
 		url = '/dataserver2/store/get_purchase_history'
 		# params = {'coupon':'TESTCOUPON', 'amount':300}
 		res = self.testapp.get(url, status=200)
