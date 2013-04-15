@@ -7,6 +7,11 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from zope import component
+
+from nti.store.payments.stripe.stripe_io import StripeIO
+from nti.store.payments.stripe import interfaces as stripe_interfaces
+
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 
 from hamcrest import (assert_that, is_, has_length, has_entry)
@@ -43,3 +48,35 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		json_body = res.json_body
 		assert_that(json_body, has_length(0))
 
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_get_pending_purchases(self):
+		url = '/dataserver2/store/get_pending_purchases'
+		res = self.testapp.get(url, status=200)
+		json_body = res.json_body
+		assert_that(json_body, has_length(0))
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def xtest_post_stripe_payment(self):
+		# create token
+		stripe = component.queryUtility(stripe_interfaces.IStripeConnectKey, "NTI-TEST")
+		t = StripeIO.create_stripe_token(number="5105105105105100",
+										 exp_month="11",
+										 exp_year="30",
+										 cvc="542",
+										 address="3001 Oak Tree #D16",
+										 city="Norman",
+										 zip="73072",
+										 state="OK",
+										 country="USA",
+										 api_key=stripe.PrivateKey)
+
+		url = '/dataserver2/store/post_stripe_payment'
+		params = {'items':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"',
+				  'amount': 300,
+				  'token': t.id,
+				  'provider': "NTI-TEST"}
+
+		res = self.testapp.post(url, params=params, status=200)
+		json_body = res.json_body
+		import pprint
+		pprint.pprint(json_body)
