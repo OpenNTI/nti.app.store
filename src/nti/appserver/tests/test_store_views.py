@@ -31,6 +31,15 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 					is_("tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_get_stripe_key(self):
+		url = '/dataserver2/store/get_stripe_connect_key'
+		params = {'provider':'NTI-TEST'}
+		res = self.testapp.get(url, params, status=200)
+		json_body = res.json_body
+		assert_that(json_body, has_entry(u'Alias', u'NTI-TEST'))
+		assert_that(json_body, has_entry(u'Class', u'StripeConnectKey'))
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_validate_stripe_copoun(self):
 		url = '/dataserver2/store/validate_stripe_coupon'
 		params = {'coupon':'TESTCOUPON', 'amount':300, 'provider':'NTI-TEST'}
