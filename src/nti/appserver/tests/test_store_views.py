@@ -14,15 +14,14 @@ from nti.store.payments.stripe import interfaces as stripe_interfaces
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 
-from hamcrest import (assert_that, is_, has_length, has_entry, has_key, greater_than_or_equal_to)
+from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_or_equal_to)
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
-	set_up_packages = SharedApplicationTestBase.set_up_packages + (('purchasables.zcml', 'nti.appserver.tests'),)
+	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.tests'),)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):
-
 		url = '/dataserver2/store/get_purchasables'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
@@ -30,8 +29,12 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(json_body, has_entry('Last Modified', 0))
 		items = json_body['Items']
 		assert_that(items, has_length(1))
-		assert_that(items[0]['NTIID'],
-					is_("tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
+
+		item = items[0]
+		assert_that(item, has_entry('NTIID', "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
+		assert_that(item, has_key('StripeConnectKey'))
+		sck = item['StripeConnectKey']
+		assert_that(sck, has_entry('Alias', 'CMU'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_stripe_key(self):

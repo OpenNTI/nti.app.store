@@ -3,6 +3,7 @@
 			xmlns:i18n="http://namespaces.zope.org/i18n"
 			xmlns:zcml="http://namespaces.zope.org/zcml"
 			xmlns:pcs="http://nextthought.com/ntp/purchasable"
+			xmlns:stripe="http://nextthought.com/ntp/stripe"
 			i18n_domain='nti.dataserver'>
 
 	<include package="zope.component" file="meta.zcml" />
@@ -10,17 +11,26 @@
 	<include package="zope.component" />
 
 	<include package="nti.store" file="meta.zcml" />
-		
+	<include package="nti.store.payments.stripe" file="meta.zcml" />
+	
+	<stripe:registerStripeKey
+		alias="CMU"
+		live_mode="False"
+		stripe_user_id="acct_1xjuyxUfrd1g2YfOWCh"
+		public_key="pk_test_1Mc8Lsvj0oRWquUJGd45" 
+		private_key="sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp" />
+			
 	<pcs:registerPurchasable
 		ntiid="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
 		title="04-630: Computer Science for Practicing Engineers"
 		description="04-630: Computer Science for Practicing Engineers"
 		provider="CMU"
+		author="CMU"
 		amount="90"
 		currency="USD"
 		discountable="True"
 		bulk_purchase="True"
-		url="http://cmu.edu/"
+		icon="http://cmu.edu/"
 		items="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers" />
 
 </configure>
