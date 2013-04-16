@@ -7,6 +7,9 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+import uuid
+import stripe
+
 from zope import component
 
 from nti.store.payments.stripe.stripe_io import StripeIO
@@ -19,6 +22,18 @@ from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
 	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.tests'),)
+
+	@classmethod
+	def setUpClass(cls):
+		super(TestApplicationStoreViews, cls).setUpClass()
+		cls.api_key = stripe.api_key
+		stripe.api_key = u'sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp'
+
+	@classmethod
+	def tearDownClass(cls):
+		super(TestApplicationStoreViews, cls).tearDownClass()
+		stripe.api_key = cls.api_key
+
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):
@@ -48,8 +63,11 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_with_stripe_copoun(self):
+		code = str(uuid.uuid4())
+		stripe.Coupon.create(percent_off=10, duration='forever', id=code)
+
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
-		params = {'coupon':'TESTCOUPON',
+		params = {'coupon':code,
 				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
 				  'provider':'NTI-TEST'}
 		res = self.testapp.post(url, params, status=200)
