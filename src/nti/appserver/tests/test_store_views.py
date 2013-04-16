@@ -26,8 +26,11 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		url = '/dataserver2/store/get_purchasables'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_length(1))
-		assert_that(json_body[0]['NTIID'],
+		assert_that(json_body, has_key('Items'))
+		assert_that(json_body, has_entry('Last Modified', 0))
+		items = json_body['Items']
+		assert_that(items, has_length(1))
+		assert_that(items[0]['NTIID'],
 					is_("tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
@@ -38,6 +41,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		json_body = res.json_body
 		assert_that(json_body, has_entry(u'Alias', u'NTI-TEST'))
 		assert_that(json_body, has_entry(u'Class', u'StripeConnectKey'))
+		assert_that(json_body, has_entry(u'MimeType', u'application/vnd.nextthought.stripeconnectkey'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_validate_stripe_copoun(self):
@@ -45,7 +49,6 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		params = {'coupon':'TESTCOUPON', 'amount':300, 'provider':'NTI-TEST'}
 		res = self.testapp.post(url, params, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_length(2))
 		assert_that(json_body, has_entry('NewAmount', 270.0))
 		assert_that(json_body, has_key('Coupon'))
 
@@ -55,14 +58,20 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		# params = {'coupon':'TESTCOUPON', 'amount':300}
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_length(greater_than_or_equal_to(0)))
+		assert_that(json_body, has_key('Items'))
+		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
+		items = json_body['Items']
+		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_pending_purchases(self):
 		url = '/dataserver2/store/get_pending_purchases'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_length(greater_than_or_equal_to(0)))
+		assert_that(json_body, has_key('Items'))
+		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
+		items = json_body['Items']
+		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def xtest_post_stripe_payment(self):
