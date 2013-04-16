@@ -47,9 +47,11 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(json_body, has_entry(u'MimeType', u'application/vnd.nextthought.stripeconnectkey'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def test_validate_stripe_copoun(self):
-		url = '/dataserver2/store/validate_stripe_coupon'
-		params = {'coupon':'TESTCOUPON', 'amount':300, 'provider':'NTI-TEST'}
+	def test_price_with_stripe_copoun(self):
+		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		params = {'coupon':'TESTCOUPON',
+				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
+				  'provider':'NTI-TEST'}
 		res = self.testapp.post(url, params, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('NewAmount', 270.0))

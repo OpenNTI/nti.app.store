@@ -75,9 +75,13 @@ class GetStripeConnectKeyView(pyramid_views.GetStripeConnectKeyView):
 class ProcessPaymentWithStripeView(pyramid_views.StripePaymentView):
 	""" Process a payment using stripe """
 
-@view_config(name="validate_stripe_coupon", **_post_view_defaults)
-class ValidateStripeCouponView(pyramid_views.ValidateStripeCouponView):
-	""" Validate a stripe token """
+@view_config(name="price_purchasable", **_post_view_defaults)
+class PricePurchasableView(pyramid_views.PricePurchasableView):
+	""" price purchaseable """
+
+@view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
+class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStripeCouponView):
+	""" price purchaseable with a stripe token """
 
 del _view_defaults
 del _post_view_defaults

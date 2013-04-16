@@ -26,7 +26,7 @@
 		description="04-630: Computer Science for Practicing Engineers"
 		provider="CMU"
 		author="CMU"
-		amount="90"
+		amount="300"
 		currency="USD"
 		discountable="True"
 		bulk_purchase="True"
