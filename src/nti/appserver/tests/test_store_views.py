@@ -112,12 +112,16 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 										 api_key=stripe.PrivateKey)
 
 		url = '/dataserver2/store/post_stripe_payment'
-		params = {'items':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"',
+		params = {'items':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
 				  'amount': 300,
 				  'token': t.id,
 				  'provider': "NTI-TEST"}
 
 		res = self.testapp.post(url, params=params, status=200)
 		json_body = res.json_body
-		#import pprint
-		#pprint.pprint(json_body)
+		assert_that(json_body, has_key('Items'))
+		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
+		items = json_body['Items']
+		assert_that(items, has_length(1))
+		purchase = items[0]
+		assert_that(purchase, has_entry('Items', has_length(1)))
