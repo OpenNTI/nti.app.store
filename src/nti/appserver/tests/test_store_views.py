@@ -97,7 +97,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def xtest_post_stripe_payment(self):
+	def test_post_stripe_payment(self):
 		# create token
 		stripe = component.queryUtility(stripe_interfaces.IStripeConnectKey, "NTI-TEST")
 		t = StripeIO.create_stripe_token(number="5105105105105100",
@@ -119,5 +119,5 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		res = self.testapp.post(url, params=params, status=200)
 		json_body = res.json_body
-		import pprint
-		pprint.pprint(json_body)
+		#import pprint
+		#pprint.pprint(json_body)
