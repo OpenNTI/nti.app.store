@@ -9,15 +9,11 @@ __docformat__ = "restructuredtext en"
 
 import uuid
 import stripe
-
-from zope import component
-
-from nti.store.payments.stripe.stripe_io import StripeIO
-from nti.store.payments.stripe import interfaces as stripe_interfaces
+import anyjson as json
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 
-from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_or_equal_to)
+from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_or_equal_to, none, is_not)
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
@@ -69,7 +65,9 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		params = {'coupon':code,
 				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
 				  'provider':'NTI-TEST'}
-		res = self.testapp.post(url, params, status=200)
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('NewAmount', 270.0))
 		assert_that(json_body, has_key('Coupon'))
@@ -77,7 +75,6 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchase_history(self):
 		url = '/dataserver2/store/get_purchase_history'
-		# params = {'coupon':'TESTCOUPON', 'amount':300}
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
@@ -99,28 +96,38 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
+	def _create_stripe_token(self):
+		url = '/dataserver2/store/create_stripe_token'
+		params = dict(cc="5105105105105100",
+					  exp_month="11",
+					  exp_year="30",
+					  cvc="542",
+					  address="3001 Oak Tree #D16",
+					  city="Norman",
+					  zip="73072",
+					  state="OK",
+					  country="USA",
+					  provider='NTI-TEST')
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=200)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('Token', is_not(none())))
+		return json_body['Token']
+
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_post_stripe_payment(self):
 		# create token
-		stripe = component.queryUtility(stripe_interfaces.IStripeConnectKey, "NTI-TEST")
-		t = StripeIO.create_stripe_token(number="5105105105105100",
-										 exp_month="11",
-										 exp_year="30",
-										 cvc="542",
-										 address="3001 Oak Tree #D16",
-										 city="Norman",
-										 zip="73072",
-										 state="OK",
-										 country="USA",
-										 api_key=stripe.PrivateKey)
+		t = self._create_stripe_token()
 
 		url = '/dataserver2/store/post_stripe_payment'
 		params = {'items':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
 				  'amount': 300,
-				  'token': t.id,
+				  'token': t,
 				  'provider': "NTI-TEST"}
+		body = json.dumps(params)
 
-		res = self.testapp.post(url, params=params, status=200)
+		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
 		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
