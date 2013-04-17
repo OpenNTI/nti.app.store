@@ -57,6 +57,18 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(json_body, has_entry(u'MimeType', u'application/vnd.nextthought.stripeconnectkey'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_price_item(self):
+		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		params = {'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
+				  'quantity':2}
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=200)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('NewAmount', 600.0))
+
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_with_stripe_copoun(self):
 		code = str(uuid.uuid4())
 		stripe.Coupon.create(percent_off=10, duration='forever', id=code)
