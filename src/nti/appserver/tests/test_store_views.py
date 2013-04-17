@@ -34,7 +34,6 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		super(TestApplicationStoreViews, cls).tearDownClass()
 		stripe.api_key = cls.api_key
 
-
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):
 		url = '/dataserver2/store/get_purchasables'
@@ -86,14 +85,18 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		items = json_body['Items']
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
-	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def test_get_pending_purchases(self):
+	def _get_pending_purchases(self):
 		url = '/dataserver2/store/get_pending_purchases'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
 		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
 		items = json_body['Items']
+		return items
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_get_pending_purchases(self):
+		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
@@ -125,3 +128,6 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(items, has_length(1))
 		purchase = items[0]
 		assert_that(purchase, has_entry('Items', has_length(1)))
+
+		items = self._get_pending_purchases()
+		assert_that(items, has_length(greater_than_or_equal_to(1)))
