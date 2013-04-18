@@ -48,12 +48,21 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  permission=nauth.ACT_READ,
 					  context=StorePathAdapter,
 					  request_method='GET' )
+
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
+
+_delete_view_defaults = _view_defaults.copy()
+_delete_view_defaults['request_method'] = 'DELETE'
+_delete_view_defaults['permission'] = nauth.ACT_DELETE
 
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Returning a purchase attempt """
+
+@view_config(name="delete_purchase_attempt", **_delete_view_defaults)
+class DeletePurchaseAttemptView(pyramid_views.DeletePurchaseAttemptView):
+	""" Delete a purchase attempt """
 
 @view_config(name="get_pending_purchases", **_view_defaults)
 class GetPendingPurchasesView(pyramid_views.GetPendingPurchasesView):
@@ -89,3 +98,5 @@ class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStr
 
 del _view_defaults
 del _post_view_defaults
+del _delete_view_defaults
+
