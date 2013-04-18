@@ -54,7 +54,7 @@ _post_view_defaults['request_method'] = 'POST'
 
 _delete_view_defaults = _view_defaults.copy()
 _delete_view_defaults['request_method'] = 'DELETE'
-_delete_view_defaults['permission'] = nauth.ACT_DELETE
+# _delete_view_defaults['permission'] = nauth.ACT_DELETE
 
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
