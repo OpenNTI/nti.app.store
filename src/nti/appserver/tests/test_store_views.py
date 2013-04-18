@@ -38,7 +38,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(json_body, has_key('Items'))
 		assert_that(json_body, has_entry('Last Modified', 0))
 		items = json_body['Items']
-		assert_that(items, has_length(1))
+		assert_that(items, has_length(greater_than_or_equal_to(1)))
 
 		item = items[0]
 		assert_that(item, has_entry('NTIID', "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
@@ -65,10 +65,10 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
+		assert_that(json_body, has_entry('Quantity', 2))
 		assert_that(json_body, has_entry('Amount', 300.0))
 		assert_that(json_body, has_entry('Currency', 'USD'))
 		assert_that(json_body, has_entry('PurchasePrice', 600.0))
-		assert_that(json_body, has_entry('NonDiscountedPrice', 600.0))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_with_stripe_copoun(self):
@@ -82,6 +82,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
+		assert_that(json_body, has_entry('Quantity', 1))
 		assert_that(json_body, has_entry('PurchasePrice', 270.0))
 		assert_that(json_body, has_entry('NonDiscountedPrice', 300.0))
 		assert_that(json_body, has_key('Coupon'))
