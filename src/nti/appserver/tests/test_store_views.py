@@ -65,8 +65,8 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_entry('NewAmount', 600.0))
-
+		assert_that(json_body, has_entry('Amount', 300.0))
+		assert_that(json_body, has_entry('NonDiscountedAmount', 600.0))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_with_stripe_copoun(self):
@@ -81,7 +81,8 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		res = self.testapp.post(url, body, status=200)
 		json_body = res.json_body
-		assert_that(json_body, has_entry('NewAmount', 270.0))
+		assert_that(json_body, has_entry('DiscountedAmount', 270.0))
+		assert_that(json_body, has_entry('NonDiscountedAmount', 300.0))
 		assert_that(json_body, has_key('Coupon'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
