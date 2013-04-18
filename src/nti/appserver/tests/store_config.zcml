@@ -16,8 +16,8 @@
 	<stripe:registerStripeKey
 		alias="CMU"
 		live_mode="False"
-		stripe_user_id="acct_1xjuyxUfrd1g2YfOWCh"
-		public_key="pk_test_1Mc8Lsvj0oRWquUJGd45" 
+		stripe_user_id="acct_1jagRxOW20YDfZv"
+		public_key="pk_test_LIpQyLD7p5FmspOs6pPW9gWG" 
 		private_key="sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp" />
 			
 	<pcs:registerPurchasable

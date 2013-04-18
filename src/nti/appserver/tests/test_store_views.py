@@ -75,8 +75,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
 		params = {'coupon':code,
-				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
-				  'provider':'NTI-TEST'}
+				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
