@@ -20,10 +20,9 @@ from pyramid.view import view_config
 from nti.dataserver import authorization as nauth
 
 from nti.store import pyramid_views
-from nti.store import get_purchase_attempt
 from nti.store import interfaces as store_interfaces
 
-@interface.implementer(IPathAdapter,IContained)
+@interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
 	"""
 	Exists to provide a namespace in which to place all of these views,
@@ -33,13 +32,13 @@ class StorePathAdapter(object):
 	__parent__ = None
 	__name__ = None
 
-	def __init__( self, context, request ):
+	def __init__(self, context, request):
 		self.context = context
 		self.request = request
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
-	get_purchase_attempt(event.purchase_id, event.username)
+	pass
 	# TODO: send email
 
 
@@ -47,7 +46,7 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
 					  permission=nauth.ACT_READ,
 					  context=StorePathAdapter,
-					  request_method='GET' )
+					  request_method='GET')
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
 
