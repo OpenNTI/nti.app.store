@@ -136,10 +136,9 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		t = self._create_stripe_token()
 
 		url = '/dataserver2/store/post_stripe_payment'
-		params = {'items':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+		params = {'purchasableID':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
 				  'amount': 300,
-				  'token': t,
-				  'provider': "NTI-TEST"}
+				  'token': t}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
