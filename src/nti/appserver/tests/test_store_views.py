@@ -148,7 +148,8 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		items = json_body['Items']
 		assert_that(items, has_length(1))
 		purchase = items[0]
-		assert_that(purchase, has_entry('Items', has_length(1)))
+		assert_that(purchase, has_key('Order'))
+		assert_that(purchase['Order'], has_entry('Items', has_length(1)))
 
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(1)))
