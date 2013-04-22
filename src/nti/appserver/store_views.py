@@ -86,6 +86,10 @@ class PricePurchasableView(pyramid_views.PricePurchasableView):
 class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStripeCouponView):
 	""" price purchaseable with a stripe token """
 
+@view_config(name="redeem_purchase_code", **_post_view_defaults)
+class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
+	""" redeem a purchase code """
+
 del _view_defaults
 del _post_view_defaults
 
