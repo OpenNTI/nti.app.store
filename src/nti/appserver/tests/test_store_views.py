@@ -7,13 +7,30 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+
+from hamcrest import assert_that
+from hamcrest import has_length
+from hamcrest import has_entry
+from hamcrest import has_key
+from hamcrest import greater_than_or_equal_to
+from hamcrest import none
+from hamcrest import is_not
+from hamcrest import has_property
+from hamcrest import contains_string
+
+from zope import component
+from zope.component import eventtesting
+
 import uuid
 import stripe
 import anyjson as json
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
+from nti.store.payments.stripe.tests.test_stripe_processor import create_purchase
+from nti.dataserver.tests import mock_dataserver
 
-from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_or_equal_to, none, is_not)
+from nti.store import interfaces as store_interfaces
+from . import ITestMailDelivery
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
@@ -153,3 +170,21 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(1)))
+
+	@WithSharedApplicationMockDS
+	def test_confirmation_email(self):
+		with mock_dataserver.mock_db_trans(self.ds):
+			manager = component.getUtility(store_interfaces.IPaymentProcessor, name='stripe')
+			# TODO: Is this actually hitting stripe external services? If
+			# so, we need to mock that! This should be easy to do with fudge
+			username, purchase_id, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+														  amount=300,
+														  manager=manager)
+
+
+		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful), has_length(1))
+		mailer = component.getUtility( ITestMailDelivery )
+		assert_that( mailer.queue, has_length( 0 ) ) # Not actually queueing yet
+		#msg = mailer.queue[0]
+
+		#assert_that( msg, has_property( 'body', contains_string( user_username ) ) )

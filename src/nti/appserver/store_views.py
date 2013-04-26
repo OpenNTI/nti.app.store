@@ -48,8 +48,6 @@ class StorePathAdapter(object):
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
-	if True:
-		return
 
 	request = get_current_request()
 	if not request:
@@ -57,7 +55,7 @@ def _purchase_attempt_successful(event):
 		# doing something
 		return
 
-	from IPython.core.debugger import Tracer; Tracer()() ## DEBUG ##
+
 
 	purchase = event.object
 	user = purchase.creator
@@ -70,9 +68,10 @@ def _purchase_attempt_successful(event):
 	informal_username = user_ext.get( 'NonI18NFirstName', profile.realname) or user.username
 
 	args = {'profile': profile,
-			'context': purchase,
+			'context': event,
 			'user': user,
 			'informal_username': informal_username,
+			'billed_to': event.charge.Name or profile.realname or informal_username,
 			'today': isodate.date_isoformat( datetime.datetime.now() ) }
 	# Notice we're only creating it, not queueing it, as we work through
 	# the templates
@@ -81,7 +80,8 @@ def _purchase_attempt_successful(event):
 										 recipients=[email],
 										 template_args=args,
 										 text_template_extension='.mak')
-	print(msg)
+	#from IPython.core.debugger import Tracer; Tracer()() ## DEBUG ##
+	print(msg.body)
 
 
 
