@@ -93,15 +93,22 @@ class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStr
 class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
 	""" redeem a purchase code """
 
-del _view_defaults
-del _post_view_defaults
+_view_admin_defaults = _view_defaults.copy()
+_view_admin_defaults['permission'] = nauth.ACT_MODERATE
 
-@view_config(name="@@delete_purchase_attempt", **_admin_view_defaults)
+@view_config(name="get_content_roles", **_view_admin_defaults)
+class GetContentRolesView(pyramid_views.GetContentRolesView):
+	""" return the a list /w the content roles """
+
+@view_config(name="delete_purchase_attempt", **_admin_view_defaults)
 class DeletePurchaseAttemptView(pyramid_views.DeletePurchaseAttemptView):
 	""" delete a purchase attempt """
 
-@view_config(name="@@delete_purchase_history", **_admin_view_defaults)
+@view_config(name="delete_purchase_history", **_admin_view_defaults)
 class DeletePurchaseHistoryView(pyramid_views.DeletePurchaseHistoryView):
 	""" delete a purchase history """
 
+del _view_defaults
+del _post_view_defaults
 del _admin_view_defaults
+del _view_admin_defaults
