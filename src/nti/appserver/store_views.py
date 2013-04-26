@@ -11,6 +11,9 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 from nti.appserver import MessageFactory as _
 
+import isodate
+import datetime
+
 from zope import component
 from zope import interface
 from zope.traversing.interfaces import IPathAdapter
@@ -22,15 +25,13 @@ from pyramid.threadlocal import get_current_request
 from nti.appserver._email_utils import create_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
+# from nti.externalization.oids import to_external_oid
 from nti.externalization.externalization import to_external_object
-from nti.externalization.oids import to_external_oid
 
 from nti.store import interfaces as store_interfaces
 from nti.dataserver.users import interfaces as user_interfaces
 
-import isodate
-import datetime
-
+from nti.store import invitations
 from nti.store import pyramid_views
 
 class _IMailer(interface.Interface):
@@ -62,30 +63,29 @@ def _purchase_attempt_successful(event):
 		# doing something
 		return
 
-
-
 	purchase = event.object
 	user = purchase.creator
-	profile = user_interfaces.IUserProfile( user )
-	email = getattr( profile, 'email' )
+	profile = user_interfaces.IUserProfile(user)
+	email = getattr(profile, 'email')
 	if not email:
 		return
 
-	user_ext = to_external_object( user )
-	informal_username = user_ext.get( 'NonI18NFirstName', profile.realname) or user.username
+	transaction_id = invitations.get_invitation_code(purchase)
+	user_ext = to_external_object(user)
+	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
 
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
-			'transaction_id': to_external_oid( purchase ), # XXX What should this be?
+			'transaction_id': transaction_id,  # We use invitation code as trx id
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,
-			'today': isodate.date_isoformat( datetime.datetime.now() ) }
+			'today': isodate.date_isoformat(datetime.datetime.now()) }
 	# Notice we're only creating it, not queueing it, as we work through
 	# the templates (except in test mode)
 
-	mailer = component.queryUtility( _IMailer, default=create_simple_html_text_email )
-	mailer( 'purchase_confirmation_email',
+	mailer = component.queryUtility(_IMailer, default=create_simple_html_text_email)
+	mailer('purchase_confirmation_email',
 			subject=_("Purchase Confirmation"),
 			recipients=[email],
 			template_args=args,
