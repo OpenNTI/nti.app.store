@@ -108,6 +108,16 @@ class DeletePurchaseAttemptView(pyramid_views.DeletePurchaseAttemptView):
 class DeletePurchaseHistoryView(pyramid_views.DeletePurchaseHistoryView):
 	""" delete a purchase history """
 
+from .dataserver_pyramid_views import _GenericGetView as GenericGetView
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context='nti.store.interfaces.IPurchasable',
+			 permission=nauth.ACT_READ,
+			 request_method='GET')
+class PurchasableGetView(GenericGetView):
+	pass
+
+
 del _view_defaults
 del _post_view_defaults
 del _admin_view_defaults
