@@ -188,6 +188,9 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		msg = mailer.queue[0]
 		# TODO: Testing the body
 		# TODO: Testing the HTML
+
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
 		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - $300.0 each' ) ) )
 		#print(msg.body)
+		assert_that( msg, has_property( 'html', contains_string( username ) ) )
+		assert_that( msg, has_property( 'html', contains_string( '04-630: Computer Science for Practicing Engineers' ) ) )
