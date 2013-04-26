@@ -9,6 +9,7 @@ from __future__ import print_function, unicode_literals, absolute_import
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
+from nti.appserver import MessageFactory as _
 
 from zope import component
 from zope import interface
@@ -16,11 +17,20 @@ from zope.traversing.interfaces import IPathAdapter
 from zope.location.interfaces import IContained
 
 from pyramid.view import view_config
+from pyramid.threadlocal import get_current_request
+
+from nti.appserver._email_utils import create_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
+from nti.externalization.externalization import to_external_object
+
+from nti.store import interfaces as store_interfaces
+from nti.dataserver.users import interfaces as user_interfaces
+
+import isodate
+import datetime
 
 from nti.store import pyramid_views
-from nti.store import interfaces as store_interfaces
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
@@ -38,8 +48,42 @@ class StorePathAdapter(object):
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
-	pass
-	# TODO: send email
+	if True:
+		return
+
+	request = get_current_request()
+	if not request:
+		# Can only do this in the context of a user actually
+		# doing something
+		return
+
+	from IPython.core.debugger import Tracer; Tracer()() ## DEBUG ##
+
+	purchase = event.object
+	user = purchase.creator
+	profile = user_interfaces.IUserProfile( user )
+	email = getattr( profile, 'email' )
+	if not email:
+		return
+
+	user_ext = to_external_object( user )
+	informal_username = user_ext.get( 'NonI18NFirstName', profile.realname) or user.username
+
+	args = {'profile': profile,
+			'context': purchase,
+			'user': user,
+			'informal_username': informal_username,
+			'today': isodate.date_isoformat( datetime.datetime.now() ) }
+	# Notice we're only creating it, not queueing it, as we work through
+	# the templates
+	msg = create_simple_html_text_email( 'purchase_confirmation_email',
+										 subject=_("Purchase Confirmation"),
+										 recipients=[email],
+										 template_args=args,
+										 text_template_extension='.mak')
+	print(msg)
+
+
 
 
 _view_defaults = dict(route_name='objects.generic.traversal',
