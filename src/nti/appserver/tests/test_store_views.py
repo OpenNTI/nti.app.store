@@ -184,7 +184,10 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful), has_length(1))
 		mailer = component.getUtility( ITestMailDelivery )
-		assert_that( mailer.queue, has_length( 0 ) ) # Not actually queueing yet
-		#msg = mailer.queue[0]
-
-		#assert_that( msg, has_property( 'body', contains_string( user_username ) ) )
+		assert_that( mailer.queue, has_length( 1 ) ) # Not actually queueing yet
+		msg = mailer.queue[0]
+		# TODO: Testing the body
+		# TODO: Testing the HTML
+		assert_that( msg, has_property( 'body', contains_string( username ) ) )
+		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - $300.0 each' ) ) )
+		#print(msg.body)

@@ -23,6 +23,7 @@ from nti.appserver._email_utils import create_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
 from nti.externalization.externalization import to_external_object
+from nti.externalization.oids import to_external_oid
 
 from nti.store import interfaces as store_interfaces
 from nti.dataserver.users import interfaces as user_interfaces
@@ -31,6 +32,12 @@ import isodate
 import datetime
 
 from nti.store import pyramid_views
+
+class _IMailer(interface.Interface):
+	"""
+	Marker interface that lets us easily switch in and out
+	which function we use for sending confirmation emails during testing.
+	"""
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
@@ -70,18 +77,20 @@ def _purchase_attempt_successful(event):
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
+			'transaction_id': to_external_oid( purchase ), # XXX What should this be?
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,
 			'today': isodate.date_isoformat( datetime.datetime.now() ) }
 	# Notice we're only creating it, not queueing it, as we work through
-	# the templates
-	msg = create_simple_html_text_email( 'purchase_confirmation_email',
-										 subject=_("Purchase Confirmation"),
-										 recipients=[email],
-										 template_args=args,
-										 text_template_extension='.mak')
-	#from IPython.core.debugger import Tracer; Tracer()() ## DEBUG ##
-	print(msg.body)
+	# the templates (except in test mode)
+
+	mailer = component.queryUtility( _IMailer, default=create_simple_html_text_email )
+	mailer( 'purchase_confirmation_email',
+			subject=_("Purchase Confirmation"),
+			recipients=[email],
+			template_args=args,
+			text_template_extension='.mak')
+
 
 
 
