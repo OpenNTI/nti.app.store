@@ -191,6 +191,14 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
 		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - $300.0 each' ) ) )
-		#print(msg.body)
+#		import codecs
+#		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
+#			f.write( msg.html )
+		#print(msg.html)
 		assert_that( msg, has_property( 'html', contains_string( username ) ) )
 		assert_that( msg, has_property( 'html', contains_string( '04-630: Computer Science for Practicing Engineers' ) ) )
+		# AWW CRAP. Currency formatting is broken. See
+		# http://www.mail-archive.com/zope3-users@zope.org/msg04721.html
+		# Got to think about this some. No lengths are defined, so that's no
+		# help. We could do it manually using locale.numbers.currencies
+		assert_that( msg.html, contains_string( '\xa4300.00' ) )
