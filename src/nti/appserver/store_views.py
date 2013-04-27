@@ -20,27 +20,19 @@ from zope.publisher.interfaces.browser import IBrowserRequest
 from pyramid.view import view_config
 from pyramid.threadlocal import get_current_request
 
-from nti.appserver._email_utils import create_simple_html_text_email
+from nti.appserver._email_utils import queue_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
 from nti.externalization.externalization import to_external_object
-from nti.externalization.oids import to_external_oid
 
 from nti.store import interfaces as store_interfaces
 from nti.dataserver.users import interfaces as user_interfaces
 
-from nti.store import invitations
-
 import isodate
 import datetime
 
+from nti.store import invitations
 from nti.store import pyramid_views
-
-class _IMailer(interface.Interface):
-	"""
-	Marker interface that lets us easily switch in and out
-	which function we use for sending confirmation emails during testing.
-	"""
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
@@ -77,7 +69,12 @@ def _purchase_attempt_successful(event):
 	informal_username = user_ext.get( 'NonI18NFirstName', profile.realname ) or user.username
 
 	# Provide functions the templates can call to format currency values
-	# (TODO: Could this be an tales:expresiontype for the PT template?)
+	# (TODO: Could this be an tales:expresiontype for the PT template?
+	# Probably not, looks like z3c.pt/Chameleon doesn't support extensible expressions;
+	# but it does support path adapters, so we could do something like:
+	#   context/charge/fc:Amount
+	# where fc is a named IPathAdapter that supports traversing the charge object's Amount
+	# attribute as a formatted string)
 	locale = IBrowserRequest( request ).locale
 	currency_format = locale.numbers.getFormatter( 'currency' )
 	def format_currency( decimal, currency=None ):
@@ -105,10 +102,8 @@ def _purchase_attempt_successful(event):
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,
 			'today': isodate.date_isoformat( datetime.datetime.now() ) }
-	# Notice we're only creating it, not queueing it, as we work through
-	# the templates (except in test mode)
 
-	mailer = component.queryUtility( _IMailer, default=create_simple_html_text_email )
+	mailer = queue_simple_html_text_email
 	mailer( 'purchase_confirmation_email',
 			subject=_("Purchase Confirmation"),
 			recipients=[email],
