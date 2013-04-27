@@ -11,13 +11,11 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 from nti.appserver import MessageFactory as _
 
-import isodate
-import datetime
-
 from zope import component
 from zope import interface
 from zope.traversing.interfaces import IPathAdapter
 from zope.location.interfaces import IContained
+from zope.publisher.interfaces.browser import IBrowserRequest
 
 from pyramid.view import view_config
 from pyramid.threadlocal import get_current_request
@@ -25,13 +23,17 @@ from pyramid.threadlocal import get_current_request
 from nti.appserver._email_utils import create_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
-# from nti.externalization.oids import to_external_oid
 from nti.externalization.externalization import to_external_object
+from nti.externalization.oids import to_external_oid
 
 from nti.store import interfaces as store_interfaces
 from nti.dataserver.users import interfaces as user_interfaces
 
 from nti.store import invitations
+
+import isodate
+import datetime
+
 from nti.store import pyramid_views
 
 class _IMailer(interface.Interface):
@@ -63,32 +65,55 @@ def _purchase_attempt_successful(event):
 		# doing something
 		return
 
+
 	purchase = event.object
 	user = purchase.creator
-	profile = user_interfaces.IUserProfile(user)
-	email = getattr(profile, 'email')
+	profile = user_interfaces.IUserProfile( user )
+	email = getattr( profile, 'email' )
 	if not email:
 		return
 
-	transaction_id = invitations.get_invitation_code(purchase)
-	user_ext = to_external_object(user)
-	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
+	user_ext = to_external_object( user )
+	informal_username = user_ext.get( 'NonI18NFirstName', profile.realname ) or user.username
+
+	# Provide functions the templates can call to format currency values
+	# (TODO: Could this be an tales:expresiontype for the PT template?)
+	locale = IBrowserRequest( request ).locale
+	currency_format = locale.numbers.getFormatter( 'currency' )
+	def format_currency( decimal, currency=None ):
+		if currency is None:
+			try:
+				currency = locale.getDefaultCurrency()
+			except AttributeError:
+				currency = 'USD'
+		currency = locale.numbers.currencies[currency]
+		formatted = currency_format.format( decimal )
+		# Replace the currency symbol placeholder with its real value.
+		# see  http://www.mail-archive.com/zope3-users@zope.org/msg04721.html
+		formatted = formatted.replace( '\xa4', currency.symbol )
+		return formatted
+
+	def format_currency_attribute( obj, attrname ):
+		return format_currency( getattr( obj, attrname ), getattr( obj, 'Currency' ) )
 
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
-			'transaction_id': transaction_id,  # We use invitation code as trx id
+			'format_currency': format_currency,
+			'format_currency_attribute': format_currency_attribute,
+			'transaction_id': invitations.get_invitation_code( purchase ), # We use invitation code as trx id
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,
-			'today': isodate.date_isoformat(datetime.datetime.now()) }
+			'today': isodate.date_isoformat( datetime.datetime.now() ) }
 	# Notice we're only creating it, not queueing it, as we work through
 	# the templates (except in test mode)
 
-	mailer = component.queryUtility(_IMailer, default=create_simple_html_text_email)
-	mailer('purchase_confirmation_email',
+	mailer = component.queryUtility( _IMailer, default=create_simple_html_text_email )
+	mailer( 'purchase_confirmation_email',
 			subject=_("Purchase Confirmation"),
 			recipients=[email],
 			template_args=args,
+			request=request,
 			text_template_extension='.mak')
 
 

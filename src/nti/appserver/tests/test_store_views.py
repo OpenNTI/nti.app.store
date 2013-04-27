@@ -15,6 +15,7 @@ from hamcrest import has_key
 from hamcrest import greater_than_or_equal_to
 from hamcrest import none
 from hamcrest import is_not
+does_not = is_not
 from hamcrest import has_property
 from hamcrest import contains_string
 
@@ -190,15 +191,13 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		# TODO: Testing the HTML
 
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
-		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - $300.0 each' ) ) )
+		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
+		assert_that( msg.body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
 #		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
 #			f.write( msg.html )
-		#print(msg.html)
+#		print(msg.body)
+#		print(msg.html)
 		assert_that( msg, has_property( 'html', contains_string( username ) ) )
 		assert_that( msg, has_property( 'html', contains_string( '04-630: Computer Science for Practicing Engineers' ) ) )
-		# AWW CRAP. Currency formatting is broken. See
-		# http://www.mail-archive.com/zope3-users@zope.org/msg04721.html
-		# Got to think about this some. No lengths are defined, so that's no
-		# help. We could do it manually using locale.numbers.currencies
-		assert_that( msg.html, contains_string( '\xa4300.00' ) )
+		assert_that( msg.html, contains_string( 'US$300.00' ) )
