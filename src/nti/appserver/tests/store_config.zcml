@@ -31,6 +31,7 @@
 		discountable="True"
 		bulk_purchase="True"
 		icon="http://cmu.edu/"
+		license="1 Year License"
 		items="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers" />
 
 </configure>

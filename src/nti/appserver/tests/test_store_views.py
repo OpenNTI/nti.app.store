@@ -194,6 +194,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
 		assert_that( msg, has_property( 'body', contains_string( 'Activation Key' ) ) )
+		assert_that( msg, has_property( 'body', contains_string( '(1 Year License)' ) ) )
 		assert_that( msg, has_property( 'body', contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
 		assert_that( msg.body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
@@ -202,5 +203,6 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 #		print(msg.body)
 #		print(msg.html)
 		assert_that( msg, has_property( 'html', contains_string( username ) ) )
+		assert_that( msg, has_property( 'html', contains_string( '(1 Year License)' ) ) )
 		assert_that( msg, has_property( 'html', contains_string( '04-630: Computer Science for Practicing Engineers' ) ) )
 		assert_that( msg.html, contains_string( 'US$300.00' ) )
