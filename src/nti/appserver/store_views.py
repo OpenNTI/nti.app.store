@@ -188,6 +188,10 @@ _view_admin_defaults['permission'] = nauth.ACT_MODERATE
 class GetContentRolesView(pyramid_views.GetContentRolesView):
 	""" return the a list /w the content roles """
 
+@view_config(name="refund_purchase_attempt", **_admin_view_defaults)
+class RefundPurchaseAttemptView(pyramid_views.RefundPurchaseAttemptView):
+	""" delete a purchase attempt """
+
 @view_config(name="delete_purchase_attempt", **_admin_view_defaults)
 class DeletePurchaseAttemptView(pyramid_views.DeletePurchaseAttemptView):
 	""" delete a purchase attempt """
