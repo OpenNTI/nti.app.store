@@ -15,8 +15,8 @@ import datetime
 
 from zope import component
 from zope import interface
-from zope.traversing.interfaces import IPathAdapter
 from zope.location.interfaces import IContained
+from zope.traversing.interfaces import IPathAdapter
 from zope.publisher.interfaces.browser import IBrowserRequest
 
 from pyramid.view import view_config
@@ -170,13 +170,22 @@ class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStr
 class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
 	""" redeem a purchase code """
 
-from .dataserver_pyramid_views import _GenericGetView as GenericGetView
+# object get views
+
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context='nti.store.interfaces.IPurchasable',
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
-class PurchasableGetView(GenericGetView):
+class PurchasableGetView(pyramid_views.PurchasableGetView):
+	pass
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context='nti.store.interfaces.IPurchaseAttempt',
+			 permission=nauth.ACT_READ,
+			 request_method='GET')
+class PurchaseAttemptGetView(pyramid_views.PurchaseAttemptGetView):
 	pass
 
 # admin - views
