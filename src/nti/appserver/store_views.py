@@ -215,7 +215,7 @@ _view_admin_defaults['permission'] = nauth.ACT_MODERATE
 class GetContentRolesView(pyramid_views.GetContentRolesView):
 	""" return the a list /w the content roles """
 
-@view_config(name="permission_purchasable", **_view_admin_defaults)
+@view_config(name="permission_purchasable", **_admin_view_defaults)
 class PermissionPurchasableView(pyramid_views.PermissionPurchasableView):
 	""" permission a purchasable """
 
