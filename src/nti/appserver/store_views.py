@@ -10,6 +10,7 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import time
 import isodate
 import datetime
 
@@ -24,6 +25,7 @@ from pyramid.threadlocal import get_current_request
 
 from nti.appserver import MessageFactory as _
 from nti.appserver._email_utils import queue_simple_html_text_email
+from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users import interfaces as user_interfaces
@@ -177,7 +179,7 @@ class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
 			 context='nti.store.interfaces.IPurchasable',
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
-class PurchasableGetView(pyramid_views.PurchasableGetView):
+class PurchasableGetView(GenericGetView):
 	pass
 
 @view_config(route_name='objects.generic.traversal',
@@ -185,8 +187,15 @@ class PurchasableGetView(pyramid_views.PurchasableGetView):
 			 context='nti.store.interfaces.IPurchaseAttempt',
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
-class PurchaseAttemptGetView(pyramid_views.PurchaseAttemptGetView):
-	pass
+class PurchaseAttemptGetView(GenericGetView):
+
+	def __call__(self):
+		purchase = super(PurchaseAttemptGetView, self).__call__()
+		if purchase.is_pending():
+			start_time = purchase.StartTime
+			if time.time() - start_time >= 90 and not purchase.is_synced():
+				pyramid_views._sync_purchase(purchase)
+		return purchase
 
 # admin - views
 
