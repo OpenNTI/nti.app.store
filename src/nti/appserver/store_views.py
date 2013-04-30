@@ -113,7 +113,7 @@ def _purchase_attempt_successful(event):
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def prmia_purchase_attempt_successful(event):
 	# FIXME: This should probably NOT be the same template as goes to the user.
-	safe_send_purchase_confirmation( event, "alpha-support@nextthought.com" )
+	safe_send_purchase_confirmation(event, "alpha-support@nextthought.com")
 
 
 @interface.implementer(IPathAdapter, IContained)
@@ -214,6 +214,10 @@ _view_admin_defaults['permission'] = nauth.ACT_MODERATE
 @view_config(name="get_content_roles", **_view_admin_defaults)
 class GetContentRolesView(pyramid_views.GetContentRolesView):
 	""" return the a list /w the content roles """
+
+@view_config(name="permission_purchasable", **_view_admin_defaults)
+class PermissionPurchasableView(pyramid_views.PermissionPurchasableView):
+	""" permission a purchasable """
 
 @view_config(name="refund_purchase_attempt", **_admin_view_defaults)
 class RefundPurchaseAttemptView(pyramid_views.RefundPurchaseAttemptView):
