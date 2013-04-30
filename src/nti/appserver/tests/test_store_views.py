@@ -179,7 +179,8 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 			# TODO: Is this actually hitting stripe external services? If
 			# so, we need to mock that! This should be easy to do with fudge
 			username, purchase_id, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
-														  amount=300,
+														  amount=300 * 5,
+														  quantity=5,
 														  manager=manager)
 
 
@@ -191,7 +192,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		# TODO: Testing the HTML
 
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
-		assert_that( msg, has_property( 'body', contains_string( '1x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
+		assert_that( msg, has_property( 'body', contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
 		assert_that( msg.body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
 #		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
