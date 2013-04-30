@@ -33,30 +33,22 @@ from nti.dataserver.users import interfaces as user_interfaces
 from nti.externalization.externalization import to_external_object
 
 from nti.store import invitations
-from nti.store import purchasable
 from nti.store import pyramid_views
-from nti.store import purchase_attempt
 from nti.store import interfaces as store_interfaces
 
-def _send_purchase_confirmation_email(event):
+def send_purchase_confirmation(event, email, profile=None):
+
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
 	request = getattr(event, 'request', get_current_request())
-	if not request:
+	if not request or not email:
 		return
 
 	purchase = event.object
-	user = purchase.creator
-	profile = user_interfaces.IUserProfile(user)
-	email = getattr(profile, 'email')
-	if not email:
-		return
-
-	recipients = [email]
-	purchasables = purchase_attempt.get_purchasables(purchase)
-	bcc_list = purchasable.get_emails(purchasables)
-	recipients.extend(bcc_list)
+	if profile is None:
+		user = purchase.creator
+		profile = user_interfaces.IUserProfile(user)
 
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
@@ -97,13 +89,17 @@ def _send_purchase_confirmation_email(event):
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
 	mailer = queue_simple_html_text_email
-	for email in recipients:
-		mailer('purchase_confirmation_email',
-				subject=_("Purchase Confirmation"),
-				recipients=[email],
-				template_args=args,
-				request=request,
-				text_template_extension='.mak')
+	mailer('purchase_confirmation_email',
+			subject=_("Purchase Confirmation"),
+			recipients=[email],
+			template_args=args,
+			request=request,
+			text_template_extension='.mak')
+
+def _send_purchase_confirmation_email(event):
+	profile = user_interfaces.IUserProfile(event.object.creator)
+	email = getattr(profile, 'email')
+	send_purchase_confirmation(event, email, profile)
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
