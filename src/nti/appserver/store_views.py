@@ -33,7 +33,9 @@ from nti.dataserver.users import interfaces as user_interfaces
 from nti.externalization.externalization import to_external_object
 
 from nti.store import invitations
+from nti.store import purchasable
 from nti.store import pyramid_views
+from nti.store import purchase_attempt
 from nti.store import interfaces as store_interfaces
 
 def _send_purchase_confirmation_email(event):
@@ -50,6 +52,9 @@ def _send_purchase_confirmation_email(event):
 	email = getattr(profile, 'email')
 	if not email:
 		return
+
+	purchasables = purchase_attempt.get_purchasables(purchase)
+	bcc_list = purchasable.get_emails(purchasables)
 
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
@@ -93,6 +98,7 @@ def _send_purchase_confirmation_email(event):
 	mailer('purchase_confirmation_email',
 			subject=_("Purchase Confirmation"),
 			recipients=[email],
+			bcc=bcc_list or (),
 			template_args=args,
 			request=request,
 			text_template_extension='.mak')
