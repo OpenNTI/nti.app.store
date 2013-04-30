@@ -51,10 +51,11 @@ class StorePathAdapter(object):
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
 
-	request = get_current_request()
+	# Can only do this in the context of a user actually
+	# doing something; we need the request for locale information
+	# as well as URL information.
+	request = getattr( event, 'request', get_current_request() )
 	if not request:
-		# Can only do this in the context of a user actually
-		# doing something
 		return
 
 	purchase = event.object
