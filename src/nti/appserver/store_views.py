@@ -36,7 +36,7 @@ from nti.store import invitations
 from nti.store import pyramid_views
 from nti.store import interfaces as store_interfaces
 
-def _send_purchase_confirmation(event, email, profile=None):
+def _send_purchase_confirmation(event, email):
 
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
@@ -46,9 +46,8 @@ def _send_purchase_confirmation(event, email, profile=None):
 		return
 
 	purchase = event.object
-	if profile is None:
-		user = purchase.creator
-		profile = user_interfaces.IUserProfile(user)
+	user = purchase.creator
+	profile = user_interfaces.IUserProfile(user)
 
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
@@ -96,20 +95,20 @@ def _send_purchase_confirmation(event, email, profile=None):
 			request=request,
 			text_template_extension='.mak')
 
-def safe_send_purchase_confirmation(event, email, profile=None):
+def safe_send_purchase_confirmation(event, email):
 	try:
-		_send_purchase_confirmation(event, email, profile)
+		_send_purchase_confirmation(event, email)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s" % email)
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
-	profile = user_interfaces.IUserProfile(event.object.creator)
-	email = getattr(profile, 'email')
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
-	safe_send_purchase_confirmation(event, email, profile)
+	profile = user_interfaces.IUserProfile(event.object.creator)
+	email = getattr(profile, 'email')
+	safe_send_purchase_confirmation(event, email)
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
