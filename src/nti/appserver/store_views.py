@@ -36,7 +36,7 @@ from nti.store import invitations
 from nti.store import pyramid_views
 from nti.store import interfaces as store_interfaces
 
-def send_purchase_confirmation(event, email, profile=None):
+def _send_purchase_confirmation(event, email, profile=None):
 
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
@@ -96,20 +96,20 @@ def send_purchase_confirmation(event, email, profile=None):
 			request=request,
 			text_template_extension='.mak')
 
-def _send_purchase_confirmation_email(event):
-	profile = user_interfaces.IUserProfile(event.object.creator)
-	email = getattr(profile, 'email')
-	send_purchase_confirmation(event, email, profile)
+def safe_send_purchase_confirmation(event, email, profile=None):
+	try:
+		_send_purchase_confirmation(event, email, profile)
+	except Exception:
+		logger.exception("Error while sending purchase confirmation email to %s" % email)
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
-	try:
-		# If we reach this point, it means the charge has already gone through
-		# don't fail the transaction if there is an error sending
-		# the purchase confirmation email
-		_send_purchase_confirmation_email(event)
-	except Exception:
-		logger.exception("Error while sending purchase confirmation email")
+	profile = user_interfaces.IUserProfile(event.object.creator)
+	email = getattr(profile, 'email')
+	# If we reach this point, it means the charge has already gone through
+	# don't fail the transaction if there is an error sending
+	# the purchase confirmation email
+	safe_send_purchase_confirmation(event, email, profile)
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
