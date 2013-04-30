@@ -181,7 +181,8 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 			username, purchase_id, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
 														  amount=300 * 5,
 														  quantity=5,
-														  manager=manager)
+														  manager=manager,
+														  username='jason.madden@nextthought.com')
 
 
 		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful), has_length(1))
@@ -192,6 +193,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		# TODO: Testing the HTML
 
 		assert_that( msg, has_property( 'body', contains_string( username ) ) )
+		assert_that( msg, has_property( 'body', contains_string( 'Activation Key' ) ) )
 		assert_that( msg, has_property( 'body', contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
 		assert_that( msg.body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
