@@ -9,7 +9,9 @@ from __future__ import print_function, unicode_literals, absolute_import
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
-from nti.appserver import MessageFactory as _
+
+import isodate
+import datetime
 
 from zope import component
 from zope import interface
@@ -20,41 +22,23 @@ from zope.publisher.interfaces.browser import IBrowserRequest
 from pyramid.view import view_config
 from pyramid.threadlocal import get_current_request
 
+from nti.appserver import MessageFactory as _
 from nti.appserver._email_utils import queue_simple_html_text_email
 
 from nti.dataserver import authorization as nauth
-from nti.externalization.externalization import to_external_object
-
-from nti.store import interfaces as store_interfaces
 from nti.dataserver.users import interfaces as user_interfaces
 
-import isodate
-import datetime
+from nti.externalization.externalization import to_external_object
 
 from nti.store import invitations
 from nti.store import pyramid_views
+from nti.store import interfaces as store_interfaces
 
-@interface.implementer(IPathAdapter, IContained)
-class StorePathAdapter(object):
-	"""
-	Exists to provide a namespace in which to place all of these views,
-	and perhaps to traverse further on.
-	"""
-
-	__parent__ = None
-	__name__ = None
-
-	def __init__(self, context, request):
-		self.context = context
-		self.request = request
-
-@component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
-def _purchase_attempt_successful(event):
-
+def _send_purchase_confirmation_email(event):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
-	request = getattr( event, 'request', get_current_request() )
+	request = getattr(event, 'request', get_current_request())
 	if not request:
 		return
 
@@ -111,7 +95,29 @@ def _purchase_attempt_successful(event):
 			request=request,
 			text_template_extension='.mak')
 
+@component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
+def _purchase_attempt_successful(event):
+	try:
+		# If we reach this point, it means the charge has already gone through
+		# don't fail the transaction if there is an error sending
+		# the purchase confirmation email
+		_send_purchase_confirmation_email(event)
+	except Exception:
+		logger.exception("Error while sending purchase confirmation email")
 
+@interface.implementer(IPathAdapter, IContained)
+class StorePathAdapter(object):
+	"""
+	Exists to provide a namespace in which to place all of these views,
+	and perhaps to traverse further on.
+	"""
+
+	__parent__ = None
+	__name__ = None
+
+	def __init__(self, context, request):
+		self.context = context
+		self.request = request
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
