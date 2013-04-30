@@ -53,8 +53,10 @@ def _send_purchase_confirmation_email(event):
 	if not email:
 		return
 
+	recipients = [email]
 	purchasables = purchase_attempt.get_purchasables(purchase)
 	bcc_list = purchasable.get_emails(purchasables)
+	recipients.extend(bcc_list)
 
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
@@ -95,13 +97,13 @@ def _send_purchase_confirmation_email(event):
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
 	mailer = queue_simple_html_text_email
-	mailer('purchase_confirmation_email',
-			subject=_("Purchase Confirmation"),
-			recipients=[email],
-			bcc=bcc_list or (),
-			template_args=args,
-			request=request,
-			text_template_extension='.mak')
+	for email in recipients:
+		mailer('purchase_confirmation_email',
+				subject=_("Purchase Confirmation"),
+				recipients=[email],
+				template_args=args,
+				request=request,
+				text_template_extension='.mak')
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
