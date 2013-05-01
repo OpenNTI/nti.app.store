@@ -113,8 +113,8 @@ def _purchase_attempt_successful(event):
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def prmia_purchase_attempt_successful(event):
 	# FIXME: This should probably NOT be the same template as goes to the user.
-	safe_send_purchase_confirmation(event, "alpha-support@nextthought.com")
-
+	for email in ("alpha-support@nextthought.com", "alexv@prmia.org"):
+		safe_send_purchase_confirmation(event, email)
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
