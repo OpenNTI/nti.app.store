@@ -138,9 +138,6 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
 
-_admin_view_defaults = _post_view_defaults.copy()
-_admin_view_defaults['permission'] = nauth.ACT_MODERATE
-
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Returning a purchase attempt """""
@@ -206,32 +203,5 @@ class PurchaseAttemptGetView(GenericGetView):
 				pyramid_views._sync_purchase(purchase)
 		return purchase
 
-# admin - views
-
-_view_admin_defaults = _view_defaults.copy()
-_view_admin_defaults['permission'] = nauth.ACT_MODERATE
-
-@view_config(name="get_content_roles", **_view_admin_defaults)
-class GetContentRolesView(pyramid_views.GetContentRolesView):
-	""" return the a list /w the content roles """
-
-@view_config(name="permission_purchasable", **_admin_view_defaults)
-class PermissionPurchasableView(pyramid_views.PermissionPurchasableView):
-	""" permission a purchasable """
-
-@view_config(name="refund_purchase_attempt", **_admin_view_defaults)
-class RefundPurchaseAttemptView(pyramid_views.RefundPurchaseAttemptView):
-	""" delete a purchase attempt """
-
-@view_config(name="delete_purchase_attempt", **_admin_view_defaults)
-class DeletePurchaseAttemptView(pyramid_views.DeletePurchaseAttemptView):
-	""" delete a purchase attempt """
-
-@view_config(name="delete_purchase_history", **_admin_view_defaults)
-class DeletePurchaseHistoryView(pyramid_views.DeletePurchaseHistoryView):
-	""" delete a purchase history """
-
 del _view_defaults
 del _post_view_defaults
-del _admin_view_defaults
-del _view_admin_defaults
