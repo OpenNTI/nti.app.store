@@ -7,7 +7,6 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-
 from hamcrest import assert_that
 from hamcrest import has_length
 from hamcrest import has_entry
@@ -25,6 +24,8 @@ from zope.component import eventtesting
 import uuid
 import stripe
 import anyjson as json
+
+from quopri import decodestring
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 from nti.store.payments.stripe.tests.test_stripe_processor import create_purchase
@@ -178,7 +179,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 			manager = component.getUtility(store_interfaces.IPaymentProcessor, name='stripe')
 			# TODO: Is this actually hitting stripe external services? If
 			# so, we need to mock that! This should be easy to do with fudge
-			username, purchase_id, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+			username, _, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
 														  amount=300 * 5,
 														  quantity=5,
 														  manager=manager,
@@ -192,17 +193,21 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		# TODO: Testing the body
 		# TODO: Testing the HTML
 
-		assert_that( msg, has_property( 'body', contains_string( username ) ) )
-		assert_that( msg, has_property( 'body', contains_string( 'Activation Key' ) ) )
-		assert_that( msg, has_property( 'body', contains_string( '(1 Year License)' ) ) )
-		assert_that( msg, has_property( 'body', contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) )
-		assert_that( msg.body, does_not( contains_string( '\xa4300.00' ) ) )
+		assert_that( msg, has_property( 'body'))
+		body = decodestring(msg.body)
+		assert_that( body, contains_string( username ) ) 
+		assert_that( body, contains_string( 'Activation Key' ) ) 
+		assert_that( body, contains_string( '(1 Year License)' ) ) 
+		assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) 
+		assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
 #		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
 #			f.write( msg.html )
 #		print(msg.body)
 #		print(msg.html)
-		assert_that( msg, has_property( 'html', contains_string( username ) ) )
-		assert_that( msg, has_property( 'html', contains_string( '(1 Year License)' ) ) )
-		assert_that( msg, has_property( 'html', contains_string( '04-630: Computer Science for Practicing Engineers' ) ) )
-		assert_that( msg.html, contains_string( 'US$300.00' ) )
+		assert_that( msg, has_property( 'html'))
+		html = decodestring(msg.html)
+		assert_that( html, contains_string( username ) ) 
+		assert_that( html, contains_string( '(1 Year License)' ) ) 
+		assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) ) 
+		assert_that( html, contains_string( 'US$300.00' ) )
