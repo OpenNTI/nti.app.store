@@ -17,6 +17,7 @@ import datetime
 from zope import component
 from zope import interface
 from zope.location.interfaces import IContained
+from zope.container import contained as zcontained
 from zope.traversing.interfaces import IPathAdapter
 from zope.publisher.interfaces.browser import IBrowserRequest
 
@@ -117,14 +118,11 @@ def prmia_purchase_attempt_successful(event):
 		safe_send_purchase_confirmation(event, email)
 
 @interface.implementer(IPathAdapter, IContained)
-class StorePathAdapter(object):
+class StorePathAdapter(zcontained.Contained):
 	"""
 	Exists to provide a namespace in which to place all of these views,
 	and perhaps to traverse further on.
 	"""
-
-	__parent__ = None
-	__name__ = None
 
 	def __init__(self, context, request):
 		self.context = context
