@@ -13,10 +13,9 @@
 	<subscriber handler=".views._purchase_attempt_successful" />
 
 	<!-- Entry in service doc -->
-	<subscriber factory=".workspaces._UserStoreCollectionFactory"
-				provides="nti.appserver.interfaces.ICollection"
-				for="nti.appserver.interfaces.IUserWorkspace" />
-				
+	<subscriber factory=".workspaces._store_workspace"
+				provides="nti.appserver.interfaces.IWorkspace" />
+	
 	<!--
 	Provide access to the store views under .../store/.
 	NOTE: This could be in site configuration.
