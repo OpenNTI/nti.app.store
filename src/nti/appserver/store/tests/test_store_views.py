@@ -36,7 +36,7 @@ from . import ITestMailDelivery
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
-	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.tests'),)
+	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.store.tests'),)
 
 	@classmethod
 	def setUpClass(cls):
