@@ -20,6 +20,7 @@ from nti.dataserver import links
 
 from nti.store.course import Course
 from nti.store.purchasable import Purchasable
+from nti.store.purchase_attempt import PurchaseAttempt
 
 @interface.implementer(app_interfaces.IWorkspace)
 @component.adapter(app_interfaces.IUserService)
@@ -76,6 +77,6 @@ class _StoreCollection(object):
 
     @property
     def accepts(self):
-        return (Course.mimeType, Purchasable.mimeType)
+        return (Course.mimeType, Purchasable.mimeType, PurchaseAttempt.mimeType)
 
 
