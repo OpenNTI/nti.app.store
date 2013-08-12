@@ -2,6 +2,7 @@
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
 			xmlns:zcml="http://namespaces.zope.org/zcml"
+			xmlns:cos="http://nextthought.com/ntp/course"
 			xmlns:pcs="http://nextthought.com/ntp/purchasable"
 			xmlns:stripe="http://nextthought.com/ntp/stripe">
 
@@ -34,4 +35,11 @@
 		license="1 Year License"
 		items="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers" />
 
+	<cos:registerCourse
+		ntiid="tag:nextthought.com,2011-10:OU-course-CLC3403LawAndJustice"
+		title="CLC 3403 Law and Justice"
+		description="Introduction to the concept of justice as it developed in ancient Greece broken into three types: corrective, distributive, and transactional justice"
+		author="Kyle Harper"
+		items="tag:nextthought.com,2011-10:OU-HTML-CLC3403_LawAndJustice.clc_3403_law_and_justice" />
+	
 </configure>

@@ -60,8 +60,10 @@ class _StoreCollection(object):
     @property
     def links(self):
         result = []
-        for l in ('UserSearch', 'ResolveUser'):
-            link = links.Link(l, rel=l)
+        for rel in ('get_purchase_attempt', 'get_pending_purchases', 'get_purchase_history',
+                    'get_purchasables', 'get_courses', 'redeem_purchase_code',
+                    'create_stripe_token', 'get_stripe_connect_key', 'post_stripe_payment'):
+            link = links.Link(rel, rel=rel)
             link.__name__ = link.target
             link.__parent__ = self.__parent__
             interface.alsoProvides(link, loc_interfaces.ILocation)
@@ -75,3 +77,5 @@ class _StoreCollection(object):
     @property
     def accepts(self):
         return (Course.mimeType, Purchasable.mimeType)
+
+

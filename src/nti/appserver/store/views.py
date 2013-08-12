@@ -152,6 +152,10 @@ class GetPurchaseHistoryView(pyramid_views.GetPurchaseHistoryView):
 class GetPurchasablesView(pyramid_views.GetPurchasablesView):
 	""" Return all purchasables items """
 
+@view_config(name="get_courses", **_view_defaults)
+class GetCoursesView(pyramid_views.GetCoursesView):
+	""" Return all course items """
+
 @view_config(name="create_stripe_token", **_post_view_defaults)
 class CreateStripeTokenView(pyramid_views.CreateStripeTokenView):
 	""" Create a stripe payment token """
