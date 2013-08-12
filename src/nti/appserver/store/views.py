@@ -176,6 +176,14 @@ class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStr
 class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
 	""" redeem a purchase code """
 
+@view_config(name="enroll_course", **_post_view_defaults)
+class EnrollCourseView(pyramid_views.EnrollCourseView):
+	""" enroll a course """
+
+@view_config(name="unenroll_course", **_post_view_defaults)
+class UnenrollCourseView(pyramid_views.UnenrollCourseView):
+	""" unenroll a course """
+
 # object get views
 
 @view_config(route_name='objects.generic.traversal',
