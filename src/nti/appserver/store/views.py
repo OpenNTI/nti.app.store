@@ -100,7 +100,7 @@ def safe_send_purchase_confirmation(event, email):
 	try:
 		_send_purchase_confirmation(event, email)
 	except Exception:
-		logger.exception("Error while sending purchase confirmation email to %s" % email)
+		logger.exception("Error while sending purchase confirmation email to %s", email)
 
 @component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
