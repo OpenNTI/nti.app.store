@@ -61,6 +61,13 @@ def _send_purchase_confirmation(event, email):
 	# where fc is a named IPathAdapter that supports traversing the charge object's Amount
 	# attribute as a formatted string)
 	locale = IBrowserRequest(request).locale
+	# We're using the Zope local system to format numbers as currencies;
+	# we could also use babel:
+	# >>> from babel.numbers import format_currency
+	# >>> print format_currency(10.50, 'EUR', locale='de_DE')
+	# 10,50 €
+	# >>> print format_currency(10.50, 'USD', locale='en_AU')
+	# US$10.50
 	currency_format = locale.numbers.getFormatter('currency')
 	def format_currency(decimal, currency=None):
 		if currency is None:
