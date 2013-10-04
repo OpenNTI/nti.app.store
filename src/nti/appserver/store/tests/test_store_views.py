@@ -33,6 +33,7 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.store import interfaces as store_interfaces
 from . import ITestMailDelivery
+from nti.testing.matchers import is_empty
 
 class TestApplicationStoreViews(SharedApplicationTestBase):
 
@@ -161,7 +162,9 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
+
 		json_body = res.json_body
+
 		assert_that(json_body, has_key('Items'))
 		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
 		items = json_body['Items']
@@ -170,8 +173,14 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 		assert_that(purchase, has_key('Order'))
 		assert_that(purchase['Order'], has_entry('Items', has_length(1)))
 
+		import gevent
+
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(1)))
+		# And we can let the greenlet run which will empty out the queue
+		gevent.sleep(0)
+		items = self._get_pending_purchases()
+		assert_that(items, is_empty() )
 
 	@WithSharedApplicationMockDS
 	def test_confirmation_email(self):
@@ -195,10 +204,10 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 		assert_that( msg, has_property( 'body'))
 		body = decodestring(msg.body)
-		assert_that( body, contains_string( username ) ) 
-		assert_that( body, contains_string( 'Activation Key' ) ) 
-		assert_that( body, contains_string( '(1 Year License)' ) ) 
-		assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) ) 
+		assert_that( body, contains_string( username ) )
+		assert_that( body, contains_string( 'Activation Key' ) )
+		assert_that( body, contains_string( '(1 Year License)' ) )
+		assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) )
 		assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
 #		import codecs
 #		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
@@ -207,7 +216,7 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 #		print(msg.html)
 		assert_that( msg, has_property( 'html'))
 		html = decodestring(msg.html)
-		assert_that( html, contains_string( username ) ) 
-		assert_that( html, contains_string( '(1 Year License)' ) ) 
-		assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) ) 
+		assert_that( html, contains_string( username ) )
+		assert_that( html, contains_string( '(1 Year License)' ) )
+		assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) )
 		assert_that( html, contains_string( 'US$300.00' ) )
