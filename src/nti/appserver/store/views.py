@@ -54,42 +54,14 @@ def _send_purchase_confirmation(event, email):
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
 
 	# Provide functions the templates can call to format currency values
-	# (TODO: Could this be an tales:expresiontype for the PT template?
-	# Probably not, looks like z3c.pt/Chameleon doesn't support extensible expressions;
-	# but it does support path adapters, so we could do something like:
-	#   context/charge/fc:Amount
-	# where fc is a named IPathAdapter that supports traversing the charge object's Amount
-	# attribute as a formatted string)
-	locale = IBrowserRequest(request).locale
-	# We're using the Zope local system to format numbers as currencies;
-	# we could also use babel:
-	# >>> from babel.numbers import format_currency
-	# >>> print format_currency(10.50, 'EUR', locale='de_DE')
-	# 10,50 €
-	# >>> print format_currency(10.50, 'USD', locale='en_AU')
-	# US$10.50
-	currency_format = locale.numbers.getFormatter('currency')
-	def format_currency(decimal, currency=None):
-		if currency is None:
-			try:
-				currency = locale.getDefaultCurrency()
-			except AttributeError:
-				currency = 'USD'
-		currency = locale.numbers.currencies[currency]
-		formatted = currency_format.format(decimal)
-		# Replace the currency symbol placeholder with its real value.
-		# see  http://www.mail-archive.com/zope3-users@zope.org/msg04721.html
-		formatted = formatted.replace('\xa4', currency.symbol)
-		return formatted
-
-	def format_currency_attribute(obj, attrname):
-		return format_currency(getattr(obj, attrname), getattr(obj, 'Currency'))
+	currency = component.getAdapter( event, IPathAdapter, name='currency' )
 
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
-			'format_currency': format_currency,
-			'format_currency_attribute': format_currency_attribute,
+			'format_currency': currency.format_currency_object,
+			'format_currency_attribute': currency.format_currency_attribute,
+			'discount': - (event.purchase.Pricing.TotalNonDiscountedPrice - event.purchase.Pricing.TotalPurchasePrice),
 			'transaction_id': invitations.get_invitation_code(purchase),  # We use invitation code as trx id
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,

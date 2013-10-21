@@ -62,7 +62,7 @@
 
 		</style>
 	</head>
-	<body tal:define="fca nocall:options/format_currency_attribute; fc nocall:options/format_currency">
+	<body >
 		<div>
 			<div id="green-bar"></div>
 			<div id="logo-bar">
@@ -118,27 +118,28 @@
 						${item/Quantity}
 						&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 					</span>
-					<span tal:content="python:fca(item.purchasable, 'Amount')">
+					<span tal:content="item/purchasable/currency:ATTR_W_CURRENCY_Amount">
 						US$19.50
 					</span>
 				</td>
 			</tr>
 			<tr style="border-top-style: solid; border-top-width: 1px;">
 				<td style="text-align:left; font-size: 10pt; color: #757474; font-weight:100">SUBTOTAL</td>
-				<td style="text-align:right; color: #757474" tal:content="python:fca(context.purchase.Pricing, 'TotalNonDiscountedPrice')">US$69.50</td>
+				<td style="text-align:right; color: #757474" tal:content="context/purchase/Pricing/currency:ATTR_W_CURRENCY_TotalNonDiscountedPrice">US$69.50</td>
 			</tr>
 
-			<tal:block tal:define="pricing context/purchase/Pricing">
+			<tal:block tal:define="pricing context/purchase/Pricing;
+								   currency pricing/Currency">
 			<tr style="border-top-style: solid; border-top-width: 1px;" tal:condition="python:pricing.TotalNonDiscountedPrice and pricing.TotalPurchasePrice &lt; pricing.TotalNonDiscountedPrice">
 				<td style="text-align:left; font-size: 10pt; color: #757474; font-weight: 100">PROMO / DISCOUNTS: <span style="color: #b8b8b8" tal:content="context/purchase/Order/Coupon">FIVEDAYSALE</span></td>
-				<td style="text-align:right; color: #757474">-${python:fc(pricing.TotalNonDiscountedPrice - pricing.TotalPurchasePrice, pricing.Currency)}</td>
+				<td style="text-align:right; color: #757474" tal:content="options/discount/currency:CURRENCY/?currency/formatted">$123</td>
 			</tr>
 			</tal:block>
 
 
 			<tr  style="border-top-style: solid; border-top-width: 1px;">
 				<td colspan="2" style="font-weight: bold; color: #494949; text-align: right">
-					ORDER TOTAL: ${python:fca(context.charge, 'Amount')}
+					ORDER TOTAL: <span tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</span>
 				</td>
 			</tr>
 
@@ -147,7 +148,7 @@
 					PAYMENT RECEIVED: ${options/today}  (**** **** **** ${context/charge/CardLast4})
 					<span style="color: #b8b8b8">All Sales Are Final</span>
 				</td>
-				<td  style="text-align:right; color: #757474" tal:content="python:fca(context.charge, 'Amount')">US$64.50</td>
+				<td  style="text-align:right; color: #757474" tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</td>
 			</tr>
 		</table>
 
