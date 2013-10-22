@@ -96,8 +96,11 @@ class StorePathAdapter(zcontained.Contained):
 	and perhaps to traverse further on.
 	"""
 
+	__name__ = 'store'
+
 	def __init__(self, context, request):
 		self.context = context
+		self.__parent__ = context
 		self.request = request
 
 _view_defaults = dict(route_name='objects.generic.traversal',

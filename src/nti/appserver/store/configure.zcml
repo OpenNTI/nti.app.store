@@ -15,7 +15,7 @@
 	<!-- Entry in service doc -->
 	<subscriber factory=".workspaces._store_workspace"
 				provides="nti.appserver.interfaces.IWorkspace" />
-	
+
 	<!--
 	Provide access to the store views under .../store/.
 	NOTE: This could be in site configuration.
