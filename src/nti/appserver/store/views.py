@@ -24,6 +24,7 @@ from pyramid.view import view_config
 from pyramid.threadlocal import get_current_request
 
 from nti.appserver import MessageFactory as _
+from nti.appserver import interfaces as app_interfaces
 from nti.appserver._email_utils import queue_simple_html_text_email
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
@@ -88,6 +89,15 @@ def _purchase_attempt_successful(event):
 	profile = user_interfaces.IUserProfile(event.object.creator)
 	email = getattr(profile, 'email')
 	safe_send_purchase_confirmation(event, email)
+
+@component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
+def _purchase_attempt_successful_additional(event):
+	# FIXME: This should probably NOT be the same template as goes to the user.
+	settings = component.queryUtility(app_interfaces.IApplicationSettings) or {}
+	email_line = settings.get('purchase_additional_confirmation_addresses', '')
+	for email in email_line.split():
+		safe_send_purchase_confirmation(event, email)
+
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(zcontained.Contained):

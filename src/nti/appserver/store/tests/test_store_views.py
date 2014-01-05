@@ -184,6 +184,10 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 
 	@WithSharedApplicationMockDS
 	def test_confirmation_email(self):
+		from nti.appserver.interfaces import IApplicationSettings
+		settings = component.getUtility(IApplicationSettings)
+		settings['purchase_additional_confirmation_addresses'] = 'foo@bar.com\nbiz@baz.com'
+
 		with mock_dataserver.mock_db_trans(self.ds):
 			manager = component.getUtility(store_interfaces.IPaymentProcessor, name='stripe')
 			# TODO: Is this actually hitting stripe external services? If
@@ -195,9 +199,11 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 														  username='jason.madden@nextthought.com')
 
 
-		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful), has_length(1))
+		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful),
+					has_length(1))
+
 		mailer = component.getUtility( ITestMailDelivery )
-		assert_that( mailer.queue, has_length( 1 ) ) # Not actually queueing yet
+		assert_that( mailer.queue, has_length( 3 ) ) # One to the user, one to each additional
 		msg = mailer.queue[0]
 		# TODO: Testing the body
 		# TODO: Testing the HTML
