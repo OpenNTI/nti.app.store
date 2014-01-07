@@ -56,12 +56,17 @@ def _send_purchase_confirmation(event, email):
 	# Provide functions the templates can call to format currency values
 	currency = component.getAdapter( event, IPathAdapter, name='currency' )
 
+	discount = - (event.purchase.Pricing.TotalNonDiscountedPrice - event.purchase.Pricing.TotalPurchasePrice)
+	formatted_discount = component.getAdapter( purchase.Pricing, IPathAdapter, name='currency')
+	formatted_discount = formatted_discount.format_currency_object(discount)
+
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
 			'format_currency': currency.format_currency_object,
 			'format_currency_attribute': currency.format_currency_attribute,
-			'discount': - (event.purchase.Pricing.TotalNonDiscountedPrice - event.purchase.Pricing.TotalPurchasePrice),
+			'discount': discount,
+			'formatted_discount': formatted_discount,
 			'transaction_id': invitations.get_invitation_code(purchase),  # We use invitation code as trx id
 			'informal_username': informal_username,
 			'billed_to': event.charge.Name or profile.realname or informal_username,

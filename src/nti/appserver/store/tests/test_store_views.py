@@ -199,30 +199,56 @@ class TestApplicationStoreViews(SharedApplicationTestBase):
 														  username='jason.madden@nextthought.com')
 
 
-		assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful),
-					has_length(1))
+			assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful),
+						has_length(1))
+			event = eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful)[0]
+			purchase = event.object
 
-		mailer = component.getUtility( ITestMailDelivery )
-		assert_that( mailer.queue, has_length( 3 ) ) # One to the user, one to each additional
-		msg = mailer.queue[0]
-		# TODO: Testing the body
-		# TODO: Testing the HTML
+			mailer = component.getUtility( ITestMailDelivery )
+			assert_that( mailer.queue, has_length( 3 ) ) # One to the user, one to each additional
+			msg = mailer.queue[0]
 
-		assert_that( msg, has_property( 'body'))
-		body = decodestring(msg.body)
-		assert_that( body, contains_string( username ) )
-		assert_that( body, contains_string( 'Activation Key' ) )
-		assert_that( body, contains_string( '(1 Year License)' ) )
-		assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) )
-		assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
-#		import codecs
-#		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
-#			f.write( msg.html )
-#		print(msg.body)
-#		print(msg.html)
-		assert_that( msg, has_property( 'html'))
-		html = decodestring(msg.html)
-		assert_that( html, contains_string( username ) )
-		assert_that( html, contains_string( '(1 Year License)' ) )
-		assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) )
-		assert_that( html, contains_string( 'US$300.00' ) )
+			assert_that( msg, has_property( 'body'))
+			body = decodestring(msg.body)
+			assert_that( body, contains_string( username ) )
+			assert_that( body, contains_string( 'Activation Key' ) )
+			assert_that( body, contains_string( '(1 Year License)' ) )
+			assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) )
+			assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
+	#		import codecs
+	#		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
+	#			f.write( msg.html )
+	#		print(msg.body)
+	#		print(msg.html)
+			assert_that( msg, has_property( 'html'))
+			html = decodestring(msg.html)
+			assert_that( html, contains_string( username ) )
+			assert_that( html, contains_string( '(1 Year License)' ) )
+			assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) )
+			assert_that( html, contains_string( 'US$300.00' ) )
+
+			# Send the event again, this time with a discount
+			del mailer.queue[:]
+
+			purchase.Pricing.TotalPurchasePrice = 100.0
+
+			# The intid is bad because create_purchase actually runs its own transaction
+			# so the intid utility ghosts it...fix that
+			from zc.intid import IIntIds
+			ids = component.getUtility(IIntIds)
+			ids.refs[purchase._ds_intid] = purchase
+			from ..views import _purchase_attempt_successful
+
+			_purchase_attempt_successful(event)
+			assert_that( mailer.queue, has_length( 1 ) )
+			msg = mailer.queue[0]
+			assert_that( msg, has_property( 'body'))
+			body = decodestring(msg.body)
+			assert_that( body, contains_string( 'Discount' ) )
+
+			assert_that( msg, has_property( 'html'))
+			html = decodestring(msg.html)
+			assert_that( html, contains_string( 'DISCOUNTS' ) )
+
+			import transaction
+			transaction.abort()
