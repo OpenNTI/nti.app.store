@@ -5,7 +5,7 @@ Workspaces / Collections related NTI store
 
 $Id$
 """
-from __future__ import print_function, unicode_literals, absolute_import
+from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -61,9 +61,11 @@ class _StoreCollection(object):
     @property
     def links(self):
         result = []
-        for rel in ('get_purchase_attempt', 'get_pending_purchases', 'get_purchase_history',
-                    'get_purchasables', 'get_courses', 'redeem_purchase_code',
-                    'create_stripe_token', 'get_stripe_connect_key', 'post_stripe_payment'):
+        for rel in ('get_purchase_attempt', 'get_pending_purchases',
+                    'get_purchase_history', 'get_purchasables', 'get_courses',
+                    'redeem_purchase_code', 'create_stripe_token',
+                    'get_stripe_connect_key', 'post_stripe_payment',
+                    'refund_stripe_payment'):
             link = links.Link(rel, rel=rel)
             link.__name__ = link.target
             link.__parent__ = self.__parent__

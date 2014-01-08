@@ -11,6 +11,7 @@
 
 	<!-- Events -->
 	<subscriber handler=".views._purchase_attempt_successful" />
+	
 	<!-- Test coverage -->
 	<subscriber handler=".views._purchase_attempt_successful_additional"
 		zcml:condition='have devmode' />

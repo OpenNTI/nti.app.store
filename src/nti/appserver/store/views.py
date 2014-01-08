@@ -56,8 +56,10 @@ def _send_purchase_confirmation(event, email):
 	# Provide functions the templates can call to format currency values
 	currency = component.getAdapter( event, IPathAdapter, name='currency' )
 
-	discount = - (event.purchase.Pricing.TotalNonDiscountedPrice - event.purchase.Pricing.TotalPurchasePrice)
-	formatted_discount = component.getAdapter( purchase.Pricing, IPathAdapter, name='currency')
+	discount = -(event.purchase.Pricing.TotalNonDiscountedPrice -
+				 event.purchase.Pricing.TotalPurchasePrice)
+	formatted_discount = component.getAdapter(purchase.Pricing, IPathAdapter,
+											  name='currency')
 	formatted_discount = formatted_discount.format_currency_object(discount)
 
 	args = {'profile': profile,
@@ -126,6 +128,9 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
 
+_admin_view_defaults = _post_view_defaults.copy()
+_admin_view_defaults['permission'] = nauth.ACT_MODERATE
+
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(pyramid_views.GetPurchaseAttemptView):
 	""" Returning a purchase attempt """""
@@ -166,6 +171,10 @@ class PricePurchasableView(pyramid_views.PricePurchasableView):
 class PricePurchasableWithStripeCouponView(pyramid_views.PricePurchasableWithStripeCouponView):
 	""" price purchaseable with a stripe token """
 
+@view_config(name="refund_stripe_payment", **_admin_view_defaults)
+class RefundPaymentWithStripeView(pyramid_views.StripeRefundPaymentView):
+	""" Refund a payment using stripe """
+
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
 class RedeemPurchaseCodeView(pyramid_views.RedeemPurchaseCodeView):
 	""" redeem a purchase code """
@@ -205,3 +214,4 @@ class PurchaseAttemptGetView(GenericGetView):
 
 del _view_defaults
 del _post_view_defaults
+del _admin_view_defaults
