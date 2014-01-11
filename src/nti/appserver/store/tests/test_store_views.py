@@ -28,7 +28,7 @@ import anyjson as json
 from quopri import decodestring
 
 from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
-from nti.store.payments.stripe.tests.test_stripe_processor import create_purchase
+from nti.store.payments.stripe.processor.tests import create_purchase
 from nti.dataserver.tests import mock_dataserver
 
 from nti.store import interfaces as store_interfaces
