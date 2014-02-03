@@ -15,9 +15,6 @@ import isodate
 import datetime
 
 from zope import component
-from zope import interface
-from zope.location.interfaces import IContained
-from zope.container import contained as zcontained
 from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.view import view_config
@@ -36,6 +33,8 @@ from nti.externalization.externalization import to_external_object
 from nti.store import invitations
 from nti.store import pyramid_views
 from nti.store import interfaces as store_interfaces
+
+StorePathAdapter = pyramid_views.StorePathAdapter
 
 def _send_purchase_confirmation(event, email):
 
@@ -104,21 +103,6 @@ def _purchase_attempt_successful_additional(event):
 	email_line = settings.get('purchase_additional_confirmation_addresses', '')
 	for email in email_line.split():
 		safe_send_purchase_confirmation(event, email)
-
-
-@interface.implementer(IPathAdapter, IContained)
-class StorePathAdapter(zcontained.Contained):
-	"""
-	Exists to provide a namespace in which to place all of these views,
-	and perhaps to traverse further on.
-	"""
-
-	__name__ = 'store'
-
-	def __init__(self, context, request):
-		self.context = context
-		self.__parent__ = context
-		self.request = request
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
