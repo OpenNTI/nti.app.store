@@ -61,7 +61,7 @@ def _send_purchase_confirmation(event, email):
 											  name='currency')
 	formatted_discount = formatted_discount.format_currency_object(discount)
 
-	charge_name = getattr(getattr(event, 'charge', None), 'Name', None)
+	charge_name = getattr(event.charge, 'Name', None)
 
 	args = {'profile': profile,
 			'context': event,
