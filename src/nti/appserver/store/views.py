@@ -61,6 +61,8 @@ def _send_purchase_confirmation(event, email):
 											  name='currency')
 	formatted_discount = formatted_discount.format_currency_object(discount)
 
+	charge_name = getattr(getattr(event, 'charge', None), 'Name', None)
+
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
@@ -70,7 +72,7 @@ def _send_purchase_confirmation(event, email):
 			'formatted_discount': formatted_discount,
 			'transaction_id': invitations.get_invitation_code(purchase),  # We use invitation code as trx id
 			'informal_username': informal_username,
-			'billed_to': event.charge.Name or profile.realname or informal_username,
+			'billed_to': charge_name or profile.realname or informal_username,
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
 	mailer = queue_simple_html_text_email
