@@ -27,28 +27,31 @@ import anyjson as json
 
 from quopri import decodestring
 
-from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 from nti.store.payments.stripe.processor.tests import create_purchase
 from nti.dataserver.tests import mock_dataserver
 
 from nti.store import interfaces as store_interfaces
-from . import ITestMailDelivery
+
 from nti.testing.matchers import is_empty
+from nti.app.testing.testing import ITestMailDelivery
+from nti.app.testing.application_webtest import ApplicationLayerTest
+from nti.app.testing.decorators import WithSharedApplicationMockDS
+from nti.app.testing.testing import ITestMailDelivery
+from . import ApplicationStoreTestLayer
 
-class TestApplicationStoreViews(SharedApplicationTestBase):
+class TestApplicationStoreViews(ApplicationLayerTest):
+	layer = ApplicationStoreTestLayer
 
-	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.store.tests'),)
-
-	@classmethod
-	def setUpClass(cls):
-		super(TestApplicationStoreViews, cls).setUpClass()
-		cls.api_key = stripe.api_key
+	def setUp(self):
+		super(TestApplicationStoreViews, self).setUp()
+		self.api_key = stripe.api_key
 		stripe.api_key = u'sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp'
 
-	@classmethod
-	def tearDownClass(cls):
-		super(TestApplicationStoreViews, cls).tearDownClass()
-		stripe.api_key = cls.api_key
+
+	def tearDown(self):
+		stripe.api_key = self.api_key
+		super(TestApplicationStoreViews, self).tearDown()
+
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):

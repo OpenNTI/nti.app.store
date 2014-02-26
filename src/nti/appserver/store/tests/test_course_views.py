@@ -7,18 +7,30 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import assert_that
+from hamcrest import has_length
+from hamcrest import has_entry
+from hamcrest import has_key
+from hamcrest import greater_than_or_equal_to
+from hamcrest import none
+from hamcrest import is_not
+from hamcrest import is_in
+from hamcrest import is_
+
 from nti.dataserver import users
 
 from nti.externalization.externalization import to_json_representation
 
 from nti.dataserver.tests import mock_dataserver
-from nti.appserver.tests.test_application import SharedApplicationTestBase, WithSharedApplicationMockDS
 
-from hamcrest import (assert_that, has_length, has_entry, has_key, greater_than_or_equal_to, none, is_not, is_in, is_)
+from nti.app.testing.application_webtest import ApplicationLayerTest
+from nti.app.testing.decorators import WithSharedApplicationMockDS
+from . import ApplicationStoreTestLayer
 
-class TestStoreCourseViews(SharedApplicationTestBase):
 
-	set_up_packages = SharedApplicationTestBase.set_up_packages + (('store_config.zcml', 'nti.appserver.store.tests'),)
+class TestStoreCourseViews(ApplicationLayerTest):
+	layer = ApplicationStoreTestLayer
+
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_courses(self):
@@ -59,4 +71,3 @@ class TestStoreCourseViews(SharedApplicationTestBase):
 		with mock_dataserver.mock_db_trans(self.ds):
 			user = users.User.get_user(username)
 			assert_that('OU', is_not(is_in(user.usernames_of_dynamic_memberships)))
-
