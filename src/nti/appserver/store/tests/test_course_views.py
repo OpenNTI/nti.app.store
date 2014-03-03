@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import
+from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -25,12 +25,12 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 from nti.app.testing.decorators import WithSharedApplicationMockDS
+
 from . import ApplicationStoreTestLayer
 
-
 class TestStoreCourseViews(ApplicationLayerTest):
-	layer = ApplicationStoreTestLayer
 
+	layer = ApplicationStoreTestLayer
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_courses(self):

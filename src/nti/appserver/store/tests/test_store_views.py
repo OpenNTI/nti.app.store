@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import
+from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -33,10 +33,11 @@ from nti.dataserver.tests import mock_dataserver
 from nti.store import interfaces as store_interfaces
 
 from nti.testing.matchers import is_empty
+
 from nti.app.testing.testing import ITestMailDelivery
-from nti.app.testing.application_webtest import ApplicationLayerTest
 from nti.app.testing.decorators import WithSharedApplicationMockDS
-from nti.app.testing.testing import ITestMailDelivery
+from nti.app.testing.application_webtest import ApplicationLayerTest
+
 from . import ApplicationStoreTestLayer
 
 class TestApplicationStoreViews(ApplicationLayerTest):
@@ -47,11 +48,9 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		self.api_key = stripe.api_key
 		stripe.api_key = u'sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp'
 
-
 	def tearDown(self):
 		stripe.api_key = self.api_key
 		super(TestApplicationStoreViews, self).tearDown()
-
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):

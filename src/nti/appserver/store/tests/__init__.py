@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import
+from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-
 from nti.testing.layers import GCLayerMixin
 from nti.testing.layers import ZopeComponentLayer
 from nti.testing.layers import ConfiguringLayerMixin
 from nti.dataserver.tests.mock_dataserver import DSInjectorMixin
+
 from nti.app.testing.layers import PyramidLayerMixin
-from nti.app.testing.application_webtest import AppCreatingLayerHelper
 from nti.app.testing.application_webtest import Library
+from nti.app.testing.application_webtest import AppCreatingLayerHelper
 
 class ApplicationStoreTestLayer(ZopeComponentLayer,
 								PyramidLayerMixin,
@@ -24,7 +24,10 @@ class ApplicationStoreTestLayer(ZopeComponentLayer,
 	features = ('forums',)
 	set_up_packages = (('store_config.zcml', 'nti.appserver.store.tests'),)
 	APP_IN_DEVMODE = True
-	configure_events = False # We have no packages, but we will set up the listeners ourself when configuring the app
+
+	# We have no packages, but we will set up the listeners ourself
+	# when configuring the app
+	configure_events = False
 
 	@classmethod
 	def _setup_library(cls, *args, **kwargs):
