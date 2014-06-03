@@ -23,13 +23,7 @@ from nti.store.purchasable import Purchasable
 from nti.store.purchase_attempt import PurchaseAttempt
 
 @interface.implementer(app_interfaces.IWorkspace)
-@component.adapter(app_interfaces.IUserService)
-def _store_workspace(user_service):
-    store_ws = StoreWorkspace(parent=user_service.__parent__)
-    return store_ws
-
-@interface.implementer(app_interfaces.IWorkspace)
-class StoreWorkspace(object):
+class _StoreWorkspace(object):
 
     links = ()
     __parent__ = None
@@ -46,6 +40,12 @@ class StoreWorkspace(object):
     @property
     def collections(self):
         return (_StoreCollection(self),)
+
+@interface.implementer(app_interfaces.IWorkspace)
+@component.adapter(app_interfaces.IUserService)
+def StoreWorkspace(user_service):
+    store_ws = _StoreWorkspace(parent=user_service.__parent__)
+    return store_ws
 
 @interface.implementer(app_interfaces.IContainerCollection)
 @component.adapter(app_interfaces.IUserWorkspace)

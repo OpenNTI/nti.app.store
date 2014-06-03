@@ -9,15 +9,13 @@
 
 	<include package="nti.store" file="configure.zcml" />
 
-	<!-- Events -->
-	<subscriber handler=".views._purchase_attempt_successful" />
+	<!-- Subscribers -->
 	
-	<!-- Test coverage -->
-	<subscriber handler=".views._purchase_attempt_successful_additional"
-		zcml:condition='have devmode' />
+	<subscriber handler=".subscribers._purchase_attempt_successful" />
 
-	<!-- Entry in service doc -->
-	<subscriber factory=".workspaces._store_workspace"
+	<!-- Workspaces -->
+	
+	<subscriber factory=".workspaces.StoreWorkspace"
 				provides="nti.appserver.interfaces.IWorkspace" />
 
 	<!--
@@ -28,5 +26,8 @@
 			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
 			 factory=".views.StorePathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
-
+	
+	<configure zcml:condition="have devmode">
+		<subscriber handler=".subscribers._purchase_attempt_successful_additional" />
+	</configure>
 </configure>
