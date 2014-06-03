@@ -22,7 +22,7 @@ class ApplicationStoreTestLayer(ZopeComponentLayer,
 								ConfiguringLayerMixin,
 								DSInjectorMixin):
 	features = ('forums',)
-	set_up_packages = (('store_config.zcml', 'nti.app.products.store.tests'),)
+	set_up_packages = (('store_config.zcml', 'nti.app.store.tests'),)
 
 	APP_IN_DEVMODE = True
 

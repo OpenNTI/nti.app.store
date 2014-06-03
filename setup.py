@@ -13,11 +13,11 @@ py_impl = getattr(platform, 'python_implementation', lambda: None)
 IS_PYPY = py_impl() == 'PyPy'
 
 setup(
-	name='nti.app.products.store',
+	name='nti.app.store',
 	version=VERSION,
 	author='Jason Madden',
 	author_email='jason@nextthought.com',
-	description="NTI Store Product Integration",
+	description="NTI Store Integration",
 	long_description=codecs.open('README.rst', encoding='utf-8').read(),
 	license='Proprietary',
 	keywords='pyramid preference',
