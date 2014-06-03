@@ -16,7 +16,7 @@
 	<!-- Workspaces -->
 	
 	<subscriber factory=".workspaces.StoreWorkspace"
-				provides="nti.appserver.interfaces.IWorkspace" />
+				provides=".interfaces.IStoreWorkspace" />
 
 	<!--
 	Provide access to the store views under .../store/.
