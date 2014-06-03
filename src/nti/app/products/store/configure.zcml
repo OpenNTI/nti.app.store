@@ -7,7 +7,7 @@
 	<include package="zope.security" file="meta.zcml" />
 	<include package="zope.component" />
 
-	<include package="nti.store" file="configure.zcml" />
+	<include package="nti.store" />
 
 	<!-- Subscribers -->
 	

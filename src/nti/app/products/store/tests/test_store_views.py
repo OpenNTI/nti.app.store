@@ -239,7 +239,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 			from zc.intid import IIntIds
 			ids = component.getUtility(IIntIds)
 			ids.refs[purchase._ds_intid] = purchase
-			from ..views import _purchase_attempt_successful
+			from ..subscribers import _purchase_attempt_successful
 
 			_purchase_attempt_successful(event)
 			assert_that( mailer.queue, has_length( 1 ) )

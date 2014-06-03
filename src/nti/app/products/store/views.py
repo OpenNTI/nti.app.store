@@ -3,7 +3,7 @@
 """
 Views and other objects relating to NTI store
 
-$Id$
+.. $Id$
 """
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
@@ -19,7 +19,7 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.view import view_config
 
-from nti.appserver.dataserver_views import _GenericGetView as GenericGetView
+from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
 from nti.dataserver import authorization as nauth
 

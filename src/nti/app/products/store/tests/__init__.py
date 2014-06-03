@@ -22,7 +22,8 @@ class ApplicationStoreTestLayer(ZopeComponentLayer,
 								ConfiguringLayerMixin,
 								DSInjectorMixin):
 	features = ('forums',)
-	set_up_packages = (('store_config.zcml', 'nti.appserver.store.tests'),)
+	set_up_packages = (('store_config.zcml', 'nti.app.products.store.tests'),)
+
 	APP_IN_DEVMODE = True
 
 	# We have no packages, but we will set up the listeners ourself

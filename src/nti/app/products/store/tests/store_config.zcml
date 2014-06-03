@@ -10,6 +10,8 @@
 	<include package="zope.security" file="meta.zcml" />
 	<include package="zope.component" />
 
+	<include package="nti.contentfragments" />
+		
 	<include package="nti.store" file="meta.zcml" />
 	<include package="nti.store.payments.stripe" file="meta.zcml" />
 
@@ -20,7 +22,6 @@
 		public_key="pk_test_LIpQyLD7p5FmspOs6pPW9gWG"
 		private_key="sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp" />
 
-	<include package="nti.contentfragments" />
 	<pcs:registerPurchasable
 		ntiid="tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
 		title="04-630: Computer Science for Practicing Engineers"
