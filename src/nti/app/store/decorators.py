@@ -39,7 +39,7 @@ class _PurchasableDecorator(object):
 	def set_links(self, request, username, original, external):
 		if original.Amount and request:
 			ds2 = '/'.join(request.path.split('/')[:2])
-			_ds_path = '%s/%s' % (ds2, STORE)
+			_ds_path = '%s/%s/' % (ds2, STORE)
 			_links = external.setdefault(LINKS, [])
 
 			# insert history link
@@ -93,7 +93,7 @@ class _CourseDecorator(_PurchasableDecorator):
 			super(_CourseDecorator, self).set_links(request, username, original, external)
 		elif request:
 			ds2 = '/'.join(request.path.split('/')[:2])
-			_ds_path = '%s/%s' % (ds2, STORE)
+			_ds_path = '%s/%s/' % (ds2, STORE)
 			if not purchase_history.has_history_by_item(username, original.NTIID):
 				erroll_path = _ds_path + 'enroll_course'
 				link = Link(erroll_path, rel="enroll", method='Post')
