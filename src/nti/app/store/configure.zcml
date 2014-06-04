@@ -18,6 +18,9 @@
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
 
+	<adapter factory=".workspaces.StoreWorkspace"
+			 provides=".interfaces.IStoreWorkspace" />
+
 	<!--
 	Provide access to the store views under .../store/.
 	NOTE: This could be in site configuration.

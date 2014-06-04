@@ -94,5 +94,7 @@ class _StoreCollection(object):
 
 	@property
 	def accepts(self):
-		return (Course.mimeType, Purchasable.mimeType, PurchaseAttempt.mimeType)
+		return (getattr(Course, 'mimeType', getattr(Course, 'mime_type')),
+				getattr(Purchasable, 'mimeType', getattr(Purchasable, 'mime_type')),
+				PurchaseAttempt.mimeType)
 
