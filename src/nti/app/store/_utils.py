@@ -7,13 +7,10 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-import re
 import six
 import simplejson as json
 
 from nti.utils.maps import CaseInsensitiveDict
-
-# views
 
 class AbstractPostView(object):
 
@@ -31,31 +28,6 @@ class AbstractPostView(object):
 				values = json.loads(unicode(body, 'iso-8859-1'))
 			result.update(**values)
 		return result
-
-# item/array functions
-
-def from_delimited(value, delim=' '):
-	result = value.split(delim)
-	result = re.findall("[^\s]+", value) if len(result) <= 1 else result
-	return result
-
-def to_collection(items=None, factory=list, delim=' '):
-	result = None
-	if not items:
-		result = factory()
-	elif isinstance(items, factory):
-		result = items
-	elif isinstance(items, six.string_types):
-		result = factory(from_delimited(unicode(items), delim))
-	else:
-		result = factory(items)
-	return result
-
-def to_list(items=None, delim=' '):
-	return to_collection(items, list)
-
-def to_frozenset(items=None, delim=' '):
-	return to_collection(items, frozenset, delim)
 
 def is_valid_timestamp(ts):
 	try:
