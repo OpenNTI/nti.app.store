@@ -22,6 +22,7 @@ from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGet
 from nti.dataserver import authorization as nauth
 
 from nti.store import views
+from nti.store import interfaces as store_interfaces
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(zcontained.Contained):
@@ -76,19 +77,11 @@ class PricePurchasableView(views.PricePurchasableView):
 class RedeemPurchaseCodeView(views.RedeemPurchaseCodeView):
 	""" redeem a purchase code """
 
-@view_config(name="enroll_course", **_post_view_defaults)
-class EnrollCourseView(views.EnrollCourseView):
-	""" enroll a course """
-
-@view_config(name="unenroll_course", **_post_view_defaults)
-class UnenrollCourseView(views.UnenrollCourseView):
-	""" unenroll a course """
-
 # object get views
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
-			 context='nti.store.interfaces.IPurchasable',
+			 context=store_interfaces.IPurchasable,
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchasableGetView(GenericGetView):
@@ -96,7 +89,7 @@ class PurchasableGetView(GenericGetView):
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
-			 context='nti.store.interfaces.IPurchaseAttempt',
+			 context=store_interfaces.IPurchaseAttempt,
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchaseAttemptGetView(GenericGetView):
