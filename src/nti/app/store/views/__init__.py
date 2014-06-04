@@ -70,29 +70,9 @@ class GetPurchasablesView(views.GetPurchasablesView):
 class GetCoursesView(views.GetCoursesView):
 	""" Return all course items """
 
-@view_config(name="create_stripe_token", **_post_view_defaults)
-class CreateStripeTokenView(views.CreateStripeTokenView):
-	""" Create a stripe payment token """
-
-@view_config(name="get_stripe_connect_key", **_view_defaults)
-class GetStripeConnectKeyView(views.GetStripeConnectKeyView):
-	""" Return the stripe connect key """
-
-@view_config(name="post_stripe_payment", **_post_view_defaults)
-class ProcessPaymentWithStripeView(views.StripePaymentView):
-	""" Process a payment using stripe """
-
 @view_config(name="price_purchasable", **_post_view_defaults)
 class PricePurchasableView(views.PricePurchasableView):
 	""" price purchaseable """
-
-@view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
-class PricePurchasableWithStripeCouponView(views.PricePurchasableWithStripeCouponView):
-	""" price purchaseable with a stripe token """
-
-@view_config(name="refund_stripe_payment", **_admin_view_defaults)
-class RefundPaymentWithStripeView(views.StripeRefundPaymentView):
-	""" Refund a payment using stripe """
 
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
 class RedeemPurchaseCodeView(views.RedeemPurchaseCodeView):
@@ -105,6 +85,24 @@ class EnrollCourseView(views.EnrollCourseView):
 @view_config(name="unenroll_course", **_post_view_defaults)
 class UnenrollCourseView(views.UnenrollCourseView):
 	""" unenroll a course """
+
+# stripe
+
+@view_config(name="get_stripe_connect_key", **_view_defaults)
+class GetStripeConnectKeyView(views.GetStripeConnectKeyView):
+	""" Return the stripe connect key """
+
+@view_config(name="create_stripe_token", **_post_view_defaults)
+class CreateStripeTokenView(views.CreateStripeTokenView):
+	""" Create a stripe payment token """
+
+@view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
+class PricePurchasableWithStripeCouponView(views.PricePurchasableWithStripeCouponView):
+	""" price purchaseable with a stripe token """
+
+@view_config(name="post_stripe_payment", **_post_view_defaults)
+class ProcessPaymentWithStripeView(views.StripePaymentView):
+	""" Process a payment using stripe """
 
 # object get views
 

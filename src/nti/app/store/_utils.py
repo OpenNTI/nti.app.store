@@ -9,6 +9,28 @@ logger = __import__('logging').getLogger(__name__)
 
 import re
 import six
+import simplejson as json
+
+from nti.utils.maps import CaseInsensitiveDict
+
+# views
+
+class AbstractPostView(object):
+
+	def __init__(self, request):
+		self.request = request
+
+	def readInput(self):
+		request = self.request
+		body = self.request.body
+		result = CaseInsensitiveDict()
+		if body:
+			try:
+				values = json.loads(unicode(body, request.charset))
+			except UnicodeError:
+				values = json.loads(unicode(body, 'iso-8859-1'))
+			result.update(**values)
+		return result
 
 # item/array functions
 

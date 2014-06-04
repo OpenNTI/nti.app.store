@@ -11,7 +11,6 @@ logger = __import__('logging').getLogger(__name__)
 from . import MessageFactory as _
 
 import isodate
-import simplejson as json
 from datetime import datetime
 from cStringIO import StringIO
 
@@ -45,6 +44,7 @@ from nti.utils.maps import CaseInsensitiveDict
 
 from . import views
 from ._utils import to_boolean
+from ._utils import AbstractPostView
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -184,23 +184,6 @@ class GetUsersPurchaseHistoryView(object):
 		return result
 
 # post views
-
-class AbstractPostView(object):
-
-	def __init__(self, request):
-		self.request = request
-
-	def readInput(self):
-		request = self.request
-		body = self.request.body
-		result = CaseInsensitiveDict()
-		if body:
-			try:
-				values = json.loads(unicode(body, request.charset))
-			except UnicodeError:
-				values = json.loads(unicode(body, 'iso-8859-1'))
-			result.update(**values)
-		return result
 
 class _BasePostPurchaseAttemptView(AbstractPostView):
 
