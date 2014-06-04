@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Views and other objects relating to NTI store
-
 .. $Id$
 """
 from __future__ import print_function, unicode_literals, absolute_import, division
@@ -85,24 +83,6 @@ class EnrollCourseView(views.EnrollCourseView):
 @view_config(name="unenroll_course", **_post_view_defaults)
 class UnenrollCourseView(views.UnenrollCourseView):
 	""" unenroll a course """
-
-# stripe
-
-@view_config(name="get_stripe_connect_key", **_view_defaults)
-class GetStripeConnectKeyView(views.GetStripeConnectKeyView):
-	""" Return the stripe connect key """
-
-@view_config(name="create_stripe_token", **_post_view_defaults)
-class CreateStripeTokenView(views.CreateStripeTokenView):
-	""" Create a stripe payment token """
-
-@view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
-class PricePurchasableWithStripeCouponView(views.PricePurchasableWithStripeCouponView):
-	""" price purchaseable with a stripe token """
-
-@view_config(name="post_stripe_payment", **_post_view_defaults)
-class ProcessPaymentWithStripeView(views.StripePaymentView):
-	""" Process a payment using stripe """
 
 # object get views
 
