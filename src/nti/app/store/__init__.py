@@ -9,3 +9,6 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 STORE = 'Store'
+
+import zope.i18nmessageid
+MessageFactory = zope.i18nmessageid.MessageFactory('nti.dataserver')
