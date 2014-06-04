@@ -8,14 +8,18 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import itertools
+
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
 from nti.dataserver import authorization as nauth
 
 from nti.store import enrollment
+from nti.store import interfaces as store_interfaces
 
 from . import StorePathAdapter
+from . import GetPurchasablesView
 from .._utils import AbstractPostView
 
 _view_defaults = dict(route_name='objects.generic.traversal',
@@ -25,6 +29,17 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  request_method='GET')
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
+
+@view_config(name="get_courses", **_view_defaults)
+class GetCoursesView(GetPurchasablesView):
+
+	def __call__(self):
+		result = super(GetCoursesView, self).__call__()
+		purchasables = result['Items']
+		courses = list(itertools.ifilter(store_interfaces.ICourse.providedBy,
+										 purchasables))
+		result['Items'] = courses
+		return result
 
 @view_config(name="enroll_course", **_post_view_defaults)
 class EnrollCourseView(AbstractPostView):
