@@ -13,6 +13,16 @@
 	
 	<subscriber handler=".subscribers._purchase_attempt_successful" />
 
+	<!-- Decorators -->
+	
+	<subscriber factory=".decorators._PurchasableDecorator"
+				for="nti.store.interfaces.IPurchasable"
+				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
+
+	<subscriber factory=".decorators._CourseDecorator"
+				for="nti.store.interfaces.ICourse"
+				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
+				
 	<!-- Workspaces -->
 	
 	<subscriber factory=".workspaces.StoreWorkspace"
