@@ -183,6 +183,8 @@ class GetUsersPurchaseHistoryView(object):
 		result = result if not as_csv else self._to_csv(request, result)
 		return result
 
+# post views
+
 class AbstractPostView(object):
 
 	def __init__(self, request):
@@ -324,7 +326,6 @@ class GeneratePurchaseInvoiceWitStripeView(AbstractPostView):
 		notify(store_interfaces.PurchaseAttemptSuccessful(purchase,
 														  payment_charge,
 														  request=get_current_request()))
-
 		return hexc.HTTPNoContent()
 	
 del _view_defaults
