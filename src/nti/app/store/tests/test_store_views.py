@@ -7,15 +7,16 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-from hamcrest import assert_that
-from hamcrest import has_length
-from hamcrest import has_entry
-from hamcrest import has_key
-from hamcrest import greater_than_or_equal_to
+from hamcrest import is_
 from hamcrest import is_not
-does_not = is_not
+from hamcrest import has_key
+from hamcrest import has_entry
+from hamcrest import has_length
+from hamcrest import assert_that
 from hamcrest import has_property
 from hamcrest import contains_string
+from hamcrest import greater_than_or_equal_to
+does_not = is_not
 
 from zope import component
 from zope.component import eventtesting
@@ -57,11 +58,17 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(json_body, has_entry('Last Modified', 0))
 		items = json_body['Items']
 		assert_that(items, has_length(greater_than_or_equal_to(1)))
+		
+		ntiid = "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
+		sck = None
+		found = False
+		for item in items:
+			if item.get('NTIID') == ntiid:
+				sck = item.get('StripeConnectKey')
+				found = True
+				break
 
-		item = items[0]
-		assert_that(item, has_entry('NTIID', "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"))
-		assert_that(item, has_key('StripeConnectKey'))
-		sck = item['StripeConnectKey']
+		assert_that(found, is_(True))
 		assert_that(sck, has_entry('Alias', 'CMU'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
