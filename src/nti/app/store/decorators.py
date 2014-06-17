@@ -38,23 +38,23 @@ class _PurchasableDecorator(object):
 
 	def set_links(self, request, username, original, external):
 		if original.Amount and request:
-			ds2 = '/'.join(request.path.split('/')[:2])
-			_ds_path = '%s/%s/' % (ds2, STORE)
-			_links = external.setdefault(LINKS, [])
+			ds2 = request.path_info_peek()
+			ds_path = '/%s/%s/' % (ds2, STORE)
+			links = external.setdefault(LINKS, [])
 
 			# insert history link
 			if purchase_history.has_history_by_item(username, original.NTIID):
-				history_path = _ds_path + 'get_purchase_history?purchasableID=%s'
+				history_path = ds_path + 'get_purchase_history?purchasableID=%s'
 				history_href = history_path % urllib.quote(original.NTIID)
 				link = Link(history_href, rel="history")
 				interface.alsoProvides(link, ILocation)
-				_links.append(link)
+				links.append(link)
 
 			# insert price link
-			price_href = _ds_path + 'price_purchasable'
+			price_href = ds_path + 'price_purchasable'
 			link = Link(price_href, rel="price", method='Post')
 			interface.alsoProvides(link, ILocation)
-			_links.append(link)
+			links.append(link)
 
 	def add_library_details(self, original, external):
 		library = component.queryUtility(lib_interfaces.IContentPackageLibrary)
@@ -73,7 +73,7 @@ class _PurchasableDecorator(object):
 			# itself has been removed/lost. This will result in logging a
 			# warning if so.
 			from nti.store import enrollment
-			activated = enrollment.is_enrolled( username, original.NTIID )
+			activated = enrollment.is_enrolled(username, original.NTIID)
 		external['Activated'] = activated
 
 	def decorateExternalObject(self, original, external):
@@ -90,15 +90,18 @@ class _CourseDecorator(_PurchasableDecorator):
 
 	def set_links(self, request, username, original, external):
 		if original.Amount is not None:
-			super(_CourseDecorator, self).set_links(request, username, original, external)
+			super(_CourseDecorator, self).set_links(request,
+													username,
+													original,
+													external)
 		elif request:
-			ds2 = '/'.join(request.path.split('/')[:2])
-			_ds_path = '%s/%s/' % (ds2, STORE)
+			ds2 = request.path_info_peek()
+			ds_path = '/%s/%s/' % (ds2, STORE)
 			if not purchase_history.has_history_by_item(username, original.NTIID):
-				erroll_path = _ds_path + 'enroll_course'
+				erroll_path = ds_path + 'enroll_course'
 				link = Link(erroll_path, rel="enroll", method='Post')
 			else:
-				unerroll_path = _ds_path + 'unenroll_course'
+				unerroll_path = ds_path + 'unenroll_course'
 				link = Link(unerroll_path, rel="unenroll", method='Post')
 			interface.alsoProvides(link, ILocation)
 			external.setdefault(LINKS, []).append(link)
