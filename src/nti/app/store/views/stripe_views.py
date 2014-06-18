@@ -47,6 +47,7 @@ from .._utils import is_valid_amount
 from .._utils import is_valid_pve_int
 from .._utils import is_valid_boolean
 from .._utils import AbstractPostView
+from .. import get_possible_site_names
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -237,12 +238,14 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 		# after commit
 		manager = component.getUtility(store_interfaces.IPaymentProcessor,
 									   name=self.processor)
+		site_names = get_possible_site_names(request, include_default=True)
 		def process_purchase():
 			logger.info("Processing purchase %s", purchase_id)
 			manager.process_purchase(purchase_id=purchase_id, username=username,
 									 token=token, expected_amount=expected_amount,
 									 api_key=stripe_key.PrivateKey,
-									 request=request)
+									 request=request,
+									 site_names=site_names)
 
 		transaction.get().addAfterCommitHook(
 							lambda s: s and request.nti_gevent_spawn(process_purchase))
