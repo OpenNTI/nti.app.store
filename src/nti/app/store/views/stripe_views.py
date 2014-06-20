@@ -41,13 +41,15 @@ from nti.store.payments.stripe import interfaces as stripe_interfaces
 
 from nti.utils.maps import CaseInsensitiveDict
 
-from . import StorePathAdapter
+from .._utils import safestr
 from .._utils import to_boolean
 from .._utils import is_valid_amount
 from .._utils import is_valid_pve_int
 from .._utils import is_valid_boolean
 from .._utils import AbstractPostView
 from .. import get_possible_site_names
+
+from . import StorePathAdapter
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -110,10 +112,10 @@ class CreateStripeTokenView(_PostStripeView):
 						('number', 'CC', 'number'))
 
 			for k, p, a in required:
-				value = values.get(p, values.get(a, None))
+				value = values.get(p) or values.get(a)
 				if not value:
 					raise hexc.HTTPBadRequest(detail='Invalid %s value' % p)
-				params[k] = str(value)
+				params[k] = safestr(value)
 		else:
 			params['customer_id'] = customer_id
 
@@ -125,9 +127,9 @@ class CreateStripeTokenView(_PostStripeView):
 					('address_zip', 'address_zip', 'zip'),
 					('address_country', 'address_country', 'country'))
 		for k, p, a in optional:
-			value = values.get(p, values.get(a, None))
+			value = values.get(p) or values.get(a)
 			if value:
-				params[k] = str(value)
+				params[k] = safestr(value)
 
 		token = manager.create_token(**params)
 		return LocatedExternalDict(Token=token.id)

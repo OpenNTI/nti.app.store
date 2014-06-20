@@ -72,3 +72,7 @@ def to_boolean(value):
 		return False
 	else:
 		return None
+
+def safestr(s):
+	s = s.decode("utf-8") if isinstance(s, bytes) else s
+	return unicode(s) if s is not None else None
