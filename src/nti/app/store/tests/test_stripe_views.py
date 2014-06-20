@@ -134,3 +134,12 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		gevent.sleep(0)
 		items = self._get_pending_purchases()
 		assert_that(items, is_empty() )
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_invalid_post_stripe_payment(self):
+		url = '/dataserver2/store/post_stripe_payment'
+		params = {'purchasableID':'not found',
+				  'amount': 300,
+				  'token': 'xyz'}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
