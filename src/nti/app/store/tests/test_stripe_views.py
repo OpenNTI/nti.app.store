@@ -143,3 +143,8 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 				  'token': 'xyz'}
 		body = json.dumps(params)
 		self.testapp.post(url, body, status=422)
+
+		params = {'purchasableID':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+				  'amount': 300}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
