@@ -24,10 +24,16 @@ from zope.annotation import IAnnotations
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+
 from nti.dataserver import users
 from nti.dataserver import authorization as nauth
-from nti.dataserver import interfaces as nti_interfaces
-from nti.dataserver.users import interfaces as user_interfaces
+
+from nti.dataserver.interfaces import IUser
+from nti.dataserver.interfaces import IDataserver
+from nti.dataserver.interfaces import IShardLayout
+from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
@@ -38,13 +44,15 @@ from nti.store import invitations
 from nti.store import purchasable
 from nti.store import content_roles
 from nti.store import purchase_history
-from nti.store import interfaces as store_interfaces
+from nti.store.interfaces import IPurchaseAttempt
+from nti.store.interfaces import IPurchaseHistory
+from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.utils.maps import CaseInsensitiveDict
 
 from . import views
 from ._utils import to_boolean
-from ._utils import AbstractPostView
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -61,14 +69,11 @@ _admin_view_defaults = _post_view_defaults.copy()
 _admin_view_defaults['permission'] = nauth.ACT_MODERATE
 
 @view_config(name="get_content_roles", **_view_admin_defaults)
-class GetContentRolesView(object):
-
-	def __init__(self, request):
-		self.request = request
+class GetContentRolesView(AbstractAuthenticatedView):
 
 	def __call__(self):
 		request = self.request
-		params = CaseInsensitiveDict(**request.params)
+		params = CaseInsensitiveDict(request.params)
 		username = params.get('username') or request.authenticated_userid
 		user = users.User.get_user(username)
 		if not user:
@@ -81,10 +86,7 @@ class GetContentRolesView(object):
 		return result
 
 @view_config(name="get_users_purchase_history", **_view_admin_defaults)
-class GetUsersPurchaseHistoryView(object):
-
-	def __init__(self, request):
-		self.request = request
+class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 	def _to_csv(self, request, result):
 		response = request.response
@@ -102,10 +104,10 @@ class GetUsersPurchaseHistoryView(object):
 			transactions = entry['transactions']
 			for trx in transactions:
 				line = "%s,%s,%s,%s,%s,%s,%s," % (username, name, email,
-												   trx['transaction'],
-													trx['date'],
-												   trx['amount'],
-												   trx['status'])
+												  trx['transaction'],
+												  trx['date'],
+												  trx['amount'],
+												  trx['status'])
 				stream.write(line)
 				stream.write("\n")
 		stream.flush()
@@ -115,7 +117,7 @@ class GetUsersPurchaseHistoryView(object):
 
 	def __call__(self):
 		request = self.request
-		params = CaseInsensitiveDict(**request.params)
+		params = CaseInsensitiveDict(request.params)
 		purchasable_id = params.get('purchasableID') or params.get('purchasable_id')
 		if not purchasable_id:
 			msg = _("Must specify a valid purchasable id")
@@ -129,8 +131,8 @@ class GetUsersPurchaseHistoryView(object):
 		if usernames:
 			usernames = usernames.split(",")
 		else:
-			dataserver = component.getUtility(nti_interfaces.IDataserver)
-			_users = nti_interfaces.IShardLayout(dataserver).users_folder
+			dataserver = component.getUtility(IDataserver)
+			_users = IShardLayout(dataserver).users_folder
 			usernames = _users.keys()
 
 		as_csv = to_boolean(params.get('csv'))
@@ -145,7 +147,7 @@ class GetUsersPurchaseHistoryView(object):
 		result = LocatedExternalDict({'Items':items})
 		for username in usernames:
 			user = users.User.get_user(username)
-			if not user or not nti_interfaces.IUser.providedBy(user):
+			if not user or not IUser.providedBy(user):
 				continue
 			annotations = IAnnotations(user, {})
 			if annotation_key not in annotations:
@@ -162,7 +164,7 @@ class GetUsersPurchaseHistoryView(object):
 				array = purchases
 
 			if array or inactive:
-				profile = user_interfaces.IUserProfile(user)
+				profile = IUserProfile(user)
 				email = getattr(profile, 'email', None) or u''
 				name = getattr(profile, 'realname', None) or user.username
 
@@ -185,22 +187,16 @@ class GetUsersPurchaseHistoryView(object):
 
 # post views
 
-class _BasePostPurchaseAttemptView(AbstractPostView):
+class _BasePostStoreView(AbstractAuthenticatedView, 
+								   ModeledContentUploadRequestUtilsMixin):
 
-	def __call__(self):
-		values = self.readInput()
-		purchase_id = values.get('purchaseid') or values.get('purchase_id')
-		if not purchase_id:
-			msg = _("Must specify a valid purchase attempt id")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
-		purchase = purchase_history.get_purchase_attempt(purchase_id)
-		if not purchase:
-			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
-		return purchase
+	def readInput(self):
+		values = super(_BasePostStoreView, self).readInput()
+		result = CaseInsensitiveDict(values)
+		return result
 
 @view_config(name="permission_purchasable", **_admin_view_defaults)
-class PermissionPurchasableView(_BasePostPurchaseAttemptView):
+class PermissionPurchasableView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
@@ -222,7 +218,7 @@ class PermissionPurchasableView(_BasePostPurchaseAttemptView):
 		return hexc.HTTPNoContent()
 
 @view_config(name="unpermission_purchasable", **_admin_view_defaults)
-class UnPermissionPurchasableView(_BasePostPurchaseAttemptView):
+class UnPermissionPurchasableView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
@@ -243,16 +239,25 @@ class UnPermissionPurchasableView(_BasePostPurchaseAttemptView):
 		return hexc.HTTPNoContent()
 
 @view_config(name="delete_purchase_attempt", **_admin_view_defaults)
-class DeletePurchaseAttemptView(_BasePostPurchaseAttemptView):
+class DeletePurchaseAttemptView(_BasePostStoreView):
 
 	def __call__(self):
-		purchase = super(DeletePurchaseAttemptView, self).__call__()
+		values = self.readInput()
+		purchase_id = values.get('purchaseid') or values.get('purchase_id')
+		if not purchase_id:
+			msg = _("Must specify a valid purchase attempt id")
+			raise hexc.HTTPUnprocessableEntity(msg)
+
+		purchase = purchase_history.get_purchase_attempt(purchase_id)
+		if not purchase:
+			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
+		
 		purchase_history.remove_purchase_attempt(purchase, purchase.creator)
 		logger.info("Purchase attempt '%s' has been deleted")
 		return hexc.HTTPNoContent()
 
 @view_config(name="delete_purchase_history", **_admin_view_defaults)
-class DeletePurchaseHistoryView(AbstractPostView):
+class DeletePurchaseHistoryView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
@@ -266,7 +271,7 @@ class DeletePurchaseHistoryView(AbstractPostView):
 		annotation_key = "%s.%s" % (clazz.__module__, clazz.__name__)
 
 		if annotation_key in annotations:
-			su = store_interfaces.IPurchaseHistory(user)
+			su = IPurchaseHistory(user)
 			for p in su.values():
 				lifecycleevent.removed(p)
 			del annotations[annotation_key]
@@ -275,7 +280,7 @@ class DeletePurchaseHistoryView(AbstractPostView):
 		return hexc.HTTPNoContent()
 
 @view_config(name="generate_purchase_invoice", **_admin_view_defaults)
-class GeneratePurchaseInvoiceWitStripeView(AbstractPostView):
+class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 
 	def _get_purchase(self, key):
 		try:
@@ -290,25 +295,24 @@ class GeneratePurchaseInvoiceWitStripeView(AbstractPostView):
 
 	def __call__(self):
 		values = self.readInput()
-		transaction = values.get('transaction', \
-								 values.get('purchaseId', values.get('code')))
+		transaction = values.get('transaction') or \
+					  values.get('purchaseId') or \
+					  values.get('code')
 		if not transaction:
 			msg = _("Must specified a valid transaction or purchase code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		purchase = self._get_purchase(transaction)
-		if purchase is None or not store_interfaces.IPurchaseAttempt.providedBy(purchase):
+		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
 			raise hexc.HTTPNotFound(detail=_('Transaction not found'))
 		elif not purchase.has_succeeded():
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase was not successful'))
 
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=self.processor)
+		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		payment_charge = manager.get_payment_charge(purchase)
 
-		notify(store_interfaces.PurchaseAttemptSuccessful(purchase,
-														  payment_charge,
-														  request=get_current_request()))
+		notify(PurchaseAttemptSuccessful(purchase, payment_charge,
+										 request=get_current_request()))
 		return hexc.HTTPNoContent()
 	
 del _view_defaults
