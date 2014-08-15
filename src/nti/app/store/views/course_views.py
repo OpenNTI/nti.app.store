@@ -17,8 +17,12 @@ from pyramid import httpexceptions as hexc
 
 from nti.dataserver import authorization as nauth
 
-from nti.store import enrollment
-from nti.store import interfaces as store_interfaces
+from nti.store.interfaces import ICourse
+from nti.store.enrollment import enroll_course
+from nti.store.enrollment import unenroll_course
+from nti.store.enrollment import CourseNotFoundException
+from nti.store.enrollment import UserNotEnrolledException
+from nti.store.enrollment import InvalidEnrollmentAttemptException
 
 from . import StorePathAdapter
 from . import GetPurchasablesView
@@ -38,8 +42,7 @@ class GetCoursesView(GetPurchasablesView):
 	def __call__(self):
 		result = super(GetCoursesView, self).__call__()
 		purchasables = result['Items']
-		courses = list(itertools.ifilter(store_interfaces.ICourse.providedBy,
-										 purchasables))
+		courses = list(itertools.ifilter(ICourse.providedBy, purchasables))
 		result['Items'] = courses
 		return result
 
@@ -52,8 +55,8 @@ class EnrollCourseView(AbstractPostView):
 		course_id = values.get('courseID') or values.get('course_id') or u''
 		description = values.get('description', u'')
 		try:
-			enrollment.enroll_course(username, course_id, description, self.request)
-		except enrollment.CourseNotFoundException:
+			enroll_course(username, course_id, description, self.request)
+		except CourseNotFoundException:
 			raise hexc.HTTPUnprocessableEntity(_('Course not found'))
 
 		return hexc.HTTPNoContent()
@@ -70,14 +73,14 @@ class UnenrollCourseView(AbstractPostView):
 		username = self.request.authenticated_userid
 		course_id = values.get('courseID') or values.get('course_id') or u''
 		try:
-			enrollment.unenroll_course(username, course_id, self.request)
-		except enrollment.CourseNotFoundException:
+			unenroll_course(username, course_id, self.request)
+		except CourseNotFoundException:
 			logger.error("Course %s not found" % course_id)
 			raise hexc.HTTPUnprocessableEntity(_('Course not found'))
-		except enrollment.UserNotEnrolledException:
+		except UserNotEnrolledException:
 			logger.error("User %s not enrolled in %s" % (username, course_id))
 			raise hexc.HTTPUnprocessableEntity(_('User not enrolled'))
-		except enrollment.InvalidEnrollmentAttemptException:
+		except InvalidEnrollmentAttemptException:
 			raise hexc.HTTPUnprocessableEntity(_('Invalid enrollment attempt'))
 
 		return hexc.HTTPNoContent()

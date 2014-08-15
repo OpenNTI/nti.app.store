@@ -8,25 +8,17 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import six
-import simplejson as json
+
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.utils.maps import CaseInsensitiveDict
 
-class AbstractPostView(object):
-
-	def __init__(self, request):
-		self.request = request
+class AbstractPostView(AbstractAuthenticatedView, ModeledContentUploadRequestUtilsMixin):
 
 	def readInput(self):
-		request = self.request
-		body = self.request.body
-		result = CaseInsensitiveDict()
-		if body:
-			try:
-				values = json.loads(unicode(body, request.charset))
-			except UnicodeError:
-				values = json.loads(unicode(body, 'iso-8859-1'))
-			result.update(**values)
+		values = super(AbstractPostView, self).readInput()
+		result = CaseInsensitiveDict(values)
 		return result
 
 def is_valid_timestamp(ts):

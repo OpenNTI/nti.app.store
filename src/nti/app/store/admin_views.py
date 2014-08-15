@@ -25,7 +25,6 @@ from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
-from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.dataserver import users
 from nti.dataserver import authorization as nauth
@@ -58,6 +57,7 @@ from nti.store.invitations import get_purchase_by_code
 from nti.utils.maps import CaseInsensitiveDict
 
 from ._utils import to_boolean
+from ._utils import AbstractPostView
 
 from .views import StorePathAdapter
 
@@ -194,12 +194,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 # post views
 
-class _BasePostStoreView(AbstractAuthenticatedView, ModeledContentUploadRequestUtilsMixin):
-
-	def readInput(self):
-		values = super(_BasePostStoreView, self).readInput()
-		result = CaseInsensitiveDict(values)
-		return result
+_BasePostStoreView = AbstractPostView # alias
 
 @view_config(name="permission_purchasable", **_admin_view_defaults)
 class PermissionPurchasableView(_BasePostStoreView):
