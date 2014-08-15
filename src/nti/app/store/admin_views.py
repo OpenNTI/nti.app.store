@@ -40,24 +40,31 @@ from nti.externalization.interfaces import LocatedExternalDict
 
 from nti.ntiids import ntiids
 
-from nti.store import invitations
 from nti.store import purchasable
-from nti.store import content_roles
 from nti.store import purchase_history
+
+from nti.store.content_roles import add_users_content_roles
+from nti.store.content_roles import get_users_content_roles
+from nti.store.content_roles import remove_users_content_roles
+
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
+from nti.store.invitations import get_invitation_code
+from nti.store.invitations import get_purchase_by_code
+
 from nti.utils.maps import CaseInsensitiveDict
 
-from . import views
 from ._utils import to_boolean
+
+from .views import StorePathAdapter
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
 					  permission=nauth.ACT_READ,
-					  context=views.StorePathAdapter,
+					  context=StorePathAdapter,
 					  request_method='GET')
 _view_admin_defaults = _view_defaults.copy()
 _view_admin_defaults['permission'] = nauth.ACT_MODERATE
@@ -79,7 +86,7 @@ class GetContentRolesView(AbstractAuthenticatedView):
 		if not user:
 			raise hexc.HTTPNotFound(detail=_('User not found'))
 
-		roles = content_roles.get_users_content_roles(user)
+		roles = get_users_content_roles(user)
 		result = LocatedExternalDict()
 		result['Username'] = username
 		result['Items'] = roles
@@ -175,7 +182,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 						 'transactions':transactions}
 
 				for p in purchases:
-					code = invitations.get_invitation_code(p)
+					code = get_invitation_code(p)
 					date = isodate.date_isoformat(datetime.fromtimestamp(p.StartTime))
 					amount = getattr(p.Pricing, 'TotalPurchasePrice', None) or u''
 					transactions.append({'transaction':code, 'date':date,
@@ -187,8 +194,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 # post views
 
-class _BasePostStoreView(AbstractAuthenticatedView, 
-								   ModeledContentUploadRequestUtilsMixin):
+class _BasePostStoreView(AbstractAuthenticatedView, ModeledContentUploadRequestUtilsMixin):
 
 	def readInput(self):
 		values = super(_BasePostStoreView, self).readInput()
@@ -211,7 +217,7 @@ class PermissionPurchasableView(_BasePostStoreView):
 		if not purchasable_obj:
 			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
 
-		content_roles.add_users_content_roles(user, purchasable_obj.Items)
+		add_users_content_roles(user, purchasable_obj.Items)
 		logger.info("Activating %s for user %s" % (purchasable_id, user))
 		purchase_history.activate_items(user, purchasable_id)
 
@@ -232,7 +238,7 @@ class UnPermissionPurchasableView(_BasePostStoreView):
 		if not purchasable_obj:
 			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
 
-		content_roles.remove_users_content_roles(user, purchasable_obj.Items)
+		remove_users_content_roles(user, purchasable_obj.Items)
 		purchase_history.deactivate_items(user, purchasable_id)
 		logger.info("%s deactivated for user %s" % (purchasable_id, user))
 
@@ -285,7 +291,7 @@ class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 	def _get_purchase(self, key):
 		try:
 			integer_strings.from_external_string(key)
-			purchase = invitations.get_purchase_by_code(key)
+			purchase = get_purchase_by_code(key)
 		except ValueError:
 			if ntiids.is_valid_ntiid_string(key):
 				purchase = ntiids.find_object_with_ntiid(key)

@@ -6,9 +6,9 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-from nti.appserver import interfaces as app_interfaces
+from nti.appserver.interfaces import IWorkspace
 
-class IStoreWorkspace(app_interfaces.IWorkspace):
+class IStoreWorkspace(IWorkspace):
 	"""
 	A workspace containing data for store.
 	"""

@@ -17,15 +17,15 @@ from zope.traversing.interfaces import IPathAdapter
 from pyramid.threadlocal import get_current_request
 
 from nti.appserver import MessageFactory as _
-from nti.appserver import interfaces as app_interfaces
+from nti.appserver.interfaces import IApplicationSettings
 from nti.appserver._email_utils import queue_simple_html_text_email
 
 from nti.dataserver.users import interfaces as user_interfaces
 
 from nti.externalization.externalization import to_external_object
 
-from nti.store import invitations
-from nti.store import interfaces as store_interfaces
+from nti.store.invitations import get_invitation_code
+from nti.store.interfaces import IPurchaseAttemptSuccessful
 
 def _send_purchase_confirmation(event, email):
 
@@ -61,7 +61,7 @@ def _send_purchase_confirmation(event, email):
 			'format_currency_attribute': currency.format_currency_attribute,
 			'discount': discount,
 			'formatted_discount': formatted_discount,
-			'transaction_id': invitations.get_invitation_code(purchase),  # We use invitation code as trx id
+			'transaction_id': get_invitation_code(purchase),  # We use invitation code as trx id
 			'informal_username': informal_username,
 			'billed_to': charge_name or profile.realname or informal_username,
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
@@ -80,7 +80,7 @@ def safe_send_purchase_confirmation(event, email):
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s", email)
 
-@component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
+@component.adapter(IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful(event):
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
@@ -89,10 +89,10 @@ def _purchase_attempt_successful(event):
 	email = getattr(profile, 'email')
 	safe_send_purchase_confirmation(event, email)
 
-@component.adapter(store_interfaces.IPurchaseAttemptSuccessful)
+@component.adapter(IPurchaseAttemptSuccessful)
 def _purchase_attempt_successful_additional(event):
 	# FIXME: This should probably NOT be the same template as goes to the user.
-	settings = component.queryUtility(app_interfaces.IApplicationSettings) or {}
+	settings = component.queryUtility(IApplicationSettings) or {}
 	email_line = settings.get('purchase_additional_confirmation_addresses', '')
 	for email in email_line.split():
 		safe_send_purchase_confirmation(event, email)
