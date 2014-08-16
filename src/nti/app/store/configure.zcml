@@ -10,21 +10,20 @@
 	<include package="nti.store" />
 
 	<!-- Subscribers -->
-	
+
 	<subscriber handler=".subscribers._purchase_attempt_successful" />
 
 	<!-- Decorators -->
-	
+
 	<subscriber factory=".decorators._PurchasableDecorator"
 				for="nti.store.interfaces.IPurchasable"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
 
 	<subscriber factory=".decorators._CourseDecorator"
-				for="nti.store.interfaces.ICourse"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
-				
+
 	<!-- Workspaces -->
-	
+
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
 
@@ -39,7 +38,7 @@
 			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
 			 factory=".views.StorePathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
-	
+
 	<configure zcml:condition="have devmode">
 		<subscriber handler=".subscribers._purchase_attempt_successful_additional" />
 	</configure>

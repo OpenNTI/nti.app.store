@@ -84,7 +84,12 @@ class _PurchasableDecorator(object):
 			self.set_links(request, username, original, external)
 		self.add_library_details(original, external)
 
-@component.adapter(store_interfaces.ICourse)
+
+from nti.deprecated import hiding_warnings
+with hiding_warnings():
+	from nti.store.interfaces import ICourse
+
+@component.adapter(ICourse)
 @interface.implementer(ext_interfaces.IExternalObjectDecorator)
 class _CourseDecorator(_PurchasableDecorator):
 
