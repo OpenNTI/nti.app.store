@@ -251,7 +251,12 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("Must specify a valid invitation code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchase = invitations.get_purchase_by_code(invitation_code)
+		try:
+			purchase = invitations.get_purchase_by_code(invitation_code)
+		except ValueError:
+			# improper key
+			purchase = None
+
 		if purchase is None or not store_interfaces.IPurchaseAttempt.providedBy(purchase):
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 
