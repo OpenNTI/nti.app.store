@@ -18,20 +18,26 @@ from pyramid.threadlocal import get_current_request
 
 from nti.dataserver.links import Link
 
-from nti.externalization import interfaces as ext_interfaces
 from nti.externalization.singleton import SingletonDecorator
+from nti.externalization.interfaces import StandardExternalFields
+from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.contentlibrary import interfaces as lib_interfaces
 
-from nti.store import purchase_history
-from nti.store import interfaces as store_interfaces
+from nti.store.interfaces import IPurchasable
+from nti.store.purchase_history import is_item_activated
+from nti.store.purchase_history import has_history_by_item
+
+from nti.deprecated import hiding_warnings
+with hiding_warnings():
+	from nti.store.interfaces import ICourse
 
 from . import STORE
 
-LINKS = ext_interfaces.StandardExternalFields.LINKS
+LINKS = StandardExternalFields.LINKS
 
-@component.adapter(store_interfaces.IPurchasable)
-@interface.implementer(ext_interfaces.IExternalObjectDecorator)
+@component.adapter(IPurchasable)
+@interface.implementer(IExternalObjectDecorator)
 class _PurchasableDecorator(object):
 
 	__metaclass__ = SingletonDecorator
@@ -43,7 +49,7 @@ class _PurchasableDecorator(object):
 			links = external.setdefault(LINKS, [])
 
 			# insert history link
-			if purchase_history.has_history_by_item(username, original.NTIID):
+			if has_history_by_item(username, original.NTIID):
 				history_path = ds_path + 'get_purchase_history?purchasableID=%s'
 				history_href = history_path % urllib.quote(original.NTIID)
 				link = Link(history_href, rel="history")
@@ -65,10 +71,10 @@ class _PurchasableDecorator(object):
 			external['Description'] = unit.title if unit else u''
 
 	def add_activation(self, username, original, external):
-		activated = purchase_history.is_item_activated(username, original.NTIID)
+		activated = is_item_activated(username, original.NTIID)
 		# XXX: FIXME: Hack for some borked objects, hopefully only in alpha database
 		# See purchase_history for more details
-		if activated and store_interfaces.ICourse.providedBy(original):
+		if activated and ICourse.providedBy(original):
 			# We can easily get out of sync here if the purchase object
 			# itself has been removed/lost. This will result in logging a
 			# warning if so.
@@ -84,13 +90,8 @@ class _PurchasableDecorator(object):
 			self.set_links(request, username, original, external)
 		self.add_library_details(original, external)
 
-
-from nti.deprecated import hiding_warnings
-with hiding_warnings():
-	from nti.store.interfaces import ICourse
-
 @component.adapter(ICourse)
-@interface.implementer(ext_interfaces.IExternalObjectDecorator)
+@interface.implementer(IExternalObjectDecorator)
 class _CourseDecorator(_PurchasableDecorator):
 
 	def set_links(self, request, username, original, external):
@@ -102,7 +103,7 @@ class _CourseDecorator(_PurchasableDecorator):
 		elif request:
 			ds2 = request.path_info_peek()
 			ds_path = '/%s/%s/' % (ds2, STORE)
-			if not purchase_history.has_history_by_item(username, original.NTIID):
+			if not has_history_by_item(username, original.NTIID):
 				erroll_path = ds_path + 'enroll_course'
 				link = Link(erroll_path, rel="enroll", method='Post')
 			else:

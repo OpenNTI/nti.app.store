@@ -39,8 +39,13 @@ from nti.externalization.interfaces import LocatedExternalDict
 
 from nti.ntiids import ntiids
 
-from nti.store import purchasable
-from nti.store import purchase_history
+from nti.store.purchasable import get_purchasable
+from nti.store.purchase_history import activate_items
+from nti.store.purchase_history import PurchaseHistory
+from nti.store.purchase_history import deactivate_items
+from nti.store.purchase_history import get_purchase_attempt
+from nti.store.purchase_history import remove_purchase_attempt
+from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.content_roles import add_users_content_roles
 from nti.store.content_roles import get_users_content_roles
@@ -130,7 +135,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			msg = _("Must specify a valid purchasable id")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchasable_obj = purchasable.get_purchasable(purchasable_id)
+		purchasable_obj = get_purchasable(purchasable_id)
 		if not purchasable_obj:
 			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
 
@@ -147,8 +152,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		all_failed = to_boolean(params.get('failed'))
 		inactive = to_boolean(params.get('inactive')) or False
 
-		clazz = purchase_history.PurchaseHistory
-		annotation_key = "%s.%s" % (clazz.__module__, clazz.__name__)
+		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
 
 		items = []
 		result = LocatedExternalDict({'Items':items})
@@ -160,8 +164,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			if annotation_key not in annotations:
 				continue
 
-			purchases = \
-				purchase_history.get_purchase_history_by_item(user, purchasable_id)
+			purchases = get_purchase_history_by_item(user, purchasable_id)
 
 			if all_succeeded:
 				array = [p for p in purchases if p.has_succeeded()]
@@ -207,14 +210,13 @@ class PermissionPurchasableView(_BasePostStoreView):
 			raise hexc.HTTPNotFound(detail=_('User not found'))
 
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
-		purchasable_obj = purchasable.get_purchasable(purchasable_id) \
-						  if purchasable_id else None
+		purchasable_obj = get_purchasable(purchasable_id) if purchasable_id else None
 		if not purchasable_obj:
 			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
 
 		add_users_content_roles(user, purchasable_obj.Items)
 		logger.info("Activating %s for user %s" % (purchasable_id, user))
-		purchase_history.activate_items(user, purchasable_id)
+		activate_items(user, purchasable_id)
 
 		return hexc.HTTPNoContent()
 
@@ -229,12 +231,12 @@ class UnPermissionPurchasableView(_BasePostStoreView):
 			raise hexc.HTTPNotFound(detail=_('User not found'))
 
 		purchasable_id = values.get('purchasableID', u'')
-		purchasable_obj = purchasable.get_purchasable(purchasable_id)
+		purchasable_obj = get_purchasable(purchasable_id)
 		if not purchasable_obj:
 			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
 
 		remove_users_content_roles(user, purchasable_obj.Items)
-		purchase_history.deactivate_items(user, purchasable_id)
+		deactivate_items(user, purchasable_id)
 		logger.info("%s deactivated for user %s" % (purchasable_id, user))
 
 		return hexc.HTTPNoContent()
@@ -249,11 +251,11 @@ class DeletePurchaseAttemptView(_BasePostStoreView):
 			msg = _("Must specify a valid purchase attempt id")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchase = purchase_history.get_purchase_attempt(purchase_id)
+		purchase = get_purchase_attempt(purchase_id)
 		if not purchase:
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 		
-		purchase_history.remove_purchase_attempt(purchase, purchase.creator)
+		remove_purchase_attempt(purchase, purchase.creator)
 		logger.info("Purchase attempt '%s' has been deleted")
 		return hexc.HTTPNoContent()
 
@@ -268,8 +270,7 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
 			raise hexc.HTTPNotFound(detail=_('User not found'))
 
 		annotations = IAnnotations(user)
-		clazz = purchase_history.PurchaseHistory
-		annotation_key = "%s.%s" % (clazz.__module__, clazz.__name__)
+		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
 
 		if annotation_key in annotations:
 			su = IPurchaseHistory(user)
