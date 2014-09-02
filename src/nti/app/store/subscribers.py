@@ -8,6 +8,8 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+from nti.appserver import MessageFactory as _
+
 import isodate
 import datetime
 
@@ -16,11 +18,10 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.threadlocal import get_current_request
 
-from nti.appserver import MessageFactory as _
 from nti.appserver.interfaces import IApplicationSettings
 from nti.appserver._email_utils import queue_simple_html_text_email
 
-from nti.dataserver.users import interfaces as user_interfaces
+from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.externalization import to_external_object
 
@@ -38,7 +39,7 @@ def _send_purchase_confirmation(event, email):
 
 	purchase = event.object
 	user = purchase.creator
-	profile = user_interfaces.IUserProfile(user)
+	profile = IUserProfile(user)
 
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
@@ -85,7 +86,7 @@ def _purchase_attempt_successful(event):
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
-	profile = user_interfaces.IUserProfile(event.object.creator)
+	profile = IUserProfile(event.object.creator)
 	email = getattr(profile, 'email')
 	safe_send_purchase_confirmation(event, email)
 

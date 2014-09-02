@@ -7,13 +7,13 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-from hamcrest import assert_that
-from hamcrest import has_length
-from hamcrest import has_entry
-from hamcrest import has_key
-from hamcrest import greater_than_or_equal_to
 from hamcrest import none
 from hamcrest import is_not
+from hamcrest import has_key
+from hamcrest import has_entry
+from hamcrest import has_length
+from hamcrest import assert_that
+from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
 import uuid
@@ -25,11 +25,14 @@ from nti.testing.matchers import is_empty
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
-from . import ApplicationStoreTestLayer
+from nti.app.store.tests import ApplicationStoreTestLayer
 
 class TestApplicationStoreViews(ApplicationLayerTest):
+	
 	layer = ApplicationStoreTestLayer
-
+	
+	purchasable_id = "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
+	
 	def setUp(self):
 		super(TestApplicationStoreViews, self).setUp()
 		self.api_key = stripe.api_key
@@ -42,8 +45,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_purchasable_with_stripe_coupon_quantity(self):
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
-		params = {'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers",
-				  'quantity':2}
+		params = {'purchasableID':self.purchasable_id, 'quantity':2}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
@@ -59,8 +61,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		stripe.Coupon.create(percent_off=10, duration='forever', id=code)
 
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
-		params = {'coupon':code,
-				  'purchasableID':"tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"}
+		params = {'coupon':code, 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
@@ -109,7 +110,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		t = self._create_stripe_token()
 
 		url = '/dataserver2/store/post_stripe_payment'
-		params = {'purchasableID':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
 				  'token': t}
 		body = json.dumps(params)
@@ -144,7 +145,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		body = json.dumps(params)
 		self.testapp.post(url, body, status=422)
 
-		params = {'purchasableID':'tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300}
 		body = json.dumps(params)
 		self.testapp.post(url, body, status=422)

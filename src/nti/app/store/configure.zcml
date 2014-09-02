@@ -6,6 +6,7 @@
 	<include package="zope.component" file="meta.zcml" />
 	<include package="zope.security" file="meta.zcml" />
 	<include package="zope.component" />
+	<include package="zope.security" />
 
 	<include package="nti.store" />
 
@@ -16,11 +17,9 @@
 	<!-- Decorators -->
 
 	<subscriber factory=".decorators._PurchasableDecorator"
-				for="nti.store.interfaces.IPurchasable"
-				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
-
-	<subscriber factory=".decorators._CourseDecorator"
-				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"
+				for="nti.store.interfaces.IPurchasable
+					 pyramid.interfaces.IRequest" />
 
 	<!-- Workspaces -->
 

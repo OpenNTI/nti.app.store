@@ -18,8 +18,7 @@ import dateutil.parser
 
 from zope import component
 from zope import interface
-from zope.location.interfaces import IContained
-from zope.container import contained as zcontained
+from zope.container.contained import Contained
 from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.view import view_config
@@ -47,8 +46,8 @@ from .._utils import AbstractPostView
 from .._utils import is_valid_pve_int
 from .._utils import is_valid_timestamp
 
-@interface.implementer(IPathAdapter, IContained)
-class StorePathAdapter(zcontained.Contained):
+@interface.implementer(IPathAdapter)
+class StorePathAdapter(Contained):
 
 	__name__ = STORE
 
