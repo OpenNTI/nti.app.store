@@ -21,6 +21,11 @@
 				for="nti.store.interfaces.IPurchasable
 					 pyramid.interfaces.IRequest" />
 
+	<subscriber factory=".decorators._StripePurchasableDecorator"
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"
+				for="nti.store.interfaces.IPurchasable
+					 pyramid.interfaces.IRequest" />
+					 
 	<!-- Workspaces -->
 
 	<subscriber factory=".workspaces.StoreWorkspace"

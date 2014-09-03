@@ -19,11 +19,13 @@ from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecora
 from nti.dataserver.links import Link
 
 from nti.externalization.interfaces import StandardExternalFields
+from nti.externalization.externalization import to_external_object
 from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.store.interfaces import IPurchasable
 from nti.store.purchase_history import is_item_activated
 from nti.store.purchase_history import has_history_by_item
+from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
 from . import STORE
 LINKS = StandardExternalFields.LINKS
@@ -61,3 +63,27 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 		username = self.remoteUser.username
 		self.add_activation(username, original, external)
 		self.set_links(username, original, external)
+
+@component.adapter(IPurchasable)
+@interface.implementer(IExternalObjectDecorator)
+class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
+
+	def set_links(self, original, external):
+		if original.Amount:
+			request = self.request
+			ds2 = request.path_info_peek()
+			ds_path = '/%s/%s/' % (ds2, STORE)
+			links = external.setdefault(LINKS, [])
+			
+			price_href = ds_path + 'price_purchasable_with_stripe_coupon'
+			link = Link(price_href, rel="price_with_stripe_coupon", method='Post')
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+
+	def decorateExternalObject(self, original, external):
+		keyname = original.Provider
+		result = component.queryUtility(IStripeConnectKey, keyname)
+		if result is not None:
+			self.set_links(original, external)
+			external['StripeConnectKey'] = to_external_object(result)
+		
