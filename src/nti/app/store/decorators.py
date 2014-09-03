@@ -80,7 +80,7 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 
-	def decorateExternalObject(self, original, external):
+	def _do_decorate_external(self, original, external):
 		keyname = original.Provider
 		result = component.queryUtility(IStripeConnectKey, keyname)
 		if result is not None:
