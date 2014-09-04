@@ -18,26 +18,35 @@ import transaction
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
-from pyramid.threadlocal import get_current_request
 
 from nti.dataserver import authorization as nauth
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
 
-from nti.ntiids import ntiids
+from nti.ntiids.ntiids import is_valid_ntiid_string
+from nti.ntiids.ntiids import find_object_with_ntiid
 
-from nti.store import invitations
-from nti.store import purchase_history
 from nti.store import NTIStoreException
 from nti.store import InvalidPurchasable
-from nti.store import purchasable as source
-from nti.store import interfaces as store_interfaces
+from nti.store.purchasable import get_purchasable
+from nti.store.invitations import get_purchase_by_code
+from nti.store.purchase_history import get_purchase_attempt
+from nti.store.purchase_attempt import create_purchase_attempt
+from nti.store.purchase_history import get_pending_purchase_for
+from nti.store.purchase_history import register_purchase_attempt
 
-from nti.store.payments.stripe import stripe_purchase
+from nti.store.interfaces import IPurchaseAttempt
+from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchasablePricer
+from nti.store.interfaces import PurchaseAttemptSuccessful
+
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
-from nti.store.payments.stripe import interfaces as stripe_interfaces
+from nti.store.payments.stripe.interfaces import IStripeConnectKey
+from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
 
 from nti.utils.maps import CaseInsensitiveDict
 
@@ -47,6 +56,7 @@ from .._utils import is_valid_amount
 from .._utils import is_valid_pve_int
 from .._utils import is_valid_boolean
 from .._utils import AbstractPostView
+
 from .. import get_possible_site_names
 
 from . import StorePathAdapter
@@ -74,7 +84,7 @@ class _BaseStripeView(object):
 	def get_stripe_connect_key(self, params=None):
 		params = CaseInsensitiveDict(params if params else self.request.params)
 		keyname = params.get('provider')
-		result = component.queryUtility(stripe_interfaces.IStripeConnectKey, keyname)
+		result = component.queryUtility(IStripeConnectKey, keyname)
 		return result
 
 @view_config(name="get_stripe_connect_key", **_view_defaults)
@@ -97,13 +107,11 @@ class CreateStripeTokenView(_PostStripeView):
 	def __call__(self):
 		values = self.readInput()
 		__traceback_info__ = values, self.request.params
+		
 		stripe_key = self.get_stripe_connect_key(values)
-
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=self.processor)
-
+		manager = component.getUtility(IPaymentProcessor, name=self.processor)
+		
 		params = {'api_key':stripe_key.PrivateKey}
-
 		customer_id = values.get('customerID') or values.get('customer_id')
 		if not customer_id:
 			required = (('cvc', 'cvc', ''),
@@ -138,11 +146,10 @@ class CreateStripeTokenView(_PostStripeView):
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
 	def price(self, purchasable_id, quantity=None, coupon=None):
-		pricer = component.getUtility(store_interfaces.IPurchasablePricer,
-									  name=self.processor)
-		priceable = stripe_purchase.create_stripe_priceable(ntiid=purchasable_id,
-															quantity=quantity,
-															coupon=coupon)
+		pricer = component.getUtility(IPurchasablePricer, name=self.processor)
+		priceable = create_stripe_priceable(ntiid=purchasable_id,
+											quantity=quantity,
+											coupon=coupon)
 		result = pricer.price(priceable)
 		return result
 
@@ -181,13 +188,12 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 			raise hexc.HTTPUnprocessableEntity(_("No item to purchase specified"))
 
 		stripe_key = None
-		purchasable = source.get_purchasable(purchasable_id)
+		purchasable = get_purchasable(purchasable_id)
 		if purchasable is None:
 			raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable item"))
 		else:
 			provider = purchasable.Provider
-			stripe_key = component.queryUtility(stripe_interfaces.IStripeConnectKey,
-												provider)
+			stripe_key = component.queryUtility(IStripeConnectKey, provider)
 			if not stripe_key:
 				raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable provider"))
 
@@ -210,11 +216,10 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 
 		description = description or "%s's payment for '%r'" % (username, purchasable_id)
 
-		item = stripe_purchase.create_stripe_purchase_item(purchasable_id)
-		po = stripe_purchase.create_stripe_purchase_order(item, quantity=quantity,
-														  coupon=coupon)
+		item = create_stripe_purchase_item(purchasable_id)
+		po = create_stripe_purchase_order(item, quantity=quantity, coupon=coupon)
 
-		pa = purchase_history.create_purchase_attempt(po, processor=self.processor)
+		pa = create_purchase_attempt(po, processor=self.processor)
 		return pa, token, stripe_key, expected_amount
 
 	def __call__(self):
@@ -224,8 +229,7 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 		purchase_attempt, token, stripe_key, expected_amount = self.processInput(username)
 
 		# check for any pending purchase for the items being bought
-		purchase = purchase_history.get_pending_purchase_for(username,
-															 purchase_attempt.Items)
+		purchase = get_pending_purchase_for(username, purchase_attempt.Items)
 		if purchase is not None:
 			logger.warn("There is already a pending purchase for item(s) %s",
 						list(purchase_attempt.Items))
@@ -233,13 +237,11 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 										'Last Modified':purchase.lastModified})
 
 		# register purchase
-		purchase_id = \
-			purchase_history.register_purchase_attempt(purchase_attempt, username)
+		purchase_id = register_purchase_attempt(purchase_attempt, username)
 		logger.info("Purchase attempt (%s) created", purchase_id)
 
 		# after commit
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=self.processor)
+		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		site_names = get_possible_site_names(request, include_default=True)
 		def process_purchase():
 			logger.info("Processing purchase %s", purchase_id)
@@ -253,7 +255,7 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 							lambda s: s and request.nti_gevent_spawn(process_purchase))
 
 		# return
-		purchase = purchase_history.get_purchase_attempt(purchase_id, username)
+		purchase = get_purchase_attempt(purchase_id, username)
 		return LocatedExternalDict({'Items':[purchase],
 									'Last Modified':purchase.lastModified})
 
@@ -263,35 +265,33 @@ class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 	def _get_purchase(self, key):
 		try:
 			integer_strings.from_external_string(key)
-			purchase = invitations.get_purchase_by_code(key)
+			purchase = get_purchase_by_code(key)
 		except ValueError:
-			if ntiids.is_valid_ntiid_string(key):
-				purchase = ntiids.find_object_with_ntiid(key)
+			if is_valid_ntiid_string(key):
+				purchase = find_object_with_ntiid(key)
 			else:
 				purchase = None
 		return purchase
 
 	def __call__(self):
 		values = self.readInput()
-		transaction = values.get('transaction') or values.get('purchaseId') or\
+		transaction = values.get('transaction') or \
+					  values.get('purchaseId') or \
                       values.get('code')
 		if not transaction:
 			msg = _("Must specified a valid transaction or purchase code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		purchase = self._get_purchase(transaction)
-		if purchase is None or not store_interfaces.IPurchaseAttempt.providedBy(purchase):
+		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
 			raise hexc.HTTPNotFound(detail=_('Transaction not found'))
 		elif not purchase.has_succeeded():
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase was not successful'))
 
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=self.processor)
+		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		payment_charge = manager.get_payment_charge(purchase)
 
-		notify(store_interfaces.PurchaseAttemptSuccessful(purchase,
-														  payment_charge,
-														  request=get_current_request()))
+		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
 		return hexc.HTTPNoContent()
 
 # admin views
@@ -321,8 +321,7 @@ class RefundPaymentWithStripeView(_PostStripeView):
 	def __call__(self):
 		request = self.request
 		trx_id, amount, refund_application_fee = self.processInput()
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=self.processor)
+		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		try:
 			manager.refund_purchase(trx_id, amount=amount,
 									refund_application_fee=refund_application_fee,
