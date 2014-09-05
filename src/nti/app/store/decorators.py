@@ -43,9 +43,10 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
 			# insert history link
 			if has_history_by_item(username, original.NTIID):
-				history_path = ds_path + 'get_purchase_history?purchasableID=%s'
-				history_href = history_path % urllib.quote(original.NTIID)
-				link = Link(history_href, rel="history")
+				history_href = ds_path + 'get_purchase_history'
+				quoted = urllib.quote(original.NTIID)
+				link = Link(history_href, rel="history", method='GET',
+							params={'purchasableID': quoted})
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 
@@ -75,8 +76,25 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 			ds_path = '/%s/%s/' % (ds2, STORE)
 			links = external.setdefault(LINKS, [])
 			
-			price_href = ds_path + 'price_purchasable_with_stripe_coupon'
-			link = Link(price_href, rel="price_with_stripe_coupon", method='Post')
+			href = ds_path + 'price_purchasable_with_stripe_coupon'
+			link = Link(href, rel="price_with_stripe_coupon", method='POST')
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+			
+			quoted = urllib.quote(original.Provider)
+			href = ds_path + 'get_stripe_connect_key'
+			link = Link(href, rel="get_stripe_connect_key", method='GET',
+						params={'provider':quoted})
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+			
+			href = ds_path + 'create_stripe_token'
+			link = Link(href, rel="create_stripe_token", method='POST')
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+			
+			href = ds_path + 'post_stripe_payment'
+			link = Link(href, rel="'post_stripe_payment'", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 

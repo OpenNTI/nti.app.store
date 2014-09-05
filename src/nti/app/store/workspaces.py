@@ -83,9 +83,8 @@ class _StoreCollection(object):
 		result = []
 		ds_folder = find_interface(self.__parent__, IDataserverFolder)
 		for rel in ('get_purchase_attempt', 'get_pending_purchases',
-					'get_purchase_history', 'get_purchasables', 'get_courses',
-					'redeem_purchase_code', 'create_stripe_token',
-					'get_stripe_connect_key', 'post_stripe_payment'):
+					'get_purchase_history', 'get_purchasables', 
+					'redeem_purchase_code'):
 			link = Link(STORE, rel=rel, elements=(rel,))
 			link.__name__ = link.target
 			link.__parent__ = ds_folder
