@@ -41,6 +41,7 @@ from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
+from nti.store.payments.stripe import STRIPE
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
@@ -76,7 +77,7 @@ _admin_view_defaults['permission'] = nauth.ACT_MODERATE
 
 class _BaseStripeView(object):
 
-	processor = 'stripe'
+	processor = STRIPE
 
 	def __init__(self, request):
 		self.request = request
