@@ -14,8 +14,6 @@ import isodate
 from datetime import datetime
 from cStringIO import StringIO
 
-from pyramid.threadlocal import get_current_request
-
 from zope import component
 from zope.event import notify
 from zope import lifecycleevent
@@ -313,8 +311,7 @@ class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		payment_charge = manager.get_payment_charge(purchase)
 
-		notify(PurchaseAttemptSuccessful(purchase, payment_charge,
-										 request=get_current_request()))
+		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
 		return hexc.HTTPNoContent()
 	
 del _view_defaults
