@@ -22,14 +22,15 @@ from nti.appserver.interfaces import IContainerCollection
 from nti.dataserver.links import Link
 from nti.dataserver.interfaces import IDataserverFolder
 
-from nti.store.course import Course
 from nti.store.purchasable import Purchasable
+from nti.store.course import PurchasableCourse
 from nti.store.purchase_attempt import PurchaseAttempt
 
 from nti.utils.property import Lazy
 from nti.utils.property import alias
 
 from . import STORE
+
 from .interfaces import IStoreWorkspace
 
 @interface.implementer(IStoreWorkspace)
@@ -98,7 +99,6 @@ class _StoreCollection(object):
 
 	@property
 	def accepts(self):
-		return (getattr(Course, 'mimeType', getattr(Course, 'mime_type')),
+		return (PurchaseAttempt.mimeType,
 				getattr(Purchasable, 'mimeType', getattr(Purchasable, 'mime_type')),
-				PurchaseAttempt.mimeType)
-
+				getattr(PurchasableCourse, 'mimeType', getattr(PurchasableCourse, 'mime_type')))

@@ -38,16 +38,10 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.ntiids import ntiids
 
 from nti.store.purchasable import get_purchasable
-from nti.store.purchase_history import activate_items
 from nti.store.purchase_history import PurchaseHistory
-from nti.store.purchase_history import deactivate_items
 from nti.store.purchase_history import get_purchase_attempt
 from nti.store.purchase_history import remove_purchase_attempt
 from nti.store.purchase_history import get_purchase_history_by_item
-
-from nti.store.content_roles import add_users_content_roles
-from nti.store.content_roles import get_users_content_roles
-from nti.store.content_roles import remove_users_content_roles
 
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
@@ -77,23 +71,6 @@ _post_view_defaults['request_method'] = 'POST'
 
 _admin_view_defaults = _post_view_defaults.copy()
 _admin_view_defaults['permission'] = nauth.ACT_MODERATE
-
-@view_config(name="get_content_roles", **_view_admin_defaults)
-class GetContentRolesView(AbstractAuthenticatedView):
-
-	def __call__(self):
-		request = self.request
-		params = CaseInsensitiveDict(request.params)
-		username = params.get('username') or request.authenticated_userid
-		user = users.User.get_user(username)
-		if not user:
-			raise hexc.HTTPNotFound(detail=_('User not found'))
-
-		roles = get_users_content_roles(user)
-		result = LocatedExternalDict()
-		result['Username'] = username
-		result['Items'] = roles
-		return result
 
 @view_config(name="get_users_purchase_history", **_view_admin_defaults)
 class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
@@ -197,48 +174,6 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 _BasePostStoreView = AbstractPostView # alias
 
-@view_config(name="permission_purchasable", **_admin_view_defaults)
-class PermissionPurchasableView(_BasePostStoreView):
-
-	def __call__(self):
-		values = self.readInput()
-		username = values.get('username') or self.request.authenticated_userid
-		user = users.User.get_user(username)
-		if not user:
-			raise hexc.HTTPNotFound(detail=_('User not found'))
-
-		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
-		purchasable_obj = get_purchasable(purchasable_id) if purchasable_id else None
-		if not purchasable_obj:
-			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
-
-		add_users_content_roles(user, purchasable_obj.Items)
-		logger.info("Activating %s for user %s" % (purchasable_id, user))
-		activate_items(user, purchasable_id)
-
-		return hexc.HTTPNoContent()
-
-@view_config(name="unpermission_purchasable", **_admin_view_defaults)
-class UnPermissionPurchasableView(_BasePostStoreView):
-
-	def __call__(self):
-		values = self.readInput()
-		username = values.get('username') or self.request.authenticated_userid
-		user = users.User.get_user(username)
-		if not user:
-			raise hexc.HTTPNotFound(detail=_('User not found'))
-
-		purchasable_id = values.get('purchasableID', u'')
-		purchasable_obj = get_purchasable(purchasable_id)
-		if not purchasable_obj:
-			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
-
-		remove_users_content_roles(user, purchasable_obj.Items)
-		deactivate_items(user, purchasable_id)
-		logger.info("%s deactivated for user %s" % (purchasable_id, user))
-
-		return hexc.HTTPNoContent()
-
 @view_config(name="delete_purchase_attempt", **_admin_view_defaults)
 class DeletePurchaseAttemptView(_BasePostStoreView):
 
@@ -262,7 +197,7 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
-		username = values.get('username') or self.request.authenticated_userid
+		username = values.get('username') or self.remoteUser.username
 		user = users.User.get_user(username)
 		if not user:
 			raise hexc.HTTPNotFound(detail=_('User not found'))

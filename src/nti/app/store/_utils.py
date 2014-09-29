@@ -14,7 +14,8 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 
 from nti.utils.maps import CaseInsensitiveDict
 
-class AbstractPostView(AbstractAuthenticatedView, ModeledContentUploadRequestUtilsMixin):
+class AbstractPostView(AbstractAuthenticatedView,
+					   ModeledContentUploadRequestUtilsMixin):
 
 	def readInput(self):
 		values = super(AbstractPostView, self).readInput()
