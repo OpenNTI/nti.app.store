@@ -13,8 +13,8 @@ logger = __import__('logging').getLogger(__name__)
 import six
 import time
 import gevent
+import isodate
 import numbers
-import dateutil.parser
 
 from zope import component
 from zope import interface
@@ -25,23 +25,39 @@ from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 from pyramid.authorization import ACLAuthorizationPolicy
 
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
 from nti.dataserver import authorization as nauth
-from nti.dataserver import interfaces as nti_interfaces
+from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.externalization.interfaces import LocatedExternalDict
 
-from nti.store import priceable
-from nti.store import invitations
-from nti.store import purchasable
-from nti.store import purchase_history
 from nti.store import InvalidPurchasable
-from nti.store import interfaces as store_interfaces
+from nti.store.priceable import create_priceable
+
+from nti.store.purchasable import get_all_purchasables
+
+from nti.store.invitations import get_purchase_by_code
+from nti.store.invitations import InvitationAlreadyAccepted
+from nti.store.invitations import InvitationCapacityExceeded
+from nti.store.invitations import create_store_purchase_invitation
+
+from nti.store.purchase_history import get_purchase_attempt
+from nti.store.purchase_history import get_purchase_history
+from nti.store.purchase_history import get_pending_purchases
+from nti.store.purchase_history import get_purchase_history_by_item
+
+from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchaseAttempt
+from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchasablePricer
 
 from nti.utils.maps import CaseInsensitiveDict
 
 from .. import STORE
+
 from .._utils import AbstractPostView
 from .._utils import is_valid_pve_int
 from .._utils import is_valid_timestamp
@@ -66,10 +82,7 @@ _post_view_defaults['request_method'] = 'POST'
 
 # get views
 
-class _PurchaseAttemptView(object):
-
-	def __init__(self, request):
-		self.request = request
+class _PurchaseAttemptView(AbstractAuthenticatedView):
 
 	def _last_modified(self, purchases):
 		result = 0
@@ -81,9 +94,8 @@ class _PurchaseAttemptView(object):
 class GetPendingPurchasesView(_PurchaseAttemptView):
 
 	def __call__(self):
-		request = self.request
-		username = request.authenticated_userid
-		purchases = purchase_history.get_pending_purchases(username)
+		username = self.remoteUser.username
+		purchases = get_pending_purchases(username)
 		result = LocatedExternalDict({'Items': purchases,
 									  'Last Modified':self._last_modified(purchases)})
 		return result
@@ -91,26 +103,24 @@ class GetPendingPurchasesView(_PurchaseAttemptView):
 @view_config(name="get_purchase_history", **_view_defaults)
 class GetPurchaseHistoryView(_PurchaseAttemptView):
 
-	def _convert(self, t):
+	def _parse_datetime(self, t):
 		result = t
 		if is_valid_timestamp(t):
 			result = float(t)
 		elif isinstance(t, six.string_types):
-			result = time.mktime(dateutil.parser(t).timetuple())
+			result = time.mktime(isodate.parse_datetime(t).timetuple())
 		return result if isinstance(t, numbers.Number) else None
 
 	def __call__(self):
 		request = self.request
-		username = request.authenticated_userid
+		username = self.remoteUser.username
 		purchasable_id = request.params.get('purchasableID', None)
 		if not purchasable_id:
-			start_time = self._convert(request.params.get('startTime', None))
-			end_time = self._convert(request.params.get('endTime', None))
-			purchases = purchase_history.get_purchase_history(username,
-															  start_time, end_time)
+			end_time = self._parse_datetime(request.params.get('endTime', None))
+			start_time = self._parse_datetime(request.params.get('startTime', None))
+			purchases = get_purchase_history(username, start_time, end_time)
 		else:
-			purchases = purchase_history.get_purchase_history_by_item(username,
-																	  purchasable_id)
+			purchases = get_purchase_history_by_item(username, purchasable_id)
 		result = LocatedExternalDict({'Items': purchases,
 									  'Last Modified':self._last_modified(purchases)})
 		return result
@@ -120,31 +130,27 @@ def _sync_purchase(purchase):
 	username = purchase.creator.username
 
 	def sync_purchase():
-		manager = component.getUtility(store_interfaces.IPaymentProcessor,
-									   name=purchase.Processor)
+		manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
 		manager.sync_purchase(purchase_id=purchase_id, username=username)
 
 	def process_sync():
-		component.getUtility(nti_interfaces.IDataserverTransactionRunner)(sync_purchase)
+		component.getUtility(IDataserverTransactionRunner)(sync_purchase)
 
 	gevent.spawn(process_sync)
 
 @view_config(name="get_purchase_attempt", **_view_defaults)
-class GetPurchaseAttemptView(object):
-
-	def __init__(self, request):
-		self.request = request
+class GetPurchaseAttemptView(AbstractAuthenticatedView):
 
 	def __call__(self):
 		request = self.request
-		username = request.authenticated_userid
+		username = self.remoteUser.username
 		values = CaseInsensitiveDict(request.params)
 		purchase_id = values.get('purchaseID') or values.get('purchase_id')
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchase = purchase_history.get_purchase_attempt(purchase_id, username)
+		purchase = get_purchase_attempt(purchase_id, username)
 		if purchase is None:
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 		elif purchase.is_pending():
@@ -157,13 +163,10 @@ class GetPurchaseAttemptView(object):
 		return result
 
 @view_config(name="get_purchasables", **_view_defaults)
-class GetPurchasablesView(object):
-
-	def __init__(self, request):
-		self.request = request
+class GetPurchasablesView(AbstractAuthenticatedView):
 
 	def __call__(self):
-		purchasables = list(purchasable.get_all_purchasables())
+		purchasables = list(get_all_purchasables())
 		for p in list(purchasables):
 			if hasattr(p, 'HACK_make_acl'):
 				acl = p.HACK_make_acl()
@@ -182,7 +185,7 @@ class GetPurchasablesView(object):
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
-			 context=store_interfaces.IPurchasable,
+			 context=IPurchasable,
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchasableGetView(GenericGetView):
@@ -190,7 +193,7 @@ class PurchasableGetView(GenericGetView):
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
-			 context=store_interfaces.IPurchaseAttempt,
+			 context=IPurchaseAttempt,
 			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchaseAttemptGetView(GenericGetView):
@@ -209,8 +212,8 @@ class PurchaseAttemptGetView(GenericGetView):
 class PricePurchasableView(AbstractPostView):
 
 	def price(self, purchasable_id, quantity):
-		pricer = component.getUtility(store_interfaces.IPurchasablePricer)
-		source = priceable.create_priceable(purchasable_id, quantity)
+		pricer = component.getUtility(IPurchasablePricer)
+		source = create_priceable(purchasable_id, quantity)
 		result = pricer.price(source)
 		return result
 
@@ -238,7 +241,6 @@ class PricePurchasableView(AbstractPostView):
 class RedeemPurchaseCodeView(AbstractPostView):
 
 	def __call__(self):
-		request = self.request
 		values = self.readInput()
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
 		if not purchasable_id:
@@ -251,12 +253,12 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		try:
-			purchase = invitations.get_purchase_by_code(invitation_code)
+			purchase = get_purchase_by_code(invitation_code)
 		except ValueError:
 			# improper key
 			purchase = None
 
-		if purchase is None or not store_interfaces.IPurchaseAttempt.providedBy(purchase):
+		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 
 		if purchase.Quantity is None:
@@ -266,15 +268,14 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("The invitation code is not for this purchasable")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		username = request.authenticated_userid
+		username = self.remoteUser.username
 		try:
-			invite = \
-				invitations.create_store_purchase_invitation(purchase, invitation_code)
+			invite = create_store_purchase_invitation(purchase, invitation_code)
 			invite.accept(username)
-		except invitations.InvitationAlreadyAccepted:
+		except InvitationAlreadyAccepted:
 			msg = _("The invitation code has already been accepted")
 			raise hexc.HTTPUnprocessableEntity(msg)
-		except invitations.InvitationCapacityExceeded:
+		except InvitationCapacityExceeded:
 			msg = _("There are no remaining invitations for this code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
