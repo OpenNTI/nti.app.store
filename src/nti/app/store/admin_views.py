@@ -53,8 +53,8 @@ from nti.store.invitations import get_purchase_by_code
 
 from nti.utils.maps import CaseInsensitiveDict
 
-from ._utils import to_boolean
-from ._utils import AbstractPostView
+from .utils import to_boolean
+from .utils import AbstractPostView
 
 from .views import StorePathAdapter
 

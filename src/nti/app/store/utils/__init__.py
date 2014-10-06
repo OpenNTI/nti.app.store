@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 .. $Id$
@@ -13,6 +14,9 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.utils.maps import CaseInsensitiveDict
+
+true_values = ('1', 'y', 'yes', 't', 'true')
+false_values = ('0', 'n', 'no', 'f', 'false')
 
 class AbstractPostView(AbstractAuthenticatedView,
 					   ModeledContentUploadRequestUtilsMixin):
@@ -42,9 +46,6 @@ def is_valid_pve_int(value):
 		return value > 0
 	except (TypeError, ValueError):
 		return False
-
-true_values = ('1', 'y', 'yes', 't', 'true')
-false_values = ('0', 'n', 'no', 'f', 'false')
 
 def is_valid_boolean(value):
 	if isinstance(value, bool):

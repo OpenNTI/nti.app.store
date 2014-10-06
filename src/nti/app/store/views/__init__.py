@@ -56,11 +56,11 @@ from nti.store.interfaces import IPurchasablePricer
 
 from nti.utils.maps import CaseInsensitiveDict
 
-from .. import STORE
+from ..utils import AbstractPostView
+from ..utils import is_valid_pve_int
+from ..utils import is_valid_timestamp
 
-from .._utils import AbstractPostView
-from .._utils import is_valid_pve_int
-from .._utils import is_valid_timestamp
+from .. import STORE
 
 @interface.implementer(IPathAdapter)
 class StorePathAdapter(Contained):
