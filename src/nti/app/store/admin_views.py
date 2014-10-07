@@ -38,7 +38,7 @@ from nti.externalization.interfaces import LocatedExternalDict
 
 from nti.ntiids import ntiids
 
-from nti.store import get_purchasable
+from nti.store.purchasable import get_purchasable
 from nti.store.purchase_history import PurchaseHistory
 from nti.store.purchase_history import get_purchase_attempt
 from nti.store.purchase_history import remove_purchase_attempt
