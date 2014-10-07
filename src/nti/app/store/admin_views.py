@@ -10,9 +10,10 @@ logger = __import__('logging').getLogger(__name__)
 
 from . import MessageFactory as _
 
+import csv
 import isodate
+from io import BytesIO
 from datetime import datetime
-from cStringIO import StringIO
 
 from zope import component
 from zope.event import notify
@@ -37,7 +38,7 @@ from nti.externalization.interfaces import LocatedExternalDict
 
 from nti.ntiids import ntiids
 
-from nti.store.purchasable import get_purchasable
+from nti.store import get_purchasable
 from nti.store.purchase_history import PurchaseHistory
 from nti.store.purchase_history import get_purchase_attempt
 from nti.store.purchase_history import remove_purchase_attempt
@@ -76,27 +77,27 @@ _admin_view_defaults['permission'] = nauth.ACT_MODERATE
 class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 	def _to_csv(self, request, result):
+		stream = BytesIO()
+		writer = csv.writer(stream)
 		response = request.response
-		response.content_type = b'text/csv; charset=UTF-8'
-		response.content_disposition = b'attachment; filename="purchases.csv"'
-
-		header = ("username", 'name', 'email', 'transaction', 'date', 'amount', 'status')
-		stream = StringIO()
-		stream.write(",".join(header))
-		stream.write("\n")
+		response.content_encoding = str('identity' )
+		response.content_type = str('text/csv; charset=UTF-8')
+		response.content_disposition = str( 'attachment; filename="purchases.csv"' )
+		
+		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
+		writer.writerow(header)
+		
 		for entry in result['Items']:
-			username = entry['username'].encode('utf-8', 'replace')
-			name = entry['name'].encode('utf-8', 'replace')
 			email = entry['email']
 			transactions = entry['transactions']
+			name = entry['name'].encode('utf-8', 'replace')
+			username = entry['username'].encode('utf-8', 'replace')
 			for trx in transactions:
-				line = "%s,%s,%s,%s,%s,%s,%s," % (username, name, email,
-												  trx['transaction'],
-												  trx['date'],
-												  trx['amount'],
-												  trx['status'])
-				stream.write(line)
-				stream.write("\n")
+				writer.writerow( [ 	username, name, email,
+									trx['transaction'],
+									trx['date'],
+									trx['amount'],
+									trx['status'] ] )
 		stream.flush()
 		stream.seek(0)
 		response.body_file = stream
@@ -112,7 +113,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 		purchasable_obj = get_purchasable(purchasable_id)
 		if not purchasable_obj:
-			raise hexc.HTTPNotFound(detail=_('Purchasable not found'))
+			raise hexc.HTTPUnprocessableEntity(detail=_('Purchasable not found'))
 
 		usernames = params.get('usernames', None)
 		if usernames:
@@ -123,13 +124,13 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			usernames = _users.keys()
 
 		as_csv = to_boolean(params.get('csv'))
-		all_succeeded = to_boolean(params.get('succeeded'))
 		all_failed = to_boolean(params.get('failed'))
+		all_succeeded = to_boolean(params.get('succeeded'))
 		inactive = to_boolean(params.get('inactive')) or False
 
+		items = []
 		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
 
-		items = []
 		result = LocatedExternalDict({'Items':items})
 		for username in usernames:
 			user = users.User.get_user(username)
