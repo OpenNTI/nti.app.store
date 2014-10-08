@@ -19,15 +19,20 @@ from zope.traversing.interfaces import IPathAdapter
 from pyramid.threadlocal import get_current_request
 
 from nti.appserver.interfaces import IApplicationSettings
-from nti.appserver._email_utils import queue_simple_html_text_email
 
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.externalization import to_external_object
 
+from nti.mailer.interfaces import ITemplatedMailer
+
 from nti.store.invitations import get_invitation_code
 from nti.store.interfaces import IPurchaseAttemptSuccessful
 
+def queue_simple_html_text_email(*args, **kwargs):
+	return component.getUtility(ITemplatedMailer).queue_simple_html_text_email(*args,
+																			   _level=6,
+																			   **kwargs)	
 def _send_purchase_confirmation(event, email):
 
 	# Can only do this in the context of a user actually
