@@ -25,14 +25,19 @@ from nti.externalization.externalization import to_external_object
 from nti.mailer.interfaces import ITemplatedMailer
 
 from nti.store.invitations import get_invitation_code
-from nti.store.interfaces import IPurchaseAttemptSuccessful
+
+DEFAULT_EMAIL_SUBJECT = _("Purchase Confirmation")
+DEFAULT_PURCHASE_TEMPLATE = 'purchase_confirmation_email'
 
 def queue_simple_html_text_email(*args, **kwargs):
 	mailer = component.getUtility(ITemplatedMailer)
 	result = mailer.queue_simple_html_text_email(*args, _level=6, **kwargs)
 	return result
 
-def send_purchase_confirmation(event, email):
+def send_purchase_confirmation(	event, email,
+								subject=DEFAULT_EMAIL_SUBJECT,
+								template=DEFAULT_PURCHASE_TEMPLATE,
+								pacakge=None):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
@@ -71,26 +76,32 @@ def send_purchase_confirmation(event, email):
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
 	mailer = queue_simple_html_text_email
-	mailer('purchase_confirmation_email',
-			subject=_("Purchase Confirmation"),
+	mailer( template,
+			subject=subject,
 			recipients=[email],
 			template_args=args,
 			request=request,
+			package=pacakge,
 			text_template_extension='.mak')
 
-def safe_send_purchase_confirmation(event, email):
+def safe_send_purchase_confirmation(event, email, 
+									subject=DEFAULT_EMAIL_SUBJECT,
+									template=DEFAULT_PURCHASE_TEMPLATE,
+									pacakge=None):
 	try:
-		send_purchase_confirmation(event, email)
+		send_purchase_confirmation(event, email, subject=subject,
+								   template=template, pacakge=pacakge)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s", email)
 
-@component.adapter(IPurchaseAttemptSuccessful)
-def store_purchase_attempt_successful(event):
+def store_purchase_attempt_successful(event, 
+									  subject=DEFAULT_EMAIL_SUBJECT,
+									  template=DEFAULT_PURCHASE_TEMPLATE,
+									  pacakge=None):
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
 	profile = IUserProfile(event.object.creator)
 	email = getattr(profile, 'email')
-	safe_send_purchase_confirmation(event, email)
-
-
+	safe_send_purchase_confirmation(event, email, subject=subject,
+									template=template, pacakge=pacakge)
