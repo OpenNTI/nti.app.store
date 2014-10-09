@@ -25,10 +25,14 @@ import stripe
 
 from quopri import decodestring
 
-from nti.store.payments.stripe.processor.tests import create_purchase
-from nti.dataserver.tests import mock_dataserver
+from nti.appserver.interfaces import IApplicationSettings
 
-from nti.store import interfaces as store_interfaces
+from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchaseAttemptSuccessful
+
+from nti.store.payments.stripe.processor.tests import create_purchase
+
+from nti.dataserver.tests import mock_dataserver
 
 from nti.app.testing.testing import ITestMailDelivery
 from nti.app.testing.decorators import WithSharedApplicationMockDS
@@ -95,26 +99,32 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
+	def _save_message(self, msg):
+		import codecs
+		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
+			f.write( msg.html )
+			print(msg.body)
+			print(msg.html)
+
 	@WithSharedApplicationMockDS
 	def test_confirmation_email(self):
-		from nti.appserver.interfaces import IApplicationSettings
 		settings = component.getUtility(IApplicationSettings)
 		settings['purchase_additional_confirmation_addresses'] = 'foo@bar.com\nbiz@baz.com'
 
 		with mock_dataserver.mock_db_trans(self.ds):
-			manager = component.getUtility(store_interfaces.IPaymentProcessor, name='stripe')
+			manager = component.getUtility(IPaymentProcessor, name='stripe')
 			# TODO: Is this actually hitting stripe external services? If
 			# so, we need to mock that! This should be easy to do with fudge
-			username, _, _, _ = create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
-														  amount=300 * 5,
-														  quantity=5,
-														  manager=manager,
-														  username='jason.madden@nextthought.com')
+			username, _, _, _ = \
+					create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
+									amount=300 * 5,
+									quantity=5,
+									manager=manager,
+									username='jason.madden@nextthought.com')
 
-
-			assert_that(eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful),
+			assert_that(eventtesting.getEvents(IPurchaseAttemptSuccessful),
 						has_length(1))
-			event = eventtesting.getEvents(store_interfaces.IPurchaseAttemptSuccessful)[0]
+			event = eventtesting.getEvents(IPurchaseAttemptSuccessful)[0]
 			purchase = event.object
 
 			mailer = component.getUtility( ITestMailDelivery )
@@ -128,11 +138,9 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 			assert_that( body, contains_string( '(1 Year License)' ) )
 			assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) )
 			assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
-	#		import codecs
-	#		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
-	#			f.write( msg.html )
-	#		print(msg.body)
-	#		print(msg.html)
+			
+			# self._save_message(msg)
+			
 			assert_that( msg, has_property( 'html'))
 			html = decodestring(msg.html)
 			assert_that( html, contains_string( username ) )
