@@ -30,7 +30,7 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.ntiids.ntiids import is_valid_ntiid_string
 from nti.ntiids.ntiids import find_object_with_ntiid
 
-from nti.store import NTIStoreException
+from nti.store import PricingException
 from nti.store import InvalidPurchasable
 from nti.store.purchasable import get_purchasable
 from nti.store.invitations import get_purchase_by_code
@@ -39,6 +39,7 @@ from nti.store.purchase_attempt import create_purchase_attempt
 from nti.store.purchase_history import get_pending_purchase_for
 from nti.store.purchase_history import register_purchase_attempt
 
+from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
@@ -139,18 +140,25 @@ class CreateStripeTokenView(_PostStripeView):
 		token = manager.create_token(**params)
 		return LocatedExternalDict(Token=token.id)
 
+
+def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE):
+	pricer = component.getUtility(IPurchasablePricer, name=processor)
+	priceable = create_stripe_priceable(ntiid=purchasable_id,
+										quantity=quantity,
+										coupon=coupon)
+	result = pricer.price(priceable)
+	return result
+
 @view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
 	def price(self, purchasable_id, quantity=None, coupon=None):
-		pricer = component.getUtility(IPurchasablePricer, name=self.processor)
-		priceable = create_stripe_priceable(ntiid=purchasable_id,
-											quantity=quantity,
-											coupon=coupon)
-		result = pricer.price(priceable)
+		result = perform_pricing(purchasable_id, quantity=quantity, coupon=coupon, 
+								 processor=self.processor)
 		return result
 
 	def price_purchasable(self, values=None):
+		result = None
 		values = values or self.readInput()
 		coupon = values.get('coupon') or values.get('couponCode')
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
@@ -161,15 +169,24 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid quantity"))
 		quantity = int(quantity)
 
+		status = 422
 		try:
 			result = self.price(purchasable_id, quantity, coupon)
-			return result
 		except NoSuchStripeCoupon:
-			raise hexc.HTTPUnprocessableEntity(_("Cannot find stripe coupon"))
+			result = IPricingError(_("Cannot find stripe coupon"))
 		except InvalidStripeCoupon:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid stripe coupon"))
+			result = IPricingError(_("Invalid stripe coupon"))
 		except InvalidPurchasable:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable"))
+			result = IPricingError(_("Invalid purchasable"))
+		except PricingException as e:
+			result = IPricingError(e)
+		except StandardError:
+			raise
+		else:
+			status = 200
+			
+		self.request.response.status_int = status
+		return result
 
 	def __call__(self):
 		result = self.price_purchasable()
@@ -321,7 +338,7 @@ class RefundPaymentWithStripeView(_PostStripeView):
 			manager.refund_purchase(trx_id, amount=amount,
 									refund_application_fee=refund_application_fee,
 									request=request)
-		except NTIStoreException:
+		except StandardError:
 			logger.exception("Error while refunding transaction")
 			msg = _("Error while refunding transaction")
 			raise hexc.HTTPUnprocessableEntity(msg)

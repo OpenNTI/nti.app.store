@@ -16,9 +16,15 @@ from hamcrest import assert_that
 from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
+import fudge
+
 import uuid
 import stripe
 import anyjson as json
+
+from nti.store import PricingException
+from nti.store.payments.stripe import NoSuchStripeCoupon
+from nti.store.payments.stripe import InvalidStripeCoupon
 
 from nti.testing.matchers import is_empty
 
@@ -59,7 +65,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 	def test_price_purchasable_with_stripe_coupon(self):
 		code = str(uuid.uuid4())
 		stripe.Coupon.create(percent_off=10, duration='forever', id=code)
-
+		
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
 		params = {'coupon':code, 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
@@ -71,6 +77,51 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(json_body, has_entry('NonDiscountedPrice', 300.0))
 		assert_that(json_body, has_key('Coupon'))
 
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
+	def test_price_purchasable_with_invalid_coupon(self, mock_pr):
+		
+		mock_pr.is_callable().with_args().raises(InvalidStripeCoupon())
+		
+		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=422)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('Type', 'PricingError'))
+		assert_that(json_body, has_entry('Message', 'Invalid stripe coupon'))
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
+	def test_price_purchasable_no_such_coupon(self, mock_pr):
+		
+		mock_pr.is_callable().with_args().raises(NoSuchStripeCoupon())
+		
+		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=422)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('Type', 'PricingError'))
+		assert_that(json_body, has_entry('Message', 'Cannot find stripe coupon'))
+		
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
+	def test_price_purchasable_pricing_exception(self, mock_pr):
+		
+		mock_pr.is_callable().with_args().raises(PricingException("Aizen"))
+		
+		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=422)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('Type', 'PricingError'))
+		assert_that(json_body, has_entry('Message', 'Aizen'))
+		
 	def _get_pending_purchases(self):
 		url = '/dataserver2/store/get_pending_purchases'
 		res = self.testapp.get(url, status=200)
