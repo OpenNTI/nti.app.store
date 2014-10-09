@@ -13,28 +13,11 @@ from hamcrest import has_key
 from hamcrest import has_entry
 from hamcrest import has_length
 from hamcrest import assert_that
-from hamcrest import has_property
-from hamcrest import contains_string
 from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
-from zope import component
-from zope.component import eventtesting
-
 import stripe
 
-from quopri import decodestring
-
-from nti.appserver.interfaces import IApplicationSettings
-
-from nti.store.interfaces import IPaymentProcessor
-from nti.store.interfaces import IPurchaseAttemptSuccessful
-
-from nti.store.payments.stripe.processor.tests import create_purchase
-
-from nti.dataserver.tests import mock_dataserver
-
-from nti.app.testing.testing import ITestMailDelivery
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
@@ -98,78 +81,3 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 	def test_get_pending_purchases(self):
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
-
-	def _save_message(self, msg):
-		import codecs
-		with codecs.open('/tmp/file.html', 'w', encoding='utf-8') as f:
-			f.write( msg.html )
-			print(msg.body)
-			print(msg.html)
-
-	@WithSharedApplicationMockDS
-	def test_confirmation_email(self):
-		settings = component.getUtility(IApplicationSettings)
-		settings['purchase_additional_confirmation_addresses'] = 'foo@bar.com\nbiz@baz.com'
-
-		with mock_dataserver.mock_db_trans(self.ds):
-			manager = component.getUtility(IPaymentProcessor, name='stripe')
-			# TODO: Is this actually hitting stripe external services? If
-			# so, we need to mock that! This should be easy to do with fudge
-			username, _, _, _ = \
-					create_purchase(self, item='tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers',
-									amount=300 * 5,
-									quantity=5,
-									manager=manager,
-									username='jason.madden@nextthought.com')
-
-			assert_that(eventtesting.getEvents(IPurchaseAttemptSuccessful),
-						has_length(1))
-			event = eventtesting.getEvents(IPurchaseAttemptSuccessful)[0]
-			purchase = event.object
-
-			mailer = component.getUtility( ITestMailDelivery )
-			assert_that( mailer.queue, has_length( 3 ) ) # One to the user, one to each additional
-			msg = mailer.queue[0]
-
-			assert_that( msg, has_property( 'body'))
-			body = decodestring(msg.body)
-			assert_that( body, contains_string( username ) )
-			assert_that( body, contains_string( 'Activation Key' ) )
-			assert_that( body, contains_string( '(1 Year License)' ) )
-			assert_that( body, contains_string( '5x 04-630: Computer Science for Practicing Engineers - US$300.00 each' ) )
-			assert_that( body, does_not( contains_string( '\xa4300.00' ) ) )
-			
-			# self._save_message(msg)
-			
-			assert_that( msg, has_property( 'html'))
-			html = decodestring(msg.html)
-			assert_that( html, contains_string( username ) )
-			assert_that( html, contains_string( '(1 Year License)' ) )
-			assert_that( html, contains_string( '04-630: Computer Science for Practicing Engineers' ) )
-			assert_that( html, contains_string( 'US$300.00' ) )
-
-			# Send the event again, this time with a discount
-			del mailer.queue[:]
-
-			purchase.Pricing.TotalPurchasePrice = 100.0
-
-			# The intid is bad because create_purchase actually runs its own transaction
-			# so the intid utility ghosts it...fix that
-			from zc.intid import IIntIds
-			ids = component.getUtility(IIntIds)
-			ids.refs[purchase._ds_intid] = purchase
-			from ..subscribers import _purchase_attempt_successful
-
-			_purchase_attempt_successful(event)
-			assert_that( mailer.queue, has_length( 1 ) )
-			msg = mailer.queue[0]
-			assert_that( msg, has_property( 'body'))
-			body = decodestring(msg.body)
-			assert_that( body, contains_string( 'Discount' ) )
-
-			assert_that( msg, has_property( 'html'))
-			html = decodestring(msg.html)
-			assert_that( html, contains_string( 'DISCOUNTS' ) )
-
-			import transaction
-			transaction.abort()

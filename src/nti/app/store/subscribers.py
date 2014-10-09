@@ -18,8 +18,6 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.threadlocal import get_current_request
 
-from nti.appserver.interfaces import IApplicationSettings
-
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.externalization import to_external_object
@@ -30,11 +28,11 @@ from nti.store.invitations import get_invitation_code
 from nti.store.interfaces import IPurchaseAttemptSuccessful
 
 def queue_simple_html_text_email(*args, **kwargs):
-	return component.getUtility(ITemplatedMailer).queue_simple_html_text_email(*args,
-																			   _level=6,
-																			   **kwargs)	
-def _send_purchase_confirmation(event, email):
+	mailer = component.getUtility(ITemplatedMailer)
+	result = mailer.queue_simple_html_text_email(*args, _level=6, **kwargs)
+	return result
 
+def send_purchase_confirmation(event, email):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
@@ -82,12 +80,12 @@ def _send_purchase_confirmation(event, email):
 
 def safe_send_purchase_confirmation(event, email):
 	try:
-		_send_purchase_confirmation(event, email)
+		send_purchase_confirmation(event, email)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s", email)
 
 @component.adapter(IPurchaseAttemptSuccessful)
-def _purchase_attempt_successful(event):
+def store_purchase_attempt_successful(event):
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
@@ -95,11 +93,4 @@ def _purchase_attempt_successful(event):
 	email = getattr(profile, 'email')
 	safe_send_purchase_confirmation(event, email)
 
-@component.adapter(IPurchaseAttemptSuccessful)
-def _purchase_attempt_successful_additional(event):
-	# FIXME: This should probably NOT be the same template as goes to the user.
-	settings = component.queryUtility(IApplicationSettings) or {}
-	email_line = settings.get('purchase_additional_confirmation_addresses', '')
-	for email in email_line.split():
-		safe_send_purchase_confirmation(event, email)
 

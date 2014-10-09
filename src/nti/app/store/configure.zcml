@@ -10,9 +10,6 @@
 
 	<include package="nti.store" />
 
-	<!-- Subscribers -->
-	<subscriber handler=".subscribers._purchase_attempt_successful" />
-
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
@@ -39,8 +36,4 @@
 			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
 			 factory=".views.StorePathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
-
-	<configure zcml:condition="have devmode">
-		<subscriber handler=".subscribers._purchase_attempt_successful_additional" />
-	</configure>
 </configure>
