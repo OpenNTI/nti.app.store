@@ -11,6 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 from .. import MessageFactory as _
 
 import zope.intid
+
 from zope import component
 from zope.event import notify
 
@@ -18,6 +19,8 @@ import transaction
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
+
+from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.dataserver import authorization as nauth
 
@@ -73,14 +76,9 @@ _post_view_defaults['request_method'] = 'POST'
 _admin_view_defaults = _post_view_defaults.copy()
 _admin_view_defaults['permission'] = nauth.ACT_MODERATE
 
-# get views
-
-class _BaseStripeView(object):
+class _BaseStripeView(AbstractAuthenticatedView):
 
 	processor = STRIPE
-
-	def __init__(self, request):
-		self.request = request
 
 	def get_stripe_connect_key(self, params=None):
 		params = CaseInsensitiveDict(params if params else self.request.params)
@@ -96,8 +94,6 @@ class GetStripeConnectKeyView(_BaseStripeView):
 		if result is None:
 			raise hexc.HTTPNotFound(detail=_('Provider not found'))
 		return result
-
-# post views
 
 class _PostStripeView(_BaseStripeView, AbstractPostView):
 	pass
@@ -218,15 +214,15 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 		description = description or "%s's payment for '%r'" % (username, purchasable_id)
 
 		item = create_stripe_purchase_item(purchasable_id)
-		po = create_stripe_purchase_order(item, quantity=quantity, coupon=coupon)
+		p_order = create_stripe_purchase_order(item, quantity=quantity, coupon=coupon)
 
-		pa = create_purchase_attempt(po, processor=self.processor)
-		return pa, token, stripe_key, expected_amount
+		p_attempt = create_purchase_attempt(p_order, processor=self.processor)
+		result = p_attempt, token, stripe_key, expected_amount
+		return result
 
 	def __call__(self):
 		request = self.request
-
-		username = request.authenticated_userid
+		username = self.remoteUser.username
 		purchase_attempt, token, stripe_key, expected_amount = self.processInput(username)
 
 		# check for any pending purchase for the items being bought
@@ -294,8 +290,6 @@ class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
 		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
 		return hexc.HTTPNoContent()
-
-# admin views
 
 @view_config(name="refund_payment_with_stripe", **_admin_view_defaults)
 class RefundPaymentWithStripeView(_PostStripeView):
