@@ -165,21 +165,29 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 @view_config(name="get_purchasables", **_view_defaults)
 class GetPurchasablesView(AbstractAuthenticatedView):
 
+	def _is_permitted(self, p):
+		if hasattr(p, 'HACK_make_acl'):
+			acl = p.HACK_make_acl()
+			class Dummy(object):
+				__acl__ = None
+			dummy = Dummy()
+			dummy.__acl__ = acl
+			policy = ACLAuthorizationPolicy()
+			principals = self.request.effective_principals
+			result = policy.permits(dummy, principals, nauth.ACT_READ)
+		else:
+			result = True
+		return result
+
 	def __call__(self):
 		purchasables = list(get_all_purchasables())
 		for p in list(purchasables):
-			if hasattr(p, 'HACK_make_acl'):
-				acl = p.HACK_make_acl()
-				class Dummy(object):
-					__acl__ = None
-				dummy = Dummy()
-				dummy.__acl__ = acl
-				policy = ACLAuthorizationPolicy()
-				principals = self.request.effective_principals
-				if not policy.permits(dummy, principals, nauth.ACT_READ):
-					logger.debug('Removing purchasable %s', p)
-					purchasables.remove(p)
-
+			if not p.isPublic:
+				logger.debug('Removing non public purchasable %s', p)
+				purchasables.remove(p)
+			elif not self._is_permitted(p):
+				logger.debug('Removing not-permitted purchasable %s', p)
+				purchasables.remove(p)
 		result = LocatedExternalDict({'Items': purchasables, 'Last Modified':0})
 		return result
 
