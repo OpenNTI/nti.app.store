@@ -9,7 +9,6 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
-
 import zope.intid
 
 from zope import component
@@ -21,11 +20,13 @@ from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.dataserver import authorization as nauth
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
+from nti.externalization.externalization import to_external_object
 
 from nti.ntiids.ntiids import is_valid_ntiid_string
 from nti.ntiids.ntiids import find_object_with_ntiid
@@ -192,15 +193,18 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		result = self.price_purchasable()
 		return result
 
-@view_config(name="post_stripe_payment", **_post_view_defaults)
-class ProcessPaymentWithStripeView(_PostStripeView):
-
-	def processInput(self, username):
+class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
+		
+	processor = STRIPE
+	
+	def getPaymentRecord(self):
 		values = self.readInput()
+		result = CaseInsensitiveDict()
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
 		if not purchasable_id:
 			raise hexc.HTTPUnprocessableEntity(_("No item to purchase specified"))
-
+		result['PurchasableID'] = purchasable_id
+		
 		stripe_key = None
 		purchasable = get_purchasable(purchasable_id)
 		if purchasable is None:
@@ -210,51 +214,63 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 			stripe_key = component.queryUtility(IStripeConnectKey, provider)
 			if not stripe_key:
 				raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable provider"))
-
+		result['StripeKey'] = stripe_key
+		result['Context'] = to_external_object(purchasable.VendorInfo) \
+							if purchasable.VendorInfo else None
+		
 		token = values.get('token', None)
 		if not token:
 			raise hexc.HTTPUnprocessableEntity(_("No token provided"))
-
-		expected_amount = values.get('amount', values.get('expectedAmount', None))
+		result['Token'] = token
+		
+		expected_amount = values.get('amount') or values.get('expectedAmount')
 		if expected_amount is not None and not is_valid_amount(expected_amount):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid expected amount"))
 		expected_amount = float(expected_amount) if expected_amount is not None else None
-
+		result['Amount'] = result['ExpectedAmount'] = expected_amount
+		
 		coupon = values.get('coupon', None)
-		description = values.get('description', None)
-
+		result['Coupon'] = coupon
+		
 		quantity = values.get('quantity', None)
 		if quantity is not None and not is_valid_pve_int(quantity):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid quantity"))
 		quantity = int(quantity) if quantity else None
-
-		description = description or "%s's payment for '%r'" % (username, purchasable_id)
-
-		item = create_stripe_purchase_item(purchasable_id)
-		p_order = create_stripe_purchase_order(item, quantity=quantity, coupon=coupon)
-
-		p_attempt = create_purchase_attempt(p_order, processor=self.processor)
-		result = p_attempt, token, stripe_key, expected_amount
+		result['Quantity'] = quantity
+		
+		description = values.get('description', None)
+		result['Description'] = description
 		return result
 
-	def __call__(self):
-		request = self.request
-		username = self.remoteUser.username
-		purchase_attempt, token, stripe_key, expected_amount = self.processInput(username)
-
-		# check for any pending purchase for the items being bought
-		purchase = get_pending_purchase_for(username, purchase_attempt.Items)
-		if purchase is not None:
-			logger.warn("There is already a pending purchase for item(s) %s",
-						list(purchase_attempt.Items))
-			return LocatedExternalDict({'Items':[purchase],
-										'Last Modified':purchase.lastModified})
-
-		# register purchase
-		purchase_id = register_purchase_attempt(purchase_attempt, username)
+	def createPurchaseOrder(self, record):
+		item = create_stripe_purchase_item(record['PurchasableID'] )
+		result = create_stripe_purchase_order(item, quantity=record['Quantity'],
+											  coupon=record['coupon'])
+		return result
+	
+	def createPurchaseAttempt(self, record):
+		order = self.createPurchaseOrder(record)
+		result = create_purchase_attempt(order, processor=self.processor, 
+										 context=record['Context'])
+		return result
+	
+	def registerPurchaseAttempt(self, purchase_attempt, record):
+		raise NotImplementedError()
+	
+	@property
+	def username(self):
+		return None
+	
+	def processPurchase(self, purchase_attempt, record):
+		purchase_id = self.registerPurchaseAttempt(purchase_attempt, record)
 		logger.info("Purchase attempt (%s) created", purchase_id)
-
-		# after commit
+		
+		token = record['Token']
+		stripe_key = record['StripeKey']
+		expected_amount = record['ExpectedAmount']
+		
+		request = self.request
+		username = self.username
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		site_names = get_possible_site_names(request, include_default=True)
 		def process_purchase():
@@ -272,6 +288,46 @@ class ProcessPaymentWithStripeView(_PostStripeView):
 		purchase = get_purchase_attempt(purchase_id, username)
 		return LocatedExternalDict({'Items':[purchase],
 									'Last Modified':purchase.lastModified})
+	def __call__(self):
+		record = self.getPaymentRecord()
+		purchase_attempt = self.createPurchaseAttempt(record)
+		result = self.processPurchase(purchase_attempt, record)
+		return result
+
+@view_config(name="post_stripe_payment", **_post_view_defaults)
+class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
+
+	def getPaymentRecord(self):
+		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord()
+		purchasable_id = record['PurchasableID']
+		description = record['Description']
+		if not description:
+			record['Description'] = "%s's payment for '%r'" % (self.username, purchasable_id)
+		return record
+
+	@property
+	def username(self):
+		return self.remoteUser.username
+	
+	def registerPurchaseAttempt(self, purchase_attempt, record):
+		purchase_id = register_purchase_attempt(purchase_attempt, self.username)
+		return purchase_id
+	
+	def __call__(self):
+		username = self.username
+		record = self.getPaymentRecord()
+		purchase_attempt = self.createPurchaseAttempt(record)
+		
+		# check for any pending purchase for the items being bought
+		purchase = get_pending_purchase_for(username, purchase_attempt.Items)
+		if purchase is not None:
+			logger.warn("There is already a pending purchase for item(s) %s",
+						list(purchase_attempt.Items))
+			return LocatedExternalDict({'Items':[purchase],
+										'Last Modified':purchase.lastModified})
+		
+		result = self.processPurchase(purchase_attempt, record)
+		return result
 
 @view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
