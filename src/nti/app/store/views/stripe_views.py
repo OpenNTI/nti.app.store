@@ -36,8 +36,8 @@ from nti.store import InvalidPurchasable
 from nti.store.purchasable import get_purchasable
 from nti.store.invitations import get_purchase_by_code
 from nti.store.purchase_history import get_purchase_attempt
+from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_attempt import create_purchase_attempt
-from nti.store.purchase_history import get_pending_purchase_for
 from nti.store.purchase_history import register_purchase_attempt
 
 from nti.store.interfaces import IPricingError
@@ -319,12 +319,13 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 		purchase_attempt = self.createPurchaseAttempt(record)
 		
 		# check for any pending purchase for the items being bought
-		purchase = get_pending_purchase_for(username, purchase_attempt.Items)
-		if purchase is not None:
-			logger.warn("There is already a pending purchase for item(s) %s",
+		purchases = get_pending_purchases(username, purchase_attempt.Items)
+		if purchases:
+			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
+			logger.warn("There are pending purchase(s) for item(s) %s",
 						list(purchase_attempt.Items))
-			return LocatedExternalDict({'Items':[purchase],
-										'Last Modified':purchase.lastModified})
+			return LocatedExternalDict({'Items': purchases,
+										'Last Modified':lastModified})
 		
 		result = self.processPurchase(purchase_attempt, record)
 		return result
