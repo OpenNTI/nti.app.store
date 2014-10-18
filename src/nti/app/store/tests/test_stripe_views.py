@@ -7,7 +7,6 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-from hamcrest import none
 from hamcrest import is_not
 from hamcrest import has_key
 from hamcrest import has_entry
@@ -22,9 +21,12 @@ import uuid
 import stripe
 import anyjson as json
 
+from zope import interface
+
 from nti.store import PricingException
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
+from nti.store.payments.stripe.interfaces import IStripeCoupon
 
 from nti.testing.matchers import is_empty
 
@@ -62,10 +64,22 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(json_body, has_entry('PurchasePrice', 600.0))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def test_price_purchasable_with_stripe_coupon(self):
-		code = str(uuid.uuid4())
-		stripe.Coupon.create(percent_off=10, duration='forever', id=code)
+	@fudge.patch('nti.store.payments.stripe.stripe_pricing.get_coupon')
+	def test_price_purchasable_with_stripe_coupon(self, mock_gc):
 		
+		code = str(uuid.uuid4())
+		coupon = mock_gc.is_callable().with_args().returns_fake()
+		coupon.has_attr(id=code)
+		coupon.has_attr(percent_off=10)
+		coupon.has_attr(duration='forever')
+		coupon.has_attr(amount_off=None)
+		coupon.has_attr(currency="USD")
+		coupon.has_attr(duration_in_months=None)
+		coupon.has_attr(redeem_by=None)
+		coupon.has_attr(times_redeemed=None)
+		coupon.has_attr(max_redemptions=None)
+		interface.alsoProvides(coupon, IStripeCoupon)
+	
 		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
 		params = {'coupon':code, 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
@@ -136,42 +150,39 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
-	def _create_stripe_token(self):
-		url = '/dataserver2/store/create_stripe_token'
-		params = dict(cc="5105105105105100",
-					  exp_month="11",
-					  exp_year="30",
-					  cvc="542",
-					  address="3001 Oak Tree #D16",
-					  city="Norman",
-					  zip="73072",
-					  state="OK",
-					  country="USA",
-					  provider='NTI-TEST')
-		body = json.dumps(params)
-
-		res = self.testapp.post(url, body, status=200)
-		json_body = res.json_body
-		assert_that(json_body, has_entry('Token', is_not(none())))
-		return json_body['Token']
-
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	def test_post_stripe_payment(self):
-		# create token
-		t = self._create_stripe_token()
-
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+	def test_post_stripe_payment(self, mock_cc):		
+		card = fudge.Fake()
+		card.has_attr(name="Steve")
+		card.has_attr(last4=4242)
+		card.has_attr(address_line1="1 Infinite Loop")
+		card.has_attr(address_line2=None)
+		card.has_attr(address_city="Cupertino")
+		card.has_attr(address_state="CA")
+		card.has_attr(address_zip="95014")
+		card.has_attr(address_country="USA")
+		
+		charge = mock_cc.is_callable().with_args().returns_fake()
+		charge.has_attr(id="charge_1046")
+		charge.has_attr(paid=True)
+		charge.has_attr(card=card)
+		charge.has_attr(created=None)
+		charge.has_attr(amount=300*100.0)
+		charge.has_attr(currency="USD")
+		
 		url = '/dataserver2/store/post_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
-				  'token': t}
+				  'token': "tok_1053"}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
-
 		json_body = res.json_body
 
 		assert_that(json_body, has_key('Items'))
 		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
+		
 		items = json_body['Items']
 		assert_that(items, has_length(1))
 		purchase = items[0]
