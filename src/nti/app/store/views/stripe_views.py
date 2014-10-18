@@ -345,18 +345,18 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def getPaymentRecord(self, values):
 		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord()
-		creator = values.get('creator') or values.get('senderEmail')
+		creator = values.get('creator') or values.get('sender') or values.get('from')
 		if not creator:
 			raise hexc.HTTPUnprocessableEntity(_("Invalid sender"))
 		try:
 			checkEmailAddress(creator)
 		except:
 			raise hexc.HTTPUnprocessableEntity(_("Invalid sender email"))
-			
 		record['Creator'] = creator
-		record['Sender'] = values.get('senderName')
-		record['Message'] = values.get('message', None)
-		record['Receiver'] = values.get('receiver', None)
+
+		record['Message'] = values.get('message')
+		record['Sender'] = values.get('sender') or values.get('from')
+		record['Receiver'] = values.get('receiver') or values.get('to')
 		
 		record.pop('Quantity', None) # ignore quantity								 
 		purchasable_id = record['PurchasableID']
