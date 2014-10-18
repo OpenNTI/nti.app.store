@@ -9,6 +9,7 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
+
 import zope.intid
 
 from zope import component
@@ -23,6 +24,7 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.dataserver import authorization as nauth
+from nti.dataserver.users.interfaces import checkEmailAddress
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
@@ -39,6 +41,8 @@ from nti.store.purchase_history import get_purchase_attempt
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_attempt import create_purchase_attempt
 from nti.store.purchase_history import register_purchase_attempt
+from nti.store.gift_registry import register_gift_purchase_attempt
+from nti.store.purchase_attempt import create_gift_purchase_attempt
 
 from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPurchaseAttempt
@@ -77,6 +81,9 @@ _post_view_defaults['request_method'] = 'POST'
 
 _admin_view_defaults = _post_view_defaults.copy()
 _admin_view_defaults['permission'] = nauth.ACT_MODERATE
+
+_noauth_post_view_defaults = _post_view_defaults.copy()
+_noauth_post_view_defaults.pop('permission', None)
 
 class _BaseStripeView(AbstractAuthenticatedView):
 
@@ -197,8 +204,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		
 	processor = STRIPE
 	
-	def getPaymentRecord(self):
-		values = self.readInput()
+	def getPaymentRecord(self, values=None):
+		values = values or self.readInput()
 		result = CaseInsensitiveDict()
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
 		if not purchasable_id:
@@ -289,7 +296,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		return LocatedExternalDict({'Items':[purchase],
 									'Last Modified':purchase.lastModified})
 	def __call__(self):
-		record = self.getPaymentRecord()
+		values = self.readInput()
+		record = self.getPaymentRecord(values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 		result = self.processPurchase(purchase_attempt, record)
 		return result
@@ -297,8 +305,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 @view_config(name="post_stripe_payment", **_post_view_defaults)
 class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
-	def getPaymentRecord(self):
-		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord()
+	def getPaymentRecord(self, values=None):
+		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord(values)
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
@@ -315,7 +323,8 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 	
 	def __call__(self):
 		username = self.username
-		record = self.getPaymentRecord()
+		values = self.readInput()
+		record = self.getPaymentRecord(values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 		
 		# check for any pending purchase for the items being bought
@@ -330,6 +339,66 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
+@view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
+class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
+
+	def getPaymentRecord(self, values):
+		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord()
+		creator = values.get('creator') or values.get('senderEmail')
+		if not creator:
+			raise hexc.HTTPUnprocessableEntity(_("Invalid sender"))
+		try:
+			checkEmailAddress(creator)
+		except:
+			raise hexc.HTTPUnprocessableEntity(_("Invalid sender email"))
+			
+		record['Creator'] = creator
+		record['Sender'] = values.get('senderName')
+		record['Message'] = values.get('message', None)
+		record['Receiver'] = values.get('receiver', None)
+		
+		record.pop('Quantity', None) # ignore quantity								 
+		purchasable_id = record['PurchasableID']
+		description = record['Description']
+		if not description:
+			record['Description'] = "payment for gift '%r'" % purchasable_id
+		return record
+
+	@property
+	def username(self):
+		return None
+	
+	def createPurchaseAttempt(self, record):
+		order = self.createPurchaseOrder(record)
+		result = create_gift_purchase_attempt(order, processor=self.processor,
+											  sender=record['Sender'],
+											  receiver=record['Receiver'],
+											  message=record['Message'],
+										 	  context=record['Context'])
+		return result
+
+	def registerPurchaseAttempt(self, purchase, record):
+		purchase_id = register_gift_purchase_attempt(record['Creator'], purchase)
+		return purchase_id
+	
+	def __call__(self):
+		username = self.username
+		values = self.readInput()
+		record = self.getPaymentRecord(values)
+		purchase_attempt = self.createPurchaseAttempt(record)
+		
+		# check for any pending purchase for the items being bought
+		purchases = get_pending_purchases(username, purchase_attempt.Items)
+		if purchases:
+			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
+			logger.warn("There are pending purchase(s) for item(s) %s",
+						list(purchase_attempt.Items))
+			return LocatedExternalDict({'Items': purchases,
+										'Last Modified':lastModified})
+		
+		result = self.processPurchase(purchase_attempt, record)
+		return result
+	
 @view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
@@ -412,3 +481,5 @@ class RefundPaymentWithStripeView(_PostStripeView):
 del _view_defaults
 del _post_view_defaults
 del _admin_view_defaults
+del _noauth_post_view_defaults
+
