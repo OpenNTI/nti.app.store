@@ -40,6 +40,7 @@ from nti.store.invitations import get_purchase_by_code
 from nti.store.purchase_history import get_purchase_attempt
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_attempt import create_purchase_attempt
+from nti.store.gift_registry import get_gift_pending_purchases
 from nti.store.purchase_history import register_purchase_attempt
 from nti.store.gift_registry import register_gift_purchase_attempt
 from nti.store.purchase_attempt import create_gift_purchase_attempt
@@ -371,6 +372,7 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	def createPurchaseAttempt(self, record):
 		order = self.createPurchaseOrder(record)
 		result = create_gift_purchase_attempt(order, processor=self.processor,
+											  creator=record['Creator'],
 											  sender=record['Sender'],
 											  receiver=record['Receiver'],
 											  message=record['Message'],
@@ -382,13 +384,13 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 		return purchase_id
 	
 	def __call__(self):
-		username = self.username
 		values = self.readInput()
 		record = self.getPaymentRecord(values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 		
-		# check for any pending purchase for the items being bought
-		purchases = get_pending_purchases(username, purchase_attempt.Items)
+		# check for any pending gift purchase
+		creator = record['Creator']
+		purchases = get_gift_pending_purchases(creator)
 		if purchases:
 			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
 			logger.warn("There are pending purchase(s) for item(s) %s",
