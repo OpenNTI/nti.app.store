@@ -149,10 +149,8 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 	def test_get_pending_purchases(self):
 		items = self._get_pending_purchases()
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
-
-	@WithSharedApplicationMockDS(users=True, testapp=True)
-	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
-	def test_post_stripe_payment(self, mock_cc):		
+	
+	def _create_fakge_charge(self, amount, mock_cc):
 		card = fudge.Fake()
 		card.has_attr(name="Steve")
 		card.has_attr(last4=4242)
@@ -168,9 +166,14 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		charge.has_attr(paid=True)
 		charge.has_attr(card=card)
 		charge.has_attr(created=None)
-		charge.has_attr(amount=300*100.0)
+		charge.has_attr(amount=amount*100.0)
 		charge.has_attr(currency="USD")
-		
+		return charge
+	
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+	def test_post_stripe_payment(self, mock_cc):		
+		self._create_fakge_charge(300, mock_cc)
 		url = '/dataserver2/store/post_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
@@ -185,10 +188,9 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		
 		items = json_body['Items']
 		assert_that(items, has_length(1))
-		purchase = items[0]
-		assert_that(purchase, has_key('Order'))
-		assert_that(purchase['Order'], has_entry('Items', has_length(1)))
-
+		assert_that(items[0], has_entry('Class', 'PurchaseAttempt'))
+		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
+		
 		import gevent
 
 		items = self._get_pending_purchases()
@@ -197,6 +199,41 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		gevent.sleep(0)
 		items = self._get_pending_purchases()
 		assert_that(items, is_empty() )
+	
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+	def test_gift_stripe_payment(self, mock_cc):		
+		self._create_fakge_charge(199, mock_cc)
+		url = '/dataserver2/store/gift_stripe_payment'
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'creator': 'ichigo@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'receiver': 'aizen@bleach.org',
+				  'message': 'Getsuga Tenshou',
+				  'token': "tok_1053"}
+		body = json.dumps(params)
+
+		res = self.testapp.post(url, body, status=200)
+		json_body = res.json_body
+
+		assert_that(json_body, has_key('Items'))
+		assert_that(json_body, has_entry('Last Modified', greater_than_or_equal_to(0)))
+		
+		items = json_body['Items']
+		assert_that(items, has_length(1))
+		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
+		assert_that(items[0], has_entry('MimeType', 
+									    'application/vnd.nextthought.store.giftpurchaseattempt'))
+
+# 		import gevent
+# 
+# 		items = self._get_pending_purchases()
+# 		assert_that(items, has_length(greater_than_or_equal_to(1)))
+# 		# And we can let the greenlet run which will empty out the queue
+# 		gevent.sleep(0)
+# 		items = self._get_pending_purchases()
+# 		assert_that(items, is_empty() )
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_invalid_post_stripe_payment(self):

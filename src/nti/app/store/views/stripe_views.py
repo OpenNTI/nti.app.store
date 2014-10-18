@@ -35,15 +35,15 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store import PricingException
 from nti.store import InvalidPurchasable
-from nti.store.purchasable import get_purchasable
-from nti.store.invitations import get_purchase_by_code
-from nti.store.purchase_history import get_purchase_attempt
-from nti.store.purchase_history import get_pending_purchases
-from nti.store.purchase_attempt import create_purchase_attempt
-from nti.store.gift_registry import get_gift_pending_purchases
-from nti.store.purchase_history import register_purchase_attempt
-from nti.store.gift_registry import register_gift_purchase_attempt
-from nti.store.purchase_attempt import create_gift_purchase_attempt
+from nti.store.store import get_purchasable
+from nti.store.store import get_purchase_by_code
+from nti.store.store import get_purchase_attempt
+from nti.store.store import get_pending_purchases
+from nti.store.store import create_purchase_attempt
+from nti.store.store import register_purchase_attempt
+from nti.store.store import get_gift_pending_purchases
+from nti.store.store import create_gift_purchase_attempt
+from nti.store.store import register_gift_purchase_attempt
 
 from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPurchaseAttempt
@@ -280,6 +280,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		request = self.request
 		username = self.username
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
+		
 		site_names = get_possible_site_names(request, include_default=True)
 		def process_purchase():
 			logger.info("Processing purchase %s", purchase_id)
@@ -289,11 +290,14 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 									 request=request,
 									 site_names=site_names)
 
+		# process purchase after commit
 		transaction.get().addAfterCommitHook(
 							lambda s: s and request.nti_gevent_spawn(process_purchase))
 
 		# return
 		purchase = get_purchase_attempt(purchase_id, username)
+		if purchase is None:
+			raise hexc.HTTPInternalServerError(_("Could not find purchasable"))
 		return LocatedExternalDict({'Items':[purchase],
 									'Last Modified':purchase.lastModified})
 	def __call__(self):
@@ -343,8 +347,13 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 @view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
 class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
+	def readInput(self):
+		values = super(GiftWithStripeView, self).readInput()
+		values.pop('Quantity', None) # ignore quantity	
+		return values
+	
 	def getPaymentRecord(self, values):
-		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord()
+		record = super(GiftWithStripeView, self).getPaymentRecord(values)
 		creator = values.get('creator') or values.get('sender') or values.get('from')
 		if not creator:
 			raise hexc.HTTPUnprocessableEntity(_("Invalid sender"))
@@ -356,9 +365,14 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 		record['Message'] = values.get('message')
 		record['Sender'] = values.get('sender') or values.get('from')
-		record['Receiver'] = values.get('receiver') or values.get('to')
+		receiver = values.get('receiver') or values.get('to')
+		if receiver:
+			try:
+				checkEmailAddress(receiver)
+			except:
+				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
+		record['Receiver'] = receiver
 		
-		record.pop('Quantity', None) # ignore quantity								 
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
@@ -371,17 +385,18 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	
 	def createPurchaseAttempt(self, record):
 		order = self.createPurchaseOrder(record)
-		result = create_gift_purchase_attempt(order, processor=self.processor,
-											  creator=record['Creator'],
+		result = create_gift_purchase_attempt(order=order, 
+											  processor=self.processor,
 											  sender=record['Sender'],
-											  receiver=record['Receiver'],
+											  creator=record['Creator'],
 											  message=record['Message'],
-										 	  context=record['Context'])
+										 	  context=record['Context'],
+										 	  receiver=record['Receiver'])
 		return result
 
 	def registerPurchaseAttempt(self, purchase, record):
-		purchase_id = register_gift_purchase_attempt(record['Creator'], purchase)
-		return purchase_id
+		result = register_gift_purchase_attempt(record['Creator'], purchase)
+		return result
 	
 	def __call__(self):
 		values = self.readInput()
