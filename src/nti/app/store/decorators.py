@@ -95,7 +95,12 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 			links.append(link)
 			
 			href = ds_path + 'post_stripe_payment'
-			link = Link(href, rel="'post_stripe_payment'", method='POST')
+			link = Link(href, rel="post_stripe_payment", method='POST')
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+			
+			href = ds_path + 'gift_stripe_payment'
+			link = Link(href, rel="gift_stripe_payment", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 
