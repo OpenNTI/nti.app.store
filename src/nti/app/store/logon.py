@@ -51,6 +51,8 @@ class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 @component.adapter(IMissingUser, IRequest)
 class _StoreMissingUserLinkProvider(_StoreAuthenticatedUserLinkProvider):
 
+	rel = 'gift_stripe_payment'
+	
 	def __call__(self):
 		links = self.get_links()
 		return links[0] if links else None
