@@ -10,6 +10,8 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
+from functools import partial
+
 import zope.intid
 
 from zope import component
@@ -35,9 +37,9 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store import PricingException
 from nti.store import InvalidPurchasable
+
 from nti.store.store import get_purchasable
 from nti.store.store import get_purchase_by_code
-from nti.store.store import get_purchase_attempt
 from nti.store.store import get_pending_purchases
 from nti.store.store import create_purchase_attempt
 from nti.store.store import register_purchase_attempt
@@ -201,6 +203,31 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		result = self.price_purchasable()
 		return result
 
+def process_purchase(manager, purchase_id, username, token, expected_amount,
+					 stripe_key, request, site_names=()):
+	logger.info("Processing purchase %s", purchase_id)
+	manager.process_purchase(purchase_id=purchase_id, username=username,
+							 token=token, expected_amount=expected_amount,
+							 api_key=stripe_key.PrivateKey,
+							 request=request,
+							 site_names=site_names)
+
+def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
+					   stripe_key, request, site_names=()):
+	
+	processor = partial(process_purchase, 
+						token=token,
+						request=request,
+						manager=manager,
+						username=username,
+						site_names=site_names,
+						stripe_key=stripe_key,
+						purchase_id=purchase_id,
+						expected_amount=expected_amount)
+	
+	transaction.get().addAfterCommitHook(
+					lambda s: s and request.nti_gevent_spawn(processor))
+
 class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		
 	processor = STRIPE
@@ -279,27 +306,22 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		
 		request = self.request
 		username = self.username
+		site_names = get_possible_site_names(request, include_default=True)
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		
-		site_names = get_possible_site_names(request, include_default=True)
-		def process_purchase():
-			logger.info("Processing purchase %s", purchase_id)
-			manager.process_purchase(purchase_id=purchase_id, username=username,
-									 token=token, expected_amount=expected_amount,
-									 api_key=stripe_key.PrivateKey,
-									 request=request,
-									 site_names=site_names)
-
 		# process purchase after commit
-		transaction.get().addAfterCommitHook(
-							lambda s: s and request.nti_gevent_spawn(process_purchase))
-
+		addAfterCommitHook(	token=token,
+						   	request=request,
+							manager=manager,
+							username=username,
+							site_names=site_names,
+							stripe_key=stripe_key,
+							purchase_id=purchase_id,
+							expected_amount=expected_amount)
+	
 		# return
-		purchase = get_purchase_attempt(purchase_id, username)
-		if purchase is None:
-			raise hexc.HTTPInternalServerError(_("Could not find purchasable"))
-		return LocatedExternalDict({'Items':[purchase],
-									'Last Modified':purchase.lastModified})
+		return LocatedExternalDict({'Items':[purchase_attempt],
+									'Last Modified':purchase_attempt.lastModified})
 	def __call__(self):
 		values = self.readInput()
 		record = self.getPaymentRecord(values)
