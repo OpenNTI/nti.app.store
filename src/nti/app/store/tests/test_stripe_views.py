@@ -7,6 +7,7 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import none
 from hamcrest import is_not
 from hamcrest import has_key
 from hamcrest import has_entry
@@ -28,13 +29,30 @@ from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
 from nti.store.payments.stripe.interfaces import IStripeCoupon
 
-from nti.testing.matchers import is_empty
+from nti.app.store.views.stripe_views import process_purchase
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.store.tests import ApplicationStoreTestLayer
 
+class MockRunner(object):
+	
+	def __call__(self, func, *args, **kwargs):
+		return func()
+
+def do_purchase(manager, purchase_id, username, token, expected_amount,
+				stripe_key, request, site_names):
+	result = process_purchase(token=token,
+							  request=request,
+							  manager=manager,
+							  username=username,
+							  site_names=site_names,
+							  stripe_key=stripe_key,
+							  purchase_id=purchase_id,
+							  expected_amount=expected_amount)
+	return result
+	
 class TestApplicationStoreViews(ApplicationLayerTest):
 	
 	layer = ApplicationStoreTestLayer
@@ -169,10 +187,15 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		charge.has_attr(amount=amount*100.0)
 		charge.has_attr(currency="USD")
 		return charge
-	
+		
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
 	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
-	def test_post_stripe_payment(self, mock_cc):		
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.get_transaction_runner')
+	def test_post_stripe_payment(self, mock_aach, mock_cc, mock_gtr):
+		mock_aach.is_callable().with_args().calls(do_purchase)
+		mock_gtr.is_callable().with_args().returns(MockRunner())
+		
 		self._create_fakge_charge(300, mock_cc)
 		url = '/dataserver2/store/post_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
@@ -189,20 +212,20 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		items = json_body['Items']
 		assert_that(items, has_length(1))
 		assert_that(items[0], has_entry('Class', 'PurchaseAttempt'))
+		assert_that(items[0], has_entry('State', 'Success'))
+		assert_that(items[0], has_entry('ChargeID', 'charge_1046'))
+		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
+		assert_that(items[0], has_entry('ID', is_not(none())))
 		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
-		
-		import gevent
 
-		items = self._get_pending_purchases()
-		assert_that(items, has_length(greater_than_or_equal_to(1)))
-		# And we can let the greenlet run which will empty out the queue
-		gevent.sleep(0)
-		items = self._get_pending_purchases()
-		assert_that(items, is_empty() )
-	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
 	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
-	def test_gift_stripe_payment(self, mock_cc):		
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.get_transaction_runner')
+	def test_gift_stripe_payment(self, mock_aach, mock_cc, mock_gtr):
+		mock_aach.is_callable().with_args().calls(do_purchase)
+		mock_gtr.is_callable().with_args().returns(MockRunner())
+		
 		self._create_fakge_charge(199, mock_cc)
 		url = '/dataserver2/store/gift_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
@@ -225,15 +248,10 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
 		assert_that(items[0], has_entry('MimeType', 
 									    'application/vnd.nextthought.store.giftpurchaseattempt'))
-
-# 		import gevent
-# 
-# 		items = self._get_pending_purchases()
-# 		assert_that(items, has_length(greater_than_or_equal_to(1)))
-# 		# And we can let the greenlet run which will empty out the queue
-# 		gevent.sleep(0)
-# 		items = self._get_pending_purchases()
-# 		assert_that(items, is_empty() )
+		assert_that(items[0], has_entry('State', 'Success'))
+		assert_that(items[0], has_entry('ChargeID', 'charge_1046'))
+		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
+		assert_that(items[0], has_entry('ID', is_not(none())))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_invalid_post_stripe_payment(self):
