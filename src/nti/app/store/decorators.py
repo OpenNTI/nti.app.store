@@ -99,10 +99,11 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
-			href = ds_path + 'gift_stripe_payment'
-			link = Link(href, rel="gift_stripe_payment", method='POST')
-			interface.alsoProvides(link, ILocation)
-			links.append(link)
+			if original.Giftable:
+				href = ds_path + 'gift_stripe_payment'
+				link = Link(href, rel="gift_stripe_payment", method='POST')
+				interface.alsoProvides(link, ILocation)
+				links.append(link)
 
 	def _do_decorate_external(self, original, external):
 		keyname = original.Provider

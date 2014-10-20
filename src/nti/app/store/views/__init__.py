@@ -18,6 +18,7 @@ import numbers
 
 from zope import component
 from zope import interface
+from zope.event import notify
 from zope.container.contained import Contained
 from zope.traversing.interfaces import IPathAdapter
 
@@ -39,7 +40,8 @@ from nti.store.priceable import create_priceable
 
 from nti.store.purchasable import get_all_purchasables
 
-from nti.store.invitations import get_purchase_by_code
+from nti.store.store import get_purchase_by_code
+
 from nti.store.invitations import InvitationAlreadyAccepted
 from nti.store.invitations import InvitationCapacityExceeded
 from nti.store.invitations import create_store_purchase_invitation
@@ -53,6 +55,8 @@ from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
+from nti.store.interfaces import IGiftPurchaseAttempt
+from nti.store.interfaces import GiftPurchaseAttemptRedeemed
 
 from nti.utils.maps import CaseInsensitiveDict
 
@@ -255,7 +259,9 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("Must specify a valid purchasable id")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		invitation_code = values.get('invitationCode', values.get('invitation_code'))
+		invitation_code = values.get('invitationCode') or \
+						  values.get('invitation_code') or \
+						  values.get('code')
 		if not invitation_code:
 			msg = _("Must specify a valid invitation code")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -267,7 +273,7 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			purchase = None
 
 		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
+			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase attempt not found'))
 
 		if purchase.Quantity is None:
 			raise hexc.HTTPUnprocessableEntity(detail=_('Not redeemable purchase'))
@@ -287,6 +293,34 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("There are no remaining invitations for this code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
+		return hexc.HTTPNoContent()
+
+@view_config(name="redeem_gift", **_post_view_defaults)
+class RedeemGiftView(AbstractPostView):
+
+	def __call__(self):
+		values = self.readInput()
+		gift_code = values.get('code') or \
+					values.get('gift') or \
+					values.get('giftCode')
+		if not gift_code:
+			msg = _("Must specify a valid gift code")
+			raise hexc.HTTPUnprocessableEntity(msg)
+
+		try:
+			purchase = get_purchase_by_code(gift_code)
+		except ValueError:
+			# improper key
+			purchase = None
+
+		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
+			raise hexc.HTTPNotFound(detail=_('Purchase gift not found'))
+
+		if purchase.is_redeemed():
+			raise hexc.HTTPUnprocessableEntity(detail=_("Gift purchase already redeemded"))
+
+		user = self.remoteUser
+		notify(GiftPurchaseAttemptRedeemed(purchase, user))
 		return hexc.HTTPNoContent()
 
 # object get views
