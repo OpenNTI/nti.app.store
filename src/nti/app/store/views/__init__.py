@@ -121,7 +121,7 @@ class GetPurchaseHistoryView(_PurchaseAttemptView):
 		values = CaseInsensitiveDict(request.params)
 		purchasable_id = values.get('purchasableID') or \
 						 values.get('purchasable_id') or \
-						 values.get('purchasale')
+						 values.get('purchasable')
 		if not purchasable_id:
 			end_time = self._parse_datetime(values.get('endTime', None))
 			start_time = self._parse_datetime(values.get('startTime', None))
