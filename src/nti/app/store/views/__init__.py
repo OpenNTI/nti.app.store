@@ -47,7 +47,9 @@ from nti.store.invitations import InvitationAlreadyAccepted
 from nti.store.invitations import InvitationCapacityExceeded
 from nti.store.invitations import create_store_purchase_invitation
 
-from nti.store.purchase_history import get_purchase_attempt
+from nti.store.store import get_purchase_attempt
+from nti.store.store import get_gift_pending_purchases
+
 from nti.store.purchase_history import get_purchase_history
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_history import get_purchase_history_by_item
@@ -93,9 +95,7 @@ _noauth_view_defaults.pop('permission', None)
 class _PurchaseAttemptView(AbstractAuthenticatedView):
 
 	def _last_modified(self, purchases):
-		result = 0
-		for pa in purchases or ():
-			result = max(result, getattr(pa, "lastModified", 0))
+		result = max(map(lambda x: getattr(x, "lastModified", 0), purchases))
 		return result
 
 @view_config(name="get_pending_purchases", **_view_defaults)
@@ -104,6 +104,22 @@ class GetPendingPurchasesView(_PurchaseAttemptView):
 	def __call__(self):
 		username = self.remoteUser.username
 		purchases = get_pending_purchases(username)
+		result = LocatedExternalDict({'Items': purchases,
+									  'Last Modified':self._last_modified(purchases)})
+		return result
+
+@view_config(name="get_gift_pending_purchases", **_noauth_view_defaults)
+class GetGiftPendingPurchasesView(_PurchaseAttemptView):
+
+	def __call__(self):
+		values = CaseInsensitiveDict(self.request.params)
+		if self.remoteUser is None:
+			username = values.get('username') or values.get('user')
+		else:
+			username = self.remoteUser.username
+		if not username:
+			raise hexc.HTTPUnprocessableEntity(_('Must provide a user name'))
+		purchases = get_gift_pending_purchases(username)
 		result = LocatedExternalDict({'Items': purchases,
 									  'Last Modified':self._last_modified(purchases)})
 		return result

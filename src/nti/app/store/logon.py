@@ -27,12 +27,21 @@ class _BaseStoreLinkProvider(object):
 
 	def __init__(self, request):
 		self.request = request
-
-	def get_links(self):
-		elements = (STORE, 'gift_stripe_payment')
+	
+	def link_map(self):
+		result = {}
 		root = self.request.route_path('objects.generic.traversal', traverse=())
 		root = root[:-1] if root.endswith('/') else root
-		return [Link(root, elements=elements, rel='gift_stripe_payment')]
+		for name in ('get_purchasables', 'gift_stripe_payment', 
+					 'get_gift_pending_purchases'):
+			elements = (STORE, name)
+			link = Link(root, elements=elements, rel=name)
+			result[name] = link
+		return result
+
+	def get_links(self):
+		result = self.link_map().values()
+		return list(result)
 
 @interface.implementer(IUnauthenticatedUserLinkProvider)
 @component.adapter(IRequest)
@@ -50,9 +59,16 @@ class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 @interface.implementer(ILogonLinkProvider)
 @component.adapter(IMissingUser, IRequest)
 class _StoreMissingUserLinkProvider(_StoreAuthenticatedUserLinkProvider):
-
-	rel = 'gift_stripe_payment'
 	
 	def __call__(self):
-		links = self.get_links()
-		return links[0] if links else None
+		result = self.link_map().get(self.rel)
+		return result
+	
+class _GiftStripePaymentMissingUserLinkProvider(_StoreMissingUserLinkProvider):
+	rel = 'gift_stripe_payment'
+
+class _GetPurchasablesMissingUserLinkProvider(_StoreMissingUserLinkProvider):
+	rel = 'get_purchasables'
+	
+class _GetGiftPendingPurchasesMissingUserLinkProvider(_StoreMissingUserLinkProvider):
+	rel = 'get_gift_pending_purchases'
