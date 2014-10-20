@@ -118,10 +118,13 @@ class GetPurchaseHistoryView(_PurchaseAttemptView):
 	def __call__(self):
 		request = self.request
 		username = self.remoteUser.username
-		purchasable_id = request.params.get('purchasableID', None)
+		values = CaseInsensitiveDict(request.params)
+		purchasable_id = values.get('purchasableID') or \
+						 values.get('purchasable_id') or \
+						 values.get('purchasale')
 		if not purchasable_id:
-			end_time = self._parse_datetime(request.params.get('endTime', None))
-			start_time = self._parse_datetime(request.params.get('startTime', None))
+			end_time = self._parse_datetime(values.get('endTime', None))
+			start_time = self._parse_datetime(values.get('startTime', None))
 			purchases = get_purchase_history(username, start_time, end_time)
 		else:
 			purchases = get_purchase_history_by_item(username, purchasable_id)
@@ -149,7 +152,9 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 		request = self.request
 		username = self.remoteUser.username
 		values = CaseInsensitiveDict(request.params)
-		purchase_id = values.get('purchaseID') or values.get('purchase_id')
+		purchase_id = 	values.get('purchaseID') or \
+						values.get('purchase_id') or \
+						values.get('purchase')
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -231,7 +236,9 @@ class PricePurchasableView(AbstractPostView):
 
 	def price_purchasable(self, values=None):
 		values = values or self.readInput()
-		purchasable_id = values.get('purchasableID') or values.get('purchasable_id', u'')
+		purchasable_id = values.get('purchasableID') or \
+						 values.get('purchasable_id') or \
+						 values.get('purchasable') or u''
 
 		# check quantity
 		quantity = values.get('quantity', 1)
@@ -254,14 +261,17 @@ class RedeemPurchaseCodeView(AbstractPostView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
+		purchasable_id = values.get('purchasableID') or \
+						 values.get('purchasable_id') or \
+						 values.get('purchasable')
 		if not purchasable_id:
 			msg = _("Must specify a valid purchasable id")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		invitation_code = values.get('invitationCode') or \
 						  values.get('invitation_code') or \
-						  values.get('code')
+						  values.get('invitation') or \
+ 						  values.get('code')
 		if not invitation_code:
 			msg = _("Must specify a valid invitation code")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -314,7 +324,7 @@ class RedeemGiftView(AbstractPostView):
 			purchase = None
 
 		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPNotFound(detail=_('Purchase gift not found'))
+			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase gift not found'))
 
 		if purchase.is_redeemed():
 			raise hexc.HTTPUnprocessableEntity(detail=_("Gift purchase already redeemded"))
