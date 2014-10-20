@@ -199,12 +199,12 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 	def __call__(self):
 		purchasables = list(get_all_purchasables())
 		is_authenticated = (self.remoteUser is not None)
-		for p in list(purchasables):
-			if not p.isPublic:
-				purchasables.remove(p)
-			elif (is_authenticated and not self._is_permitted(p)) or \
-				 not check_purchasable_access(self.remoteUser, p):
-				purchasables.remove(p)
+		for purchasable in list(purchasables):
+			if not purchasable.isPublic:
+				purchasables.remove(purchasable)
+			elif (is_authenticated and not self._is_permitted(purchasable)) or \
+				 not check_purchasable_access(purchasable, self.remoteUser):
+				purchasables.remove(purchasable)
 		result = LocatedExternalDict({'Items': purchasables, 'Last Modified':0})
 		return result
 
@@ -217,7 +217,7 @@ class PurchasableGetView(GenericGetView):
 	def __call__(self):
 		result = GenericGetView.__call__(self)
 		if 	result is not None and \
-			not check_purchasable_access(get_remote_user(self.request), result):
+			not check_purchasable_access(result, get_remote_user(self.request)):
 			raise hexc.HTTPForbidden()
 		return result
 
