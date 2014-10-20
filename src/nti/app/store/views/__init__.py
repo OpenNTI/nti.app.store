@@ -26,6 +26,7 @@ from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 from pyramid.authorization import ACLAuthorizationPolicy
 
+from nti.app.authentication import get_remote_user
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
@@ -83,6 +84,9 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  request_method='GET')
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
+
+_noauth_view_defaults = _view_defaults.copy()
+_noauth_view_defaults.pop('permission', None)
 
 # get views
 
@@ -171,7 +175,11 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 									  'Last Modified':purchase.lastModified})
 		return result
 
-@view_config(name="get_purchasables", **_view_defaults)
+def check_purchasable_access(purchasable, remoteUser=None):
+	is_authenticated = (remoteUser is not None)
+	return is_authenticated or purchasable.Giftable
+
+@view_config(name="get_purchasables", **_noauth_view_defaults)
 class GetPurchasablesView(AbstractAuthenticatedView):
 
 	def _is_permitted(self, p):
@@ -190,12 +198,12 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 
 	def __call__(self):
 		purchasables = list(get_all_purchasables())
+		is_authenticated = (self.remoteUser is not None)
 		for p in list(purchasables):
 			if not p.isPublic:
-				logger.debug('Removing non public purchasable %s', p)
 				purchasables.remove(p)
-			elif not self._is_permitted(p):
-				logger.debug('Removing not-permitted purchasable %s', p)
+			elif (is_authenticated and not self._is_permitted(p)) or \
+				 not check_purchasable_access(self.remoteUser, p):
 				purchasables.remove(p)
 		result = LocatedExternalDict({'Items': purchasables, 'Last Modified':0})
 		return result
@@ -203,15 +211,19 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IPurchasable,
-			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchasableGetView(GenericGetView):
-	pass
+	
+	def __call__(self):
+		result = GenericGetView.__call__(self)
+		if 	result is not None and \
+			not check_purchasable_access(get_remote_user(self.request), result):
+			raise hexc.HTTPForbidden()
+		return result
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IPurchaseAttempt,
-			 permission=nauth.ACT_READ,
 			 request_method='GET')
 class PurchaseAttemptGetView(GenericGetView):
 
@@ -337,3 +349,4 @@ class RedeemGiftView(AbstractPostView):
 
 del _view_defaults
 del _post_view_defaults
+del _noauth_view_defaults
