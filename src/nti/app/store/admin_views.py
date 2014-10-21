@@ -115,7 +115,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		if not purchasable_obj:
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchasable not found'))
 
-		usernames = params.get('usernames', None)
+		usernames = params.get('usernames') or params.get('username')
 		if usernames:
 			usernames = usernames.split(",")
 		else:
@@ -187,7 +187,8 @@ class DeletePurchaseAttemptView(_BasePostStoreView):
 
 		purchase = get_purchase_attempt(purchase_id)
 		if not purchase:
-			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
+			msg = _('Purchase attempt not found')
+			raise hexc.HTTPUnprocessableEntity(msg)
 		
 		remove_purchase_attempt(purchase, purchase.creator)
 		logger.info("Purchase attempt '%s' has been deleted")
@@ -198,10 +199,14 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
-		username = values.get('username') or self.remoteUser.username
+		username = values.get('username')
+		if not username:
+			msg = _("Must specify a valid username")
+			raise hexc.HTTPUnprocessableEntity(msg)
+		
 		user = users.User.get_user(username)
 		if not user:
-			raise hexc.HTTPNotFound(detail=_('User not found'))
+			raise hexc.HTTPUnprocessableEntity(_('User not found'))
 
 		annotations = IAnnotations(user)
 		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
