@@ -23,3 +23,4 @@ def get_possible_site_names(request=None, include_default=True):
     if include_default:
         site_names += ('',)
     return site_names
+get_site_names = get_possible_site_names

@@ -15,6 +15,7 @@ import time
 import gevent
 import isodate
 import numbers
+from functools import partial
 
 from zope import component
 from zope import interface
@@ -38,6 +39,8 @@ from nti.externalization.interfaces import LocatedExternalDict
 
 from nti.store import InvalidPurchasable
 from nti.store.priceable import create_priceable
+
+from nti.site.site import get_site_for_site_names
 
 from nti.store.purchasable import get_all_purchasables
 
@@ -68,6 +71,7 @@ from ..utils import is_valid_pve_int
 from ..utils import is_valid_timestamp
 
 from .. import STORE
+from .. import get_possible_site_names
 
 @interface.implementer(IPathAdapter)
 class StorePathAdapter(Contained):
@@ -152,7 +156,7 @@ class GetPurchaseHistoryView(_PurchaseAttemptView):
 									  'Last Modified':self._last_modified(purchases)})
 		return result
 
-def _sync_purchase(purchase):
+def _sync_purchase(purchase, site_names=()):
 	purchase_id = purchase.id
 	username = purchase.creator.username
 
@@ -161,7 +165,9 @@ def _sync_purchase(purchase):
 		manager.sync_purchase(purchase_id=purchase_id, username=username)
 
 	def process_sync():
-		component.getUtility(IDataserverTransactionRunner)(sync_purchase)
+		transaction_runner = component.getUtility(IDataserverTransactionRunner)
+		transaction_runner = partial(transaction_runner, site_names=site_names)
+		transaction_runner(sync_purchase)
 
 	gevent.spawn(process_sync)
 
@@ -185,7 +191,7 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 		elif purchase.is_pending():
 			start_time = purchase.StartTime
 			if time.time() - start_time >= 90 and not purchase.is_synced():
-				_sync_purchase(purchase)
+				_sync_purchase(purchase, site_names=get_possible_site_names(self.request))
 
 		result = LocatedExternalDict({'Items':[purchase],
 									  'Last Modified':purchase.lastModified})
