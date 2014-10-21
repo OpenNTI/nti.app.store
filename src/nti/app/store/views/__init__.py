@@ -194,7 +194,10 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 		elif purchase.is_pending():
 			start_time = purchase.StartTime
-			if time.time() - start_time >= 90 and not purchase.is_synced():
+			## CS: 100 is the [magic] number of seconds elapsed since the purchase
+			## attempt was started. After this time, we try to get the purchase
+			## status by asking its payment processor
+			if time.time() - start_time >= 100 and not purchase.is_synced():
 				_sync_purchase(purchase, self.request)
 
 		result = LocatedExternalDict({'Items':[purchase],
