@@ -156,13 +156,17 @@ class GetPurchaseHistoryView(_PurchaseAttemptView):
 									  'Last Modified':self._last_modified(purchases)})
 		return result
 
-def _sync_purchase(purchase, site_names=()):
+def _sync_purchase(purchase, request):
 	purchase_id = purchase.id
-	username = purchase.creator.username
-
+	creator = purchase.creator
+	username = getattr(creator, 'username', creator)
+	site_names = get_possible_site_names(request)
+	
 	def sync_purchase():
 		manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
-		manager.sync_purchase(purchase_id=purchase_id, username=username)
+		manager.sync_purchase(purchase_id=purchase_id,
+							  username=username,
+							  request=request)
 
 	def process_sync():
 		transaction_runner = component.getUtility(IDataserverTransactionRunner)
@@ -191,7 +195,7 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 		elif purchase.is_pending():
 			start_time = purchase.StartTime
 			if time.time() - start_time >= 90 and not purchase.is_synced():
-				_sync_purchase(purchase, site_names=get_possible_site_names(self.request))
+				_sync_purchase(purchase, self.request)
 
 		result = LocatedExternalDict({'Items':[purchase],
 									  'Last Modified':purchase.lastModified})
@@ -254,7 +258,7 @@ class PurchaseAttemptGetView(GenericGetView):
 		if purchase.is_pending():
 			start_time = purchase.StartTime
 			if time.time() - start_time >= 90 and not purchase.is_synced():
-				_sync_purchase(purchase)
+				_sync_purchase(purchase, self.request)
 		return purchase
 
 # post views
