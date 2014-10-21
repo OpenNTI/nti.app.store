@@ -358,7 +358,7 @@ class RedeemGiftView(AbstractPostView):
 			raise hexc.HTTPUnprocessableEntity(detail=_("Gift purchase already redeemded"))
 
 		user = self.remoteUser
-		notify(GiftPurchaseAttemptRedeemed(purchase, user))
+		notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
 		return hexc.HTTPNoContent()
 
 # object get views
