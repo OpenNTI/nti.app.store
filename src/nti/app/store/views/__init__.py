@@ -99,7 +99,8 @@ _noauth_view_defaults.pop('permission', None)
 class _PurchaseAttemptView(AbstractAuthenticatedView):
 
 	def _last_modified(self, purchases):
-		result = max(map(lambda x: getattr(x, "lastModified", 0), purchases))
+		result = max(map(lambda x: getattr(x, "lastModified", 0), purchases)) \
+				 if purchases else 0
 		return result
 
 @view_config(name="get_pending_purchases", **_view_defaults)
