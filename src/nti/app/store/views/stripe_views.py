@@ -234,6 +234,11 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 	
 	KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
 	
+	def readInput(self, value=None):
+		result = super(BasePaymentWithStripeView,self).readInput(value=value)
+		result = CaseInsensitiveDict(result or {})
+		return result
+
 	def parseContext(self, values, purchasable):
 		# get purchasable vendor info
 		context = to_external_object(purchasable.VendorInfo) \
@@ -266,7 +271,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			if not stripe_key:
 				raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable provider"))
 		result['StripeKey'] = stripe_key
-		
+
 		context = self.parseContext(values, purchasable)
 		result['Context'] = context
 		

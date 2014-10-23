@@ -21,8 +21,8 @@ false_values = ('0', 'n', 'no', 'f', 'false')
 class AbstractPostView(AbstractAuthenticatedView,
 					   ModeledContentUploadRequestUtilsMixin):
 
-	def readInput(self):
-		values = super(AbstractPostView, self).readInput()
+	def readInput(self, value=None):
+		values = super(AbstractPostView, self).readInput(value=value)
 		result = CaseInsensitiveDict(values)
 		return result
 
