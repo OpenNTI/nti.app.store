@@ -232,18 +232,20 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		
 	processor = STRIPE
 	
+	KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
+	
 	def parseContext(self, values, purchasable):
 		# get purchasable vendor info
 		context = to_external_object(purchasable.VendorInfo) \
-				  if purchasable.VendorInfo else None
+				  if purchasable.VendorInfo else dict()
 
 		# capture user context data
-		user_context_data = CaseInsensitiveDict(values.get('Context') or {})
-		allow_vendor_updates = user_context_data.get('allowVendorUpdates', None)
-		if allow_vendor_updates is not None:
-			allow_vendor_updates = bool(allow_vendor_updates)
-			context = dict() if context is None else context
-			context['AllowVendorUpdates'] = allow_vendor_updates
+		data = CaseInsensitiveDict(values.get('Context') or {})
+		for name, alias, klass in self.KEYS:
+			value = data.get(name)
+			value = data.get(alias) if value is None else value
+			if value is not None:
+				context[name] = klass(value)
 		return context
 			
 	def getPaymentRecord(self, values=None):
