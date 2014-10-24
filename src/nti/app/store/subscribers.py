@@ -37,7 +37,8 @@ def queue_simple_html_text_email(*args, **kwargs):
 def send_purchase_confirmation(	event, email,
 								subject=DEFAULT_EMAIL_SUBJECT,
 								template=DEFAULT_PURCHASE_TEMPLATE,
-								package=None):
+								package=None,
+								add_args=None ):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
@@ -75,6 +76,9 @@ def send_purchase_confirmation(	event, email,
 			'billed_to': charge_name or profile.realname or informal_username,
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
+	if add_args is not None:
+		args.update( add_args )
+
 	mailer = queue_simple_html_text_email
 	mailer( template,
 			subject=subject,
@@ -84,7 +88,7 @@ def send_purchase_confirmation(	event, email,
 			package=package,
 			text_template_extension='.mak')
 
-def safe_send_purchase_confirmation(event, email, 
+def safe_send_purchase_confirmation(event, email,
 									subject=DEFAULT_EMAIL_SUBJECT,
 									template=DEFAULT_PURCHASE_TEMPLATE,
 									package=None):
@@ -94,7 +98,7 @@ def safe_send_purchase_confirmation(event, email,
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s", email)
 
-def store_purchase_attempt_successful(event, 
+def store_purchase_attempt_successful(event,
 									  subject=DEFAULT_EMAIL_SUBJECT,
 									  template=DEFAULT_PURCHASE_TEMPLATE,
 									  package=None):
