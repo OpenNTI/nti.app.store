@@ -91,21 +91,23 @@ def send_purchase_confirmation(	event, email,
 def safe_send_purchase_confirmation(event, email,
 									subject=DEFAULT_EMAIL_SUBJECT,
 									template=DEFAULT_PURCHASE_TEMPLATE,
-									package=None):
+									package=None,
+									add_args=None):
 	try:
 		send_purchase_confirmation(event, email, subject=subject,
-								   template=template, package=package)
+								   template=template, package=package, add_args=add_args)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s", email)
 
 def store_purchase_attempt_successful(event,
 									  subject=DEFAULT_EMAIL_SUBJECT,
 									  template=DEFAULT_PURCHASE_TEMPLATE,
-									  package=None):
+									  package=None,
+									  add_args=None):
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
 	profile = IUserProfile(event.object.creator)
 	email = getattr(profile, 'email')
 	safe_send_purchase_confirmation(event, email, subject=subject,
-									template=template, package=package)
+									template=template, package=package, add_args=add_args)
