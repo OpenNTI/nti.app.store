@@ -60,7 +60,7 @@ def send_purchase_confirmation(	event, email,
 				 event.purchase.Pricing.TotalPurchasePrice)
 	formatted_discount = component.getAdapter(purchase.Pricing, IPathAdapter,
 											  name='currency')
-	formatted_discount = formatted_discount.format_currency_object(discount)
+	formatted_discount = formatted_discount.format_currency_object(discount, request=request)
 
 	charge_name = getattr(event.charge, 'Name', None)
 
