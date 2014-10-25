@@ -28,6 +28,7 @@ from pyramid import httpexceptions as hexc
 from pyramid.authorization import ACLAuthorizationPolicy
 
 from nti.app.authentication import get_remote_user
+from nti.app.renderers.interfaces import IUncacheableInResponse
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
@@ -203,6 +204,7 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 
 		result = LocatedExternalDict({'Items':[purchase],
 									  'Last Modified':purchase.lastModified})
+		interface.alsoProvides(result, IUncacheableInResponse)
 		return result
 
 def check_purchasable_access(purchasable, remoteUser=None):
