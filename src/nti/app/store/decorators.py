@@ -36,15 +36,16 @@ LINKS = StandardExternalFields.LINKS
 class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
 	def set_links(self, username, original, external):
+		links = external.setdefault(LINKS, [])
+		
 		if original.Amount:
 			request = self.request
 			ds2 = request.path_info_peek()
-			ds_path = '/%s/%s/' % (ds2, STORE)
-			links = external.setdefault(LINKS, [])
-
+			ds_store_path = '/%s/%s/' % (ds2, STORE)
+			
 			# insert history link
 			if has_history_by_item(username, original.NTIID):
-				history_href = ds_path + 'get_purchase_history'
+				history_href = ds_store_path + 'get_purchase_history'
 				quoted = urllib.quote(original.NTIID)
 				link = Link(history_href, rel="history", method='GET',
 							params={'purchasableID': quoted})
@@ -52,8 +53,14 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 				links.append(link)
 
 			# insert price link
-			price_href = ds_path + 'price_purchasable'
+			price_href = ds_store_path + 'price_purchasable'
 			link = Link(price_href, rel="price", method='Post')
+			interface.alsoProvides(link, ILocation)
+			links.append(link)
+			
+		if original.Redeemable:
+			href = ds_store_path + 'redeem_gift'
+			link = Link(href, rel="redeem_gift", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 
@@ -74,33 +81,33 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 		if original.Amount:
 			request = self.request
 			ds2 = request.path_info_peek()
-			ds_path = '/%s/%s/' % (ds2, STORE)
+			ds_store_path = '/%s/%s/' % (ds2, STORE)
 			links = external.setdefault(LINKS, [])
 			
-			href = ds_path + 'price_purchasable_with_stripe_coupon'
+			href = ds_store_path + 'price_purchasable_with_stripe_coupon'
 			link = Link(href, rel="price_with_stripe_coupon", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
 			quoted = urllib.quote(original.Provider)
-			href = ds_path + 'get_stripe_connect_key'
+			href = ds_store_path + 'get_stripe_connect_key'
 			link = Link(href, rel="get_stripe_connect_key", method='GET',
 						params={'provider':quoted})
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
-			href = ds_path + 'create_stripe_token'
+			href = ds_store_path + 'create_stripe_token'
 			link = Link(href, rel="create_stripe_token", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
-			href = ds_path + 'post_stripe_payment'
+			href = ds_store_path + 'post_stripe_payment'
 			link = Link(href, rel="post_stripe_payment", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
 			if original.Giftable:
-				href = ds_path + 'gift_stripe_payment'
+				href = ds_store_path + 'gift_stripe_payment'
 				link = Link(href, rel="gift_stripe_payment", method='POST')
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
