@@ -37,6 +37,7 @@ from nti.dataserver import authorization as nauth
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
 from nti.externalization.interfaces import LocatedExternalDict
+from nti.externalization.interfaces import StandardExternalFields
 
 from nti.store import InvalidPurchasable
 from nti.store.priceable import create_priceable
@@ -74,6 +75,9 @@ from ..utils import is_valid_timestamp
 from .. import STORE
 from .. import get_possible_site_names
 
+ITEMS = u'Items'
+LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
+
 @interface.implementer(IPathAdapter)
 class StorePathAdapter(Contained):
 
@@ -97,25 +101,25 @@ _noauth_view_defaults.pop('permission', None)
 
 # get views
 
-class _PurchaseAttemptView(AbstractAuthenticatedView):
-
-	def _last_modified(self, purchases):
-		result = max(map(lambda x: getattr(x, "lastModified", 0), purchases)) \
-				 if purchases else 0
-		return result
+def _last_modified(purchases=()):
+	result = 0
+	if purchases:
+		result = max(map(lambda x: getattr(x, "lastModified", 0), purchases))
+	return result
 
 @view_config(name="get_pending_purchases", **_view_defaults)
-class GetPendingPurchasesView(_PurchaseAttemptView):
+class GetPendingPurchasesView(AbstractAuthenticatedView):
 
 	def __call__(self):
 		username = self.remoteUser.username
 		purchases = get_pending_purchases(username)
-		result = LocatedExternalDict({'Items': purchases,
-									  'Last Modified':self._last_modified(purchases)})
+		result = LocatedExternalDict()
+		result[ITEMS] = purchases
+		result[LAST_MODIFIED] = _last_modified(purchases)
 		return result
 
 @view_config(name="get_gift_pending_purchases", **_noauth_view_defaults)
-class GetGiftPendingPurchasesView(_PurchaseAttemptView):
+class GetGiftPendingPurchasesView(AbstractAuthenticatedView):
 
 	def __call__(self):
 		values = CaseInsensitiveDict(self.request.params)
@@ -126,12 +130,13 @@ class GetGiftPendingPurchasesView(_PurchaseAttemptView):
 		if not username:
 			raise hexc.HTTPUnprocessableEntity(_('Must provide a user name'))
 		purchases = get_gift_pending_purchases(username)
-		result = LocatedExternalDict({'Items': purchases,
-									  'Last Modified':self._last_modified(purchases)})
+		result = LocatedExternalDict()
+		result[ITEMS] = purchases
+		result[LAST_MODIFIED] = _last_modified(purchases)
 		return result
 
 @view_config(name="get_purchase_history", **_view_defaults)
-class GetPurchaseHistoryView(_PurchaseAttemptView):
+class GetPurchaseHistoryView(AbstractAuthenticatedView):
 
 	def _parse_datetime(self, t):
 		result = t
@@ -154,8 +159,9 @@ class GetPurchaseHistoryView(_PurchaseAttemptView):
 			purchases = get_purchase_history(username, start_time, end_time)
 		else:
 			purchases = get_purchase_history_by_item(username, purchasable_id)
-		result = LocatedExternalDict({'Items': purchases,
-									  'Last Modified':self._last_modified(purchases)})
+		result = LocatedExternalDict()
+		result[ITEMS] = purchases
+		result[LAST_MODIFIED] = _last_modified(purchases)
 		return result
 
 def _sync_purchase(purchase, request):
@@ -177,6 +183,15 @@ def _sync_purchase(purchase, request):
 
 	gevent.spawn(process_sync)
 
+def _should_sync(purchase, now=None):
+	now = now or time.time()
+	start_time = purchase.StartTime
+	## CS: 100 is the [magic] number of seconds elapsed since the purchase
+	## attempt was started. After this time, we try to get the purchase
+	## status by asking its payment processor
+	result = now - start_time >= 100 and not purchase.is_synced()
+	return result
+
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(AbstractAuthenticatedView):
 
@@ -194,16 +209,12 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 		purchase = get_purchase_attempt(purchase_id, username)
 		if purchase is None:
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
-		elif purchase.is_pending():
-			start_time = purchase.StartTime
-			## CS: 100 is the [magic] number of seconds elapsed since the purchase
-			## attempt was started. After this time, we try to get the purchase
-			## status by asking its payment processor
-			if time.time() - start_time >= 100 and not purchase.is_synced():
-				_sync_purchase(purchase, self.request)
+		elif purchase.is_pending() and _should_sync(purchase):
+			_sync_purchase(purchase, self.request)
 
-		result = LocatedExternalDict({'Items':[purchase],
-									  'Last Modified':purchase.lastModified})
+		result = LocatedExternalDict()
+		result[ITEMS] = [purchase]
+		result[LAST_MODIFIED] = purchase.lastModified
 		interface.alsoProvides(result, IUncacheableInResponse)
 		return result
 
@@ -229,15 +240,16 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 		return result
 
 	def __call__(self):
-		purchasables = list(get_all_purchasables())
+		purchasables = []
 		is_authenticated = (self.remoteUser is not None)
-		for purchasable in list(purchasables):
-			if not purchasable.isPublic:
-				purchasables.remove(purchasable)
-			elif (is_authenticated and not self._is_permitted(purchasable)) or \
-				 not check_purchasable_access(purchasable, self.remoteUser):
-				purchasables.remove(purchasable)
-		result = LocatedExternalDict({'Items': purchasables, 'Last Modified':0})
+		for purchasable in get_all_purchasables():
+			if 	purchasable.isPublic and \
+				( (is_authenticated and self._is_permitted(purchasable)) or \
+				  check_purchasable_access(purchasable, self.remoteUser) ):
+				purchasables.append(purchasable)
+		result = LocatedExternalDict()
+		result[ITEMS] = purchasables
+		result[LAST_MODIFIED] = 0
 		return result
 
 @view_config(route_name='objects.generic.traversal',
@@ -261,10 +273,8 @@ class PurchaseAttemptGetView(GenericGetView):
 
 	def __call__(self):
 		purchase = super(PurchaseAttemptGetView, self).__call__()
-		if purchase.is_pending():
-			start_time = purchase.StartTime
-			if time.time() - start_time >= 90 and not purchase.is_synced():
-				_sync_purchase(purchase, self.request)
+		if purchase.is_pending() and _should_sync(purchase):
+			_sync_purchase(purchase, self.request)
 		return purchase
 
 # post views
