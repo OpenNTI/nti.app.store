@@ -398,7 +398,7 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	
 	def getPaymentRecord(self, values):
 		record = super(GiftWithStripeView, self).getPaymentRecord(values)
-		creator = values.get('creator') or values.get('sender') or values.get('from')
+		creator = values.get('from') or values.get('sender') or values.get('creator') 
 		if not creator:
 			raise hexc.HTTPUnprocessableEntity(_("Invalid sender"))
 		try:

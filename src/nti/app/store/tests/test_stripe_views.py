@@ -230,7 +230,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		url = '/dataserver2/store/gift_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
-				  'creator': 'ichigo@bleach.org',
+				  'from': 'ichigo@bleach.org',
 				  'sender': 'Ichigo Kurosaki',
 				  'receiver': 'aizen@bleach.org',
 				  'message': 'Getsuga Tenshou',
