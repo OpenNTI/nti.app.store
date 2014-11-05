@@ -29,6 +29,8 @@ from pyramid.authorization import ACLAuthorizationPolicy
 
 from nti.app.authentication import get_remote_user
 from nti.app.renderers.interfaces import IUncacheableInResponse
+
+from nti.app.base.abstract_views import AbstractView
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
@@ -192,18 +194,15 @@ def _should_sync(purchase, now=None):
 	result = now - start_time >= 100 and not purchase.is_synced()
 	return result
 
-@view_config(name="get_purchase_attempt", **_view_defaults)
-class GetPurchaseAttemptView(AbstractAuthenticatedView):
+class BaseGetPurchaseAttemptView(object):
 
-	def __call__(self):
-		request = self.request
-		username = self.remoteUser.username
-		values = CaseInsensitiveDict(request.params)
-		purchase_id = 	values.get('purchaseID') or \
-						values.get('purchase_id') or \
-						values.get('purchase')
+	def _do_get(self, purchase_id, username=None):
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")
+			raise hexc.HTTPUnprocessableEntity(msg)
+		
+		if not username:
+			msg = _("Must specify a valid user/creator name")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		purchase = get_purchase_attempt(purchase_id, username)
@@ -216,6 +215,33 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView):
 		result[ITEMS] = [purchase]
 		result[LAST_MODIFIED] = purchase.lastModified
 		interface.alsoProvides(result, IUncacheableInResponse)
+		return result
+	
+@view_config(name="get_purchase_attempt", **_view_defaults)
+class GetPurchaseAttemptView(AbstractAuthenticatedView, BaseGetPurchaseAttemptView):
+
+	def __call__(self):
+		username = self.remoteUser.username
+		values = CaseInsensitiveDict(self.request.params)
+		purchase_id = 	values.get('purchaseID') or \
+						values.get('purchase_id') or \
+						values.get('purchase')
+		result = self._do_get(purchase_id, username)
+		return result
+
+@view_config(name="get_gift_purchase_attempt", **_noauth_view_defaults)
+class GetGiftPurchaseAttemptView(AbstractView, BaseGetPurchaseAttemptView):
+
+	def __call__(self):
+		values = CaseInsensitiveDict(self.request.params)
+		purchase_id = 	values.get('purchaseID') or \
+						values.get('purchase_id') or \
+						values.get('purchase')
+		username = 	values.get('username') or \
+					values.get('creator') or \
+					values.get('sender') or \
+					values.get('from')
+		result = self._do_get(purchase_id, username)
 		return result
 
 def check_purchasable_access(purchasable, remoteUser=None):

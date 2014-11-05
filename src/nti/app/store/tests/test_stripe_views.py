@@ -252,6 +252,12 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('ChargeID', 'charge_1046'))
 		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
 		assert_that(items[0], has_entry('ID', is_not(none())))
+		assert_that(items[0], has_entry('NTIID', is_not(none())))
+		
+		url = '/dataserver2/store/get_gift_purchase_attempt'
+		params ={ "purchaseID":items[0]['NTIID'],
+				  'creator': 'ichigo@bleach.org' }
+		self.testapp.get(url, params=params, status=200)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_invalid_post_stripe_payment(self):

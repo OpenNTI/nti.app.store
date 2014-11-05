@@ -29,6 +29,9 @@
 			 provides=".interfaces.IStoreWorkspace" />
 
 	<!-- Link Providers -->
+	<subscriber factory=".logon._GetGiftPurchaseAttemptMissingUserLinkProvider"
+				provides="nti.appserver.interfaces.ILogonLinkProvider" />
+				
 	<subscriber factory=".logon._GiftStripePaymentMissingUserLinkProvider"
 				provides="nti.appserver.interfaces.ILogonLinkProvider" />
 
