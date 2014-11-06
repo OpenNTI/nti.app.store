@@ -18,6 +18,7 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.threadlocal import get_current_request
 
+from nti.dataserver.interfaces import IUser
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.externalization import to_external_object
@@ -49,7 +50,6 @@ def send_purchase_confirmation(	event, email,
 	purchase = event.object
 	user = purchase.creator
 	profile = IUserProfile(user)
-
 	user_ext = to_external_object(user)
 	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
 
@@ -107,7 +107,11 @@ def store_purchase_attempt_successful(event,
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
-	profile = IUserProfile(event.object.creator)
-	email = getattr(profile, 'email')
+	creator = event.object.creator
+	if IUser.providedBy(creator):
+		profile = IUserProfile(event.object.creator)
+		email = getattr(profile, 'email')
+	else:
+		email = str(creator) ## assume an email address
 	safe_send_purchase_confirmation(event, email, subject=subject,
 									template=template, package=package, add_args=add_args)
