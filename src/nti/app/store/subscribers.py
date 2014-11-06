@@ -19,7 +19,6 @@ from zope.traversing.interfaces import IPathAdapter
 from pyramid.threadlocal import get_current_request
 
 from nti.dataserver.interfaces import IUser
-from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.externalization import to_external_object
 
@@ -49,9 +48,12 @@ def send_purchase_confirmation(	event, email,
 
 	purchase = event.object
 	user = purchase.creator
-	profile = IUserProfile(user)
-	user_ext = to_external_object(user)
-	informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
+	profile = purchase.Profile
+	if IUser.providedBy(user):
+		user_ext = to_external_object(user)
+		informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
+	else:
+		informal_username = profile.realname or str(user)
 
 	# Provide functions the templates can call to format currency values
 	currency = component.getAdapter( event, IPathAdapter, name='currency' )
@@ -107,11 +109,11 @@ def store_purchase_attempt_successful(event,
 	# If we reach this point, it means the charge has already gone through
 	# don't fail the transaction if there is an error sending
 	# the purchase confirmation email
-	creator = event.object.creator
-	if IUser.providedBy(creator):
-		profile = IUserProfile(event.object.creator)
-		email = getattr(profile, 'email')
+	purchase = event.object
+	email = purchase.Profile.email
+	if email:
+		safe_send_purchase_confirmation(event, email, subject=subject,
+										template=template, package=package, 
+										add_args=add_args)
 	else:
-		email = str(creator) ## assume an email address
-	safe_send_purchase_confirmation(event, email, subject=subject,
-									template=template, package=package, add_args=add_args)
+		logger.warn("Not sending purchase email because no user email was found")
