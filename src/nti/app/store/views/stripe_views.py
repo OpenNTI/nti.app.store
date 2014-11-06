@@ -400,7 +400,7 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 		record = super(GiftWithStripeView, self).getPaymentRecord(values)
 		creator = values.get('from') or values.get('sender') or values.get('creator') 
 		if not creator:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid sender"))
+			raise hexc.HTTPUnprocessableEntity(_("Must specify a sender email"))
 		try:
 			checkEmailAddress(creator)
 		except:
