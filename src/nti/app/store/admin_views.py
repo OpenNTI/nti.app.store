@@ -181,7 +181,9 @@ class DeletePurchaseAttemptView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchase_id = values.get('purchaseid') or values.get('purchase_id')
+		purchase_id = 	values.get('purchaseID') or \
+						values.get('purchase_id') or \
+						values.get('purchase')
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -189,10 +191,10 @@ class DeletePurchaseAttemptView(_BasePostStoreView):
 		purchase = get_purchase_attempt(purchase_id)
 		if not purchase:
 			msg = _('Purchase attempt not found')
-			raise hexc.HTTPUnprocessableEntity(msg)
+			raise hexc.HTTPNotFound(msg)
 		
-		remove_purchase_attempt(purchase, purchase.creator)
-		logger.info("Purchase attempt '%s' has been deleted")
+		if remove_purchase_attempt(purchase, purchase.creator):
+			logger.info("Purchase attempt '%s' has been deleted")
 		return hexc.HTTPNoContent()
 
 @view_config(name="delete_purchase_history", **_admin_view_defaults)
