@@ -363,7 +363,7 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			purchase = None
 
 		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase attempt not found'))
+			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 
 		if purchase.Quantity is None:
 			raise hexc.HTTPUnprocessableEntity(detail=_('Not redeemable purchase'))
@@ -404,7 +404,7 @@ class RedeemGiftView(AbstractPostView):
 			purchase = None
 
 		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase gift not found'))
+			raise hexc.HTTPNotFound(detail=_('Purchase gift not found'))
 
 		if purchase.is_redeemed():
 			raise hexc.HTTPUnprocessableEntity(detail=_("Gift purchase already redeemded"))
