@@ -46,6 +46,8 @@ from nti.store.priceable import create_priceable
 
 from nti.site.site import get_site_for_site_names
 
+from nti.store import RedemptionException
+
 from nti.store.purchasable import get_all_purchasables
 
 from nti.store.store import get_purchase_by_code
@@ -63,6 +65,7 @@ from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseAttempt
+from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import IGiftPurchaseAttempt
@@ -406,12 +409,18 @@ class RedeemGiftView(AbstractPostView):
 		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
 			raise hexc.HTTPNotFound(detail=_('Purchase gift not found'))
 
-		if purchase.is_redeemed():
-			raise hexc.HTTPUnprocessableEntity(detail=_("Gift purchase already redeemded"))
-
 		user = self.remoteUser
-		notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
-		return hexc.HTTPNoContent()
+		try:
+			if purchase.is_redeemed():
+				result = IRedemptionError(_("Gift purchase already redeemded"))
+				self.request.response.status_int = 422
+			notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
+		except RedemptionException as e:
+			result = IRedemptionError(e)
+			self.request.response.status_int = 422
+		else:
+			result = hexc.HTTPNoContent()
+		return result
 
 # object get views
 
