@@ -408,7 +408,9 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 		record['Creator'] = creator
 
 		record['Message'] = values.get('message')
-		record['Sender'] = values.get('sender') or values.get('from')
+		record['Sender'] = 	values.get('senderName') or\
+							values.get('sender') or \
+							values.get('from')
 		receiver = values.get('receiver') or values.get('to')
 		if receiver:
 			try:
@@ -416,6 +418,8 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 			except:
 				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
 		record['Receiver'] = receiver
+		record['ReceiverName'] = values.get('receiverName') or \
+								 values.get('receiver') or values.get('to')
 		
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
@@ -435,7 +439,8 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 											  creator=record['Creator'],
 											  message=record['Message'],
 										 	  context=record['Context'],
-										 	  receiver=record['Receiver'])
+										 	  receiver=record['Receiver'],
+										 	  receiver_name=record['ReceiverName'])
 		return result
 
 	def registerPurchaseAttempt(self, purchase, record):

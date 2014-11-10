@@ -7,6 +7,7 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
 from hamcrest import has_key
@@ -233,6 +234,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 				  'from': 'ichigo@bleach.org',
 				  'sender': 'Ichigo Kurosaki',
 				  'receiver': 'aizen@bleach.org',
+				  'receiverName': 'Aizen Sosuke',
 				  'message': 'Getsuga Tenshou',
 				  'token': "tok_1053"}
 		body = json.dumps(params)
@@ -253,6 +255,9 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
 		assert_that(items[0], has_entry('ID', is_not(none())))
 		assert_that(items[0], has_entry('NTIID', is_not(none())))
+		assert_that(items[0], has_entry('Creator', is_('ichigo@bleach.org')))
+		assert_that(items[0], has_entry('SenderName', is_('Ichigo Kurosaki')))
+		assert_that(items[0], has_entry('ReceiverName', is_('Aizen Sosuke')))
 		
 		url = '/dataserver2/store/get_gift_purchase_attempt'
 		params ={ "purchaseID":items[0]['NTIID'],
