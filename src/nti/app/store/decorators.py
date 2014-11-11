@@ -23,8 +23,8 @@ from nti.externalization.externalization import to_external_object
 from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.store.interfaces import IPurchasable
-from nti.store.purchase_history import is_item_activated
-from nti.store.purchase_history import has_history_by_item
+from nti.store.store import is_item_activated
+from nti.store.store import has_history_by_item
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
 from . import STORE
