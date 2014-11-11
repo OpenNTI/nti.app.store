@@ -116,10 +116,10 @@ class CreateStripeTokenView(_PostStripeView):
 	def __call__(self):
 		values = self.readInput()
 		__traceback_info__ = values, self.request.params
-		
+
 		stripe_key = self.get_stripe_connect_key(values)
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
-		
+
 		params = {'api_key':stripe_key.PrivateKey}
 		customer_id = values.get('customerID') or values.get('customer_id')
 		if not customer_id:
@@ -164,7 +164,7 @@ def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
 	def price(self, purchasable_id, quantity=None, coupon=None):
-		result = perform_pricing(purchasable_id, quantity=quantity, coupon=coupon, 
+		result = perform_pricing(purchasable_id, quantity=quantity, coupon=coupon,
 								 processor=self.processor)
 		return result
 
@@ -184,9 +184,9 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		try:
 			result = self.price(purchasable_id, quantity, coupon)
 		except NoSuchStripeCoupon:
-			result = IPricingError(_("Cannot find stripe coupon"))
+			result = IPricingError(_("Invalid coupon"))
 		except InvalidStripeCoupon:
-			result = IPricingError(_("Invalid stripe coupon"))
+			result = IPricingError(_("Invalid coupon"))
 		except InvalidPurchasable:
 			result = IPricingError(_("Invalid purchasable"))
 		except PricingException as e:
@@ -195,7 +195,7 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 			raise
 		else:
 			status = 200
-			
+
 		self.request.response.status_int = status
 		return result
 
@@ -214,8 +214,8 @@ def process_purchase(manager, purchase_id, username, token, expected_amount,
 
 def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
 					   stripe_key, request, site_names=()):
-	
-	processor = partial(process_purchase, 
+
+	processor = partial(process_purchase,
 						token=token,
 						request=request,
 						manager=manager,
@@ -224,16 +224,16 @@ def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
 						stripe_key=stripe_key,
 						purchase_id=purchase_id,
 						expected_amount=expected_amount)
-	
+
 	transaction.get().addAfterCommitHook(
 					lambda s: s and request.nti_gevent_spawn(processor))
 
 class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
-		
+
 	processor = STRIPE
-	
+
 	KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
-	
+
 	def readInput(self, value=None):
 		result = super(BasePaymentWithStripeView,self).readInput(value=value)
 		result = CaseInsensitiveDict(result or {})
@@ -252,7 +252,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			if value is not None:
 				context[name] = klass(value)
 		return context
-			
+
 	def getPaymentRecord(self, values=None):
 		values = values or self.readInput()
 		result = CaseInsensitiveDict()
@@ -260,7 +260,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		if not purchasable_id:
 			raise hexc.HTTPUnprocessableEntity(_("No item to purchase specified"))
 		result['PurchasableID'] = purchasable_id
-		
+
 		stripe_key = None
 		purchasable = get_purchasable(purchasable_id)
 		if purchasable is None:
@@ -274,27 +274,27 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 
 		context = self.parseContext(values, purchasable)
 		result['Context'] = context
-		
+
 		token = values.get('token', None)
 		if not token:
 			raise hexc.HTTPUnprocessableEntity(_("No token provided"))
 		result['Token'] = token
-		
+
 		expected_amount = values.get('amount') or values.get('expectedAmount')
 		if expected_amount is not None and not is_valid_amount(expected_amount):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid expected amount"))
 		expected_amount = float(expected_amount) if expected_amount is not None else None
 		result['Amount'] = result['ExpectedAmount'] = expected_amount
-		
+
 		coupon = values.get('coupon', None)
 		result['Coupon'] = coupon
-		
+
 		quantity = values.get('quantity', None)
 		if quantity is not None and not is_valid_pve_int(quantity):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid quantity"))
 		quantity = int(quantity) if quantity else None
 		result['Quantity'] = quantity
-		
+
 		description = values.get('description', None)
 		result['Description'] = description
 		return result
@@ -304,33 +304,33 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		result = create_stripe_purchase_order(item, quantity=record['Quantity'],
 											  coupon=record['coupon'])
 		return result
-	
+
 	def createPurchaseAttempt(self, record):
 		order = self.createPurchaseOrder(record)
-		result = create_purchase_attempt(order, processor=self.processor, 
+		result = create_purchase_attempt(order, processor=self.processor,
 										 context=record['Context'])
 		return result
-	
+
 	def registerPurchaseAttempt(self, purchase_attempt, record):
 		raise NotImplementedError()
-	
+
 	@property
 	def username(self):
 		return None
-	
+
 	def processPurchase(self, purchase_attempt, record):
 		purchase_id = self.registerPurchaseAttempt(purchase_attempt, record)
 		logger.info("Purchase attempt (%s) created", purchase_id)
-		
+
 		token = record['Token']
 		stripe_key = record['StripeKey']
 		expected_amount = record['ExpectedAmount']
-		
+
 		request = self.request
 		username = self.username
 		site_names = get_possible_site_names(request, include_default=True)
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
-		
+
 		# process purchase after commit
 		addAfterCommitHook(	token=token,
 						   	request=request,
@@ -340,7 +340,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 							stripe_key=stripe_key,
 							purchase_id=purchase_id,
 							expected_amount=expected_amount)
-	
+
 		# return
 		return LocatedExternalDict({'Items':[purchase_attempt],
 									'Last Modified':purchase_attempt.lastModified})
@@ -365,17 +365,17 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 	@property
 	def username(self):
 		return self.remoteUser.username
-	
+
 	def registerPurchaseAttempt(self, purchase_attempt, record):
 		purchase_id = register_purchase_attempt(purchase_attempt, self.username)
 		return purchase_id
-	
+
 	def __call__(self):
 		username = self.username
 		values = self.readInput()
 		record = self.getPaymentRecord(values)
 		purchase_attempt = self.createPurchaseAttempt(record)
-		
+
 		# check for any pending purchase for the items being bought
 		purchases = get_pending_purchases(username, purchase_attempt.Items)
 		if purchases:
@@ -384,7 +384,7 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 						list(purchase_attempt.Items))
 			return LocatedExternalDict({'Items': purchases,
 										'Last Modified':lastModified})
-		
+
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
@@ -393,12 +393,12 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def readInput(self):
 		values = super(GiftWithStripeView, self).readInput()
-		values.pop('Quantity', None) # ignore quantity	
+		values.pop('Quantity', None) # ignore quantity
 		return values
-	
+
 	def getPaymentRecord(self, values):
 		record = super(GiftWithStripeView, self).getPaymentRecord(values)
-		creator = values.get('from') or values.get('sender') or values.get('creator') 
+		creator = values.get('from') or values.get('sender') or values.get('creator')
 		if not creator:
 			raise hexc.HTTPUnprocessableEntity(_("Must specify a sender email"))
 		try:
@@ -420,7 +420,7 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 		record['Receiver'] = receiver
 		record['ReceiverName'] = values.get('receiverName') or \
 								 values.get('receiver') or values.get('to')
-		
+
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
@@ -430,10 +430,10 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	@property
 	def username(self):
 		return None
-	
+
 	def createPurchaseAttempt(self, record):
 		order = self.createPurchaseOrder(record)
-		result = create_gift_purchase_attempt(order=order, 
+		result = create_gift_purchase_attempt(order=order,
 											  processor=self.processor,
 											  sender=record['Sender'],
 											  creator=record['Creator'],
@@ -446,12 +446,12 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	def registerPurchaseAttempt(self, purchase, record):
 		result = register_gift_purchase_attempt(record['Creator'], purchase)
 		return result
-	
+
 	def __call__(self):
 		values = self.readInput()
 		record = self.getPaymentRecord(values)
 		purchase_attempt = self.createPurchaseAttempt(record)
-		
+
 		# check for any pending gift purchase
 		creator = record['Creator']
 		purchases = get_gift_pending_purchases(creator)
@@ -461,10 +461,10 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 						list(purchase_attempt.Items))
 			return LocatedExternalDict({'Items': purchases,
 										'Last Modified':lastModified})
-		
+
 		result = self.processPurchase(purchase_attempt, record)
 		return result
-	
+
 @view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
