@@ -236,7 +236,8 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 				  'receiver': 'aizen@bleach.org',
 				  'To': 'Aizen Sosuke',
 				  'message': 'Getsuga Tenshou',
-				  'token': "tok_1053"}
+				  'token': "tok_1053",
+				  'immediate':True}
 		body = json.dumps(params)
 
 		res = self.testapp.post(url, body, status=200)
@@ -258,6 +259,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('Creator', is_('ichigo@bleach.org')))
 		assert_that(items[0], has_entry('SenderName', is_('Ichigo Kurosaki')))
 		assert_that(items[0], has_entry('ReceiverName', is_('Aizen Sosuke')))
+		assert_that(items[0], has_entry('DeliveryDate', is_not(none())))
 
 		url = '/dataserver2/store/get_gift_purchase_attempt'
 		params ={ "purchaseID":items[0]['NTIID'],

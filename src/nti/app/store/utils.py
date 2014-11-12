@@ -67,6 +67,10 @@ def to_boolean(value):
 	else:
 		return None
 
+def is_true(value):
+	value = value if isinstance(value, six.string_types) else str(value)
+	return value.lower() in true_values
+
 def safestr(s):
 	s = s.decode("utf-8") if isinstance(s, bytes) else s
 	return unicode(s) if s is not None else None
