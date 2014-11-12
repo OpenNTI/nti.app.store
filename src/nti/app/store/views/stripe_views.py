@@ -407,20 +407,22 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 			raise hexc.HTTPUnprocessableEntity(_("Invalid sender email"))
 		record['Creator'] = creator
 
-		record['Message'] = values.get('message')
 		record['Sender'] = 	values.get('senderName') or\
 							values.get('sender') or \
 							values.get('from')
+
 		receiver = values.get('receiver') or values.get('to')
-		if receiver:
-			try:
-				checkEmailAddress(receiver)
-			except:
-				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
+		if not receiver:
+			raise hexc.HTTPUnprocessableEntity(_("Must specify a receiver email"))
+		try:
+			checkEmailAddress(receiver)
+		except:
+			raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
 		record['Receiver'] = receiver
 		record['ReceiverName'] = values.get('receiverName') or \
-								 values.get('receiver') or values.get('to')
+								 values.get('to') or values.get('receiver') 
 
+		record['Message'] = values.get('message')
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
