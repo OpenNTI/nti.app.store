@@ -234,7 +234,7 @@ class TestApplicationStoreViews(ApplicationLayerTest):
 				  'from': 'ichigo@bleach.org',
 				  'sender': 'Ichigo Kurosaki',
 				  'receiver': 'aizen@bleach.org',
-				  'receiverName': 'Aizen Sosuke',
+				  'To': 'Aizen Sosuke',
 				  'message': 'Getsuga Tenshou',
 				  'token': "tok_1053"}
 		body = json.dumps(params)
