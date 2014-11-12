@@ -10,6 +10,8 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
+from datetime import date
+from datetime import datetime
 from functools import partial
 
 import zope.intid
@@ -64,6 +66,7 @@ from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_ord
 from nti.utils.maps import CaseInsensitiveDict
 
 from ..utils import safestr
+from ..utils import is_true
 from ..utils import to_boolean
 from ..utils import is_valid_amount
 from ..utils import is_valid_pve_int
@@ -422,6 +425,14 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 		record['ReceiverName'] = values.get('receiverName') or \
 								 values.get('to') or values.get('receiver') 
 
+		immediate = values.get('immediate') or values.get('deliverNow')
+		if is_true(immediate):
+			today = date.today()
+			now = datetime(year=today.year, month=today.month, day=today.day)
+			record['DeliveryDate'] = now
+		else:
+			record['DeliveryDate'] = None
+			
 		record['Message'] = values.get('message')
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
@@ -442,7 +453,8 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 											  message=record['Message'],
 										 	  context=record['Context'],
 										 	  receiver=record['Receiver'],
-										 	  receiver_name=record['ReceiverName'])
+										 	  receiver_name=record['ReceiverName'],
+										 	  delivery_date=record['DeliveryDate'])
 		return result
 
 	def registerPurchaseAttempt(self, purchase, record):
