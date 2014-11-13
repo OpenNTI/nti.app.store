@@ -21,20 +21,20 @@ import stripe
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
-from . import ApplicationStoreTestLayer
+from nti.app.store.tests import ApplicationStoreTestLayer
 
-class TestApplicationStoreViews(ApplicationLayerTest):
+class TestStoreViews(ApplicationLayerTest):
 
 	layer = ApplicationStoreTestLayer
 
 	def setUp(self):
-		super(TestApplicationStoreViews, self).setUp()
+		super(TestStoreViews, self).setUp()
 		self.api_key = stripe.api_key
 		stripe.api_key = u'sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp'
 
 	def tearDown(self):
 		stripe.api_key = self.api_key
-		super(TestApplicationStoreViews, self).tearDown()
+		super(TestStoreViews, self).tearDown()
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):

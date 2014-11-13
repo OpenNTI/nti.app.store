@@ -33,8 +33,7 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
-
-from nti.ntiids import ntiids
+from nti.externalization.interfaces import StandardExternalFields
 
 from nti.store.store import get_purchase_attempt
 from nti.store.store import get_purchase_history
@@ -44,7 +43,6 @@ from nti.store.store import remove_purchase_attempt
 from nti.store.purchasable import get_purchasable
 from nti.store.purchase_history import get_purchase_history_by_item
 
-from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
@@ -57,6 +55,8 @@ from .utils import to_boolean
 from .utils import AbstractPostView
 
 from .views import StorePathAdapter
+
+ITEMS = StandardExternalFields.ITEMS
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -86,7 +86,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
 		writer.writerow(header)
 		
-		for entry in result['Items']:
+		for entry in result[ITEMS]:
 			email = entry['email']
 			transactions = entry['transactions']
 			name = entry['name'].encode('utf-8', 'replace')
@@ -105,7 +105,9 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 	def __call__(self):
 		request = self.request
 		params = CaseInsensitiveDict(request.params)
-		purchasable_id = params.get('purchasableID') or params.get('purchasable_id')
+		purchasable_id = params.get('purchasableID') or \
+						 params.get('purchasable_id') or \
+						 params.get('purchasable')
 		if not purchasable_id:
 			msg = _("Must specify a valid purchasable id")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -128,7 +130,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		inactive = to_boolean(params.get('inactive')) or False
 
 		items = []
-		result = LocatedExternalDict({'Items':items})
+		result = LocatedExternalDict({ITEMS:items})
 		for username in usernames:
 			user = users.User.get_user(username)
 			if not user or not IUser.providedBy(user):
@@ -164,6 +166,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 										 'amount':amount, 'status':p.State})
 				items.append(entry)
 
+		result['Total'] = len(items)
 		result = result if not as_csv else self._to_csv(request, result)
 		return result
 
@@ -219,28 +222,26 @@ class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 			integer_strings.from_external_string(key)
 			purchase = get_purchase_by_code(key)
 		except ValueError:
-			if ntiids.is_valid_ntiid_string(key):
-				purchase = ntiids.find_object_with_ntiid(key)
-			else:
-				purchase = None
+			purchase = get_purchase_attempt(key)
 		return purchase
 
 	def __call__(self):
 		values = self.readInput()
 		transaction = values.get('transaction') or \
 					  values.get('purchaseId') or \
+					  values.get('purchase') or \
 					  values.get('code')
 		if not transaction:
 			msg = _("Must specified a valid transaction or purchase code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		purchase = self._get_purchase(transaction)
-		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
+		if purchase is None:
 			raise hexc.HTTPNotFound(detail=_('Transaction not found'))
 		elif not purchase.has_succeeded():
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase was not successful'))
 
-		manager = component.getUtility(IPaymentProcessor, name=self.processor)
+		manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
 		payment_charge = manager.get_payment_charge(purchase)
 
 		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))

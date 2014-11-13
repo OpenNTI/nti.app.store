@@ -54,20 +54,20 @@ def do_purchase(manager, purchase_id, username, token, expected_amount,
 							  expected_amount=expected_amount)
 	return result
 
-class TestApplicationStoreViews(ApplicationLayerTest):
+class TestStripeViews(ApplicationLayerTest):
 
 	layer = ApplicationStoreTestLayer
 
 	purchasable_id = "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
 
 	def setUp(self):
-		super(TestApplicationStoreViews, self).setUp()
+		super(TestStripeViews, self).setUp()
 		self.api_key = stripe.api_key
 		stripe.api_key = u'sk_test_3K9VJFyfj0oGIMi7Aeg3HNBp'
 
 	def tearDown(self):
 		stripe.api_key = self.api_key
-		super(TestApplicationStoreViews, self).tearDown()
+		super(TestStripeViews, self).tearDown()
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_purchasable_with_stripe_coupon_quantity(self):
