@@ -17,8 +17,6 @@ from datetime import datetime
 
 from zope import component
 from zope.event import notify
-from zope import lifecycleevent
-from zope.annotation import IAnnotations
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -39,14 +37,14 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.ntiids import ntiids
 
 from nti.store.store import get_purchase_attempt
+from nti.store.store import get_purchase_history
+from nti.store.store import delete_purchase_history
 from nti.store.store import remove_purchase_attempt
 
 from nti.store.purchasable import get_purchasable
-from nti.store.purchase_history import PurchaseHistory
 from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.interfaces import IPurchaseAttempt
-from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
@@ -130,19 +128,16 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		inactive = to_boolean(params.get('inactive')) or False
 
 		items = []
-		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
-
 		result = LocatedExternalDict({'Items':items})
 		for username in usernames:
 			user = users.User.get_user(username)
 			if not user or not IUser.providedBy(user):
 				continue
-			annotations = IAnnotations(user, {})
-			if annotation_key not in annotations:
+			history = get_purchase_history(user, safe=False)
+			if history is None:
 				continue
 
 			purchases = get_purchase_history_by_item(user, purchasable_id)
-
 			if all_succeeded:
 				array = [p for p in purchases if p.has_succeeded()]
 			elif all_failed:
@@ -211,15 +206,8 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
 		if not user:
 			raise hexc.HTTPUnprocessableEntity(_('User not found'))
 
-		annotations = IAnnotations(user)
-		annotation_key = "%s.%s" % (PurchaseHistory.__module__, PurchaseHistory.__name__)
-
-		if annotation_key in annotations:
-			su = IPurchaseHistory(user)
-			for p in su.values():
-				lifecycleevent.removed(p)
-			del annotations[annotation_key]
-			logger.info("Purchase history has been removed for user %s", user)
+		if delete_purchase_history(user):
+			logger.info("%s purchase history has been removed", user)
 
 		return hexc.HTTPNoContent()
 
