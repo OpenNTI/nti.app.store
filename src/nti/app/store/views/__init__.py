@@ -407,7 +407,9 @@ class RedeemGiftView(AbstractPostView):
 			purchase = None
 
 		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPNotFound(detail=_('Purchase gift not found'))
+			self.request.response.status_int = 404
+			result = IRedemptionError(_('Purchase gift not found'))
+			return result
 
 		user = self.remoteUser
 		try:
