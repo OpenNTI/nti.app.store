@@ -64,6 +64,7 @@ class TestStoreViews(ApplicationLayerTest):
 		json_body = res.json_body
 		assert_that(json_body, has_entry('Items', has_length(1)))
 		item_body = json_body['Items'][0]
+		self.require_link_href_with_rel(item_body, 'price')
 		self.require_link_href_with_rel(item_body, 'post_stripe_payment')
 		self.require_link_href_with_rel(item_body, 'create_stripe_token')
 		self.require_link_href_with_rel(item_body, 'get_stripe_connect_key')
