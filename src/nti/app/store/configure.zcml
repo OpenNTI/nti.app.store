@@ -40,7 +40,13 @@
 				
 	<subscriber factory=".logon._GetGiftPendingPurchasesMissingUserLinkProvider"
 				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-
+	
+	<subscriber factory=".logon._PricePurchasableMissingUserLinkProvider"
+				provides="nti.appserver.interfaces.ILogonLinkProvider" />
+	
+	<subscriber factory=".logon._PricePurchasableWithStripeCouponMissingUserLinkProvider"
+				provides="nti.appserver.interfaces.ILogonLinkProvider" />
+							
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
 

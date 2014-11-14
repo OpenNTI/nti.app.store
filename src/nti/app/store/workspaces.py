@@ -86,7 +86,11 @@ class _StoreCollection(object):
 		for rel in ('get_purchase_attempt', 'get_pending_purchases',
 					'get_purchase_history', 'get_purchasables', 
 					'redeem_purchase_code', 'redeem_gift', 
-					'get_gift_pending_purchases', 'get_gift_purchase_attempt'):
+					'get_gift_pending_purchases', 
+					'get_gift_purchase_attempt',
+					'price_purchasable',
+					## stripe links
+					'price_purchasable_with_stripe_coupon'):
 			link = Link(STORE, rel=rel, elements=(rel,))
 			link.__name__ = link.target
 			link.__parent__ = ds_folder

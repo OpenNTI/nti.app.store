@@ -63,7 +63,13 @@ class TestStoreViews(ApplicationLayerTest):
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('Items', has_length(1)))
-
+		item_body = json_body['Items'][0]
+		self.require_link_href_with_rel(item_body, 'price')
+		self.require_link_href_with_rel(item_body, 'post_stripe_payment')
+		self.require_link_href_with_rel(item_body, 'create_stripe_token')
+		self.require_link_href_with_rel(item_body, 'get_stripe_connect_key')
+		self.require_link_href_with_rel(item_body, 'price_with_stripe_coupon')
+		
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchase_history(self):
 		url = '/dataserver2/store/get_purchase_history'
