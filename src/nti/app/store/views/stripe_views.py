@@ -415,18 +415,20 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 							values.get('from')
 
 		receiver = values.get('receiver') or values.get('to')
-		if not receiver:
-			raise hexc.HTTPUnprocessableEntity(_("Must specify a receiver email"))
-		try:
-			checkEmailAddress(receiver)
-		except:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
+		if receiver:
+			try:
+				checkEmailAddress(receiver)
+			except:
+				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
 		record['Receiver'] = receiver
 		record['ReceiverName'] = values.get('receiverName') or \
 								 values.get('to') or values.get('receiver') 
 
 		immediate = values.get('immediate') or values.get('deliverNow')
 		if is_true(immediate):
+			if not receiver:
+				raise hexc.HTTPUnprocessableEntity(_("Must specify a receiver email"))
+		
 			today = date.today()
 			now = datetime(year=today.year, month=today.month, day=today.day)
 			record['DeliveryDate'] = now
