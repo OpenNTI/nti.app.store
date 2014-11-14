@@ -163,7 +163,7 @@ def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE
 	result = pricer.price(priceable)
 	return result
 
-@view_config(name="price_purchasable_with_stripe_coupon", **_post_view_defaults)
+@view_config(name="price_purchasable_with_stripe_coupon", **_noauth_post_view_defaults)
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
 	def price(self, purchasable_id, quantity=None, coupon=None):

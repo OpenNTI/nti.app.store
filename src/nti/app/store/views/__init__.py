@@ -105,6 +105,9 @@ _post_view_defaults['request_method'] = 'POST'
 _noauth_view_defaults = _view_defaults.copy()
 _noauth_view_defaults.pop('permission', None)
 
+_noauth_post_defaults = _post_view_defaults.copy()
+_noauth_post_defaults.pop('permission', None)
+
 # get views
 
 def _last_modified(purchases=()):
@@ -320,7 +323,7 @@ class PurchaseAttemptGetView(GenericGetView):
 
 # post views
 
-@view_config(name="price_purchasable", **_post_view_defaults)
+@view_config(name="price_purchasable", **_noauth_post_defaults)
 class PricePurchasableView(AbstractPostView):
 
 	def price(self, purchasable_id, quantity):
@@ -440,4 +443,5 @@ class RedeemGiftView(AbstractPostView):
 
 del _view_defaults
 del _post_view_defaults
+del _noauth_post_defaults
 del _noauth_view_defaults

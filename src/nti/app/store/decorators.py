@@ -57,7 +57,7 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
 			# insert price link
 			price_href = ds_store_path + 'price_purchasable'
-			link = Link(price_href, rel="price", method='Post')
+			link = Link(price_href, rel="price_purchasable", method='Post')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
