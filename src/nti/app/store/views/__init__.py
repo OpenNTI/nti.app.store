@@ -15,6 +15,7 @@ import time
 import gevent
 import isodate
 import numbers
+from urllib import unquote
 from functools import partial
 
 from zope import component
@@ -268,14 +269,25 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 			result = True
 		return result
 
-	def __call__(self):
-		purchasables = []
+	def _check_access(self, purchasable):
 		is_authenticated = (self.remoteUser is not None)
-		for purchasable in get_all_purchasables():
-			if 	purchasable.isPublic and \
-				( (is_authenticated and self._is_permitted(purchasable)) or \
-				  check_purchasable_access(purchasable, self.remoteUser) ):
-				purchasables.append(purchasable)
+		result = purchasable.isPublic and \
+				 ( (is_authenticated and self._is_permitted(purchasable)) or \
+				 	check_purchasable_access(purchasable, self.remoteUser) )
+		return result
+
+	def __call__(self):
+		values = CaseInsensitiveDict(self.request.params)
+		ntiids = values.get("purchasable") or values.get('purchasables')
+		if ntiids:
+			ntiids = ntiids.split()
+			ntiids = {unquote(x).lower() for x in ntiids}
+			
+		purchasables = []
+		for p in get_all_purchasables():
+			if 	self._check_access(p) and \
+				(not ntiids or p.NTIID.lower() in ntiids):
+				purchasables.append(p)
 		result = LocatedExternalDict()
 		result[ITEMS] = purchasables
 		result[LAST_MODIFIED] = 0
