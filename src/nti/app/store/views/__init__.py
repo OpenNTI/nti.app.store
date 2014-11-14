@@ -81,7 +81,7 @@ from ..utils import is_valid_timestamp
 from .. import STORE
 from .. import get_possible_site_names
 
-ITEMS = u'Items'
+ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 @interface.implementer(IPathAdapter)
