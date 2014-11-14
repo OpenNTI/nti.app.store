@@ -43,7 +43,10 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 		
 		if original.Amount:
 			request = self.request
-			ds2 = request.path_info_peek()
+			try:
+				ds2 = request.path_info_peek()
+			except AttributeError: # in unit test we see this
+				ds2 = "dataserver2"
 			ds_store_path = '/%s/%s/' % (ds2, STORE)
 			
 			# insert history link
@@ -90,7 +93,10 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 	def set_links(self, original, external):
 		if original.Amount:
 			request = self.request
-			ds2 = request.path_info_peek()
+			try:
+				ds2 = request.path_info_peek()
+			except AttributeError: # in unit test we see this
+				ds2 = "dataserver2"
 			ds_store_path = '/%s/%s/' % (ds2, STORE)
 			links = external.setdefault(LINKS, [])
 			
