@@ -414,15 +414,15 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 							values.get('sender') or \
 							values.get('from')
 
-		receiver = values.get('receiver') or values.get('to')
+		receiver = values.get('receiver')
 		if receiver:
 			try:
 				checkEmailAddress(receiver)
 			except:
 				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
 		record['Receiver'] = receiver
-		record['ReceiverName'] = values.get('receiverName') or \
-								 values.get('to') or values.get('receiver') 
+		record['ReceiverName'] = values.get('to') or values.get('receiverName') or \
+								 values.get('receiver') 
 
 		immediate = values.get('immediate') or values.get('deliverNow')
 		if is_true(immediate):
