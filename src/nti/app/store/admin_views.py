@@ -23,7 +23,7 @@ from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
-from nti.dataserver import users
+from nti.dataserver.users import User
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
@@ -132,7 +132,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		items = []
 		result = LocatedExternalDict({ITEMS:items})
 		for username in usernames:
-			user = users.User.get_user(username)
+			user = User.get_user(username)
 			if not user or not IUser.providedBy(user):
 				continue
 			history = get_purchase_history(user, safe=False)
@@ -205,7 +205,7 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
 			msg = _("Must specify a valid username")
 			raise hexc.HTTPUnprocessableEntity(msg)
 		
-		user = users.User.get_user(username)
+		user = User.get_user(username)
 		if not user:
 			raise hexc.HTTPUnprocessableEntity(_('User not found'))
 

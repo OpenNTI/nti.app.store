@@ -32,6 +32,7 @@ from nti.dataserver.users.interfaces import checkEmailAddress
 
 from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
+from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.externalization import to_external_object
 
 from nti.ntiids.ntiids import is_valid_ntiid_string
@@ -65,8 +66,8 @@ from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_ord
 
 from nti.utils.maps import CaseInsensitiveDict
 
-from ..utils import safestr
 from ..utils import is_true
+from ..utils import safestr
 from ..utils import to_boolean
 from ..utils import is_valid_amount
 from ..utils import is_valid_pve_int
@@ -76,6 +77,9 @@ from ..utils import AbstractPostView
 from .. import get_possible_site_names
 
 from . import StorePathAdapter
+
+ITEMS = StandardExternalFields.ITEMS
+LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -475,8 +479,8 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
 			logger.warn("There are pending purchase(s) for item(s) %s",
 						list(purchase_attempt.Items))
-			return LocatedExternalDict({'Items': purchases,
-										'Last Modified':lastModified})
+			return LocatedExternalDict({ITEMS: purchases,
+										LAST_MODIFIED:lastModified})
 
 		result = self.processPurchase(purchase_attempt, record)
 		return result
@@ -556,8 +560,8 @@ class RefundPaymentWithStripeView(_PostStripeView):
 		zope_iids = component.getUtility(zope.intid.IIntIds)
 		purchase = zope_iids.queryObject(uid)
 
-		result = LocatedExternalDict({'Items':[purchase],
-									  'Last Modified':purchase.lastModified})
+		result = LocatedExternalDict({ITEMS:[purchase],
+									  LAST_MODIFIED:purchase.lastModified})
 		return result
 
 del _view_defaults
