@@ -10,6 +10,7 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
+import sys
 from datetime import date
 from datetime import datetime
 from functools import partial
@@ -25,6 +26,8 @@ from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+
+from nti.app.externalization.error import raise_json_error as raise_error
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.dataserver import authorization as nauth
@@ -184,7 +187,11 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		# check quantity
 		quantity = values.get('quantity', 1)
 		if not is_valid_pve_int(quantity):
-			raise hexc.HTTPUnprocessableEntity(_("Invalid quantity"))
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Invalid quantity."),
+							'field': 'quantity' },
+						None)
 		quantity = int(quantity)
 
 		status = 422
@@ -260,23 +267,35 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 				context[name] = klass(value)
 		return context
 
-	def getPaymentRecord(self, values=None):
+	def getPaymentRecord(self, request, values=None):
 		values = values or self.readInput()
 		result = CaseInsensitiveDict()
 		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
 		if not purchasable_id:
-			raise hexc.HTTPUnprocessableEntity(_("No item to purchase specified"))
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a purchasable."),
+							'field': 'purchasableID' },
+						None)
 		result['PurchasableID'] = purchasable_id
 
 		stripe_key = None
 		purchasable = get_purchasable(purchasable_id)
 		if purchasable is None:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable item"))
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a valid purchasable."),
+							'field': 'purchasableID' },
+						None)
 		else:
 			provider = purchasable.Provider
 			stripe_key = component.queryUtility(IStripeConnectKey, provider)
 			if not stripe_key:
-				raise hexc.HTTPUnprocessableEntity(_("Invalid purchasable provider"))
+				raise_error(request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Invalid purchasable provider."),
+								'field': 'purchasableID' },
+							None)
 		result['StripeKey'] = stripe_key
 
 		context = self.parseContext(values, purchasable)
@@ -284,12 +303,21 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 
 		token = values.get('token', None)
 		if not token:
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a valid stripe token."),
+							'field': 'token' },
+						None)
 			raise hexc.HTTPUnprocessableEntity(_("No token provided"))
 		result['Token'] = token
 
 		expected_amount = values.get('amount') or values.get('expectedAmount')
 		if expected_amount is not None and not is_valid_amount(expected_amount):
-			raise hexc.HTTPUnprocessableEntity(_("Invalid expected amount"))
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Invalid expected amount."),
+							'field': 'amount' },
+						None)
 		expected_amount = float(expected_amount) if expected_amount is not None else None
 		result['Amount'] = result['ExpectedAmount'] = expected_amount
 
@@ -298,7 +326,11 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 
 		quantity = values.get('quantity', None)
 		if quantity is not None and not is_valid_pve_int(quantity):
-			raise hexc.HTTPUnprocessableEntity(_("Invalid quantity"))
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Invalid quantity."),
+							'field': 'quantity' },
+						None)
 		quantity = int(quantity) if quantity else None
 		result['Quantity'] = quantity
 
@@ -306,6 +338,27 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		result['Description'] = description
 		return result
 
+	def validateCoupon(self, request, record):
+		coupon = record['Coupon']
+		if coupon:
+			manager = component.getUtility(IPaymentProcessor, name=self.processor)
+			try:
+				if not manager.validate_coupon(coupon):
+					raise_error(request,
+								hexc.HTTPUnprocessableEntity,
+								{	'message': _("Invalid coupon."),
+									'field': 'coupon'},
+								None)
+			except StandardError as e:
+				exc_info = sys.exc_info()
+				raise_error(request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Invalid coupon."),
+								'field': 'coupon',
+								'code': e.__class__.__name__},
+							exc_info[2])
+		return record
+	
 	def createPurchaseOrder(self, record):
 		item = create_stripe_purchase_item(record['PurchasableID'] )
 		result = create_stripe_purchase_order(item, quantity=record['Quantity'],
@@ -349,11 +402,11 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 							expected_amount=expected_amount)
 
 		# return
-		return LocatedExternalDict({'Items':[purchase_attempt],
-									'Last Modified':purchase_attempt.lastModified})
+		return LocatedExternalDict({ITEMS:[purchase_attempt],
+									LAST_MODIFIED:purchase_attempt.lastModified})
 	def __call__(self):
 		values = self.readInput()
-		record = self.getPaymentRecord(values)
+		record = self.getPaymentRecord(self.request, values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 		result = self.processPurchase(purchase_attempt, record)
 		return result
@@ -361,8 +414,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 @view_config(name="post_stripe_payment", **_post_view_defaults)
 class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
-	def getPaymentRecord(self, values=None):
-		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord(values)
+	def getPaymentRecord(self, request, values=None):
+		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord(request, values)
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
@@ -380,7 +433,7 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 	def __call__(self):
 		username = self.username
 		values = self.readInput()
-		record = self.getPaymentRecord(values)
+		record = self.getPaymentRecord(self.request, values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 
 		# check for any pending purchase for the items being bought
@@ -389,55 +442,75 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
 			logger.warn("There are pending purchase(s) for item(s) %s",
 						list(purchase_attempt.Items))
-			return LocatedExternalDict({'Items': purchases,
-										'Last Modified':lastModified})
+			return LocatedExternalDict({ITEMS: purchases,
+										LAST_MODIFIED: lastModified})
 
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
-@view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
-class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
+@view_config(name="gift_stripe_payment_preflight", **_noauth_post_view_defaults)
+class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def readInput(self):
-		values = super(GiftWithStripeView, self).readInput()
+		values = super(GiftWithStripePreflightView, self).readInput()
 		values.pop('Quantity', None) # ignore quantity
 		return values
 
-	def getPaymentRecord(self, values):
-		record = super(GiftWithStripeView, self).getPaymentRecord(values)
+	def getPaymentRecord(self, request, values):
+		record = super(GiftWithStripePreflightView, self).getPaymentRecord(request, values)
 		creator = values.get('from') or values.get('sender') or values.get('creator')
 		if not creator:
-			raise hexc.HTTPUnprocessableEntity(_("Must specify a sender email"))
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a sender email."),
+							'field': 'from' },
+						None)
+
 		try:
 			checkEmailAddress(creator)
-		except:
-			raise hexc.HTTPUnprocessableEntity(_("Invalid sender email"))
-		record['Creator'] = creator
+		except StandardError as e:
+			exc_info = sys.exc_info()
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a valid sender email."),
+							'field': 'from',
+							'code': e.__class__.__name__ },
+						exc_info[2])
+		record['From'] = record['Creator'] = creator
 
-		record['Sender'] = 	values.get('senderName') or\
-							values.get('sender') or \
-							values.get('from')
+		record['SenderName'] = record['Sender'] = \
+				values.get('senderName') or values.get('sender') or values.get('from')
 
 		receiver = values.get('receiver')
 		if receiver:
 			try:
 				checkEmailAddress(receiver)
-			except:
-				raise hexc.HTTPUnprocessableEntity(_("Invalid receiver email"))
+			except StandardError as e:
+				exc_info = sys.exc_info()
+				raise_error(request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Please provide a valid receiver email."),
+								'field': 'receiver',
+								'code': e.__class__.__name__ },
+							exc_info[2])
 		record['Receiver'] = receiver
-		record['ReceiverName'] = values.get('to') or values.get('receiverName') or \
-								 values.get('receiver') 
+		record['To'] = record['ReceiverName'] =  \
+				values.get('to') or values.get('receiverName') or values.get('receiver')
 
 		immediate = values.get('immediate') or values.get('deliverNow')
 		if is_true(immediate):
 			if not receiver:
-				raise hexc.HTTPUnprocessableEntity(_("Must specify a receiver email"))
-		
+				raise_error(request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Please provide a receiver email."),
+								'field': 'receiver' },
+							None)
 			today = date.today()
 			now = datetime(year=today.year, month=today.month, day=today.day)
 			record['DeliveryDate'] = now
 		else:
 			record['DeliveryDate'] = None
+		record['Immediate'] = bool(immediate)
 			
 		record['Message'] = values.get('message')
 		purchasable_id = record['PurchasableID']
@@ -449,6 +522,22 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 	@property
 	def username(self):
 		return None
+
+	def createPurchaseAttempt(self, record):
+		pass
+	
+	def registerPurchaseAttempt(self, purchase_attempt, record):
+		pass
+	
+	def __call__(self):
+		values = self.readInput()
+		request = self.request
+		record = self.getPaymentRecord(request, values)
+		self.validateCoupon(request, record)
+		return record
+	
+@view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
+class GiftWithStripeView(GiftWithStripePreflightView):
 
 	def createPurchaseAttempt(self, record):
 		order = self.createPurchaseOrder(record)
@@ -469,7 +558,7 @@ class GiftWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def __call__(self):
 		values = self.readInput()
-		record = self.getPaymentRecord(values)
+		record = self.getPaymentRecord(self.request, values)
 		purchase_attempt = self.createPurchaseAttempt(record)
 
 		# check for any pending gift purchase
