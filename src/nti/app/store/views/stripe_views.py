@@ -494,7 +494,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 								'code': e.__class__.__name__ },
 							exc_info[2])
 		record['Receiver'] = receiver
-		record['To'] = record['ReceiverName'] =  \
+		receiverName = record['To'] = record['ReceiverName'] =  \
 				values.get('to') or values.get('receiverName') or values.get('receiver')
 
 		immediate = values.get('immediate') or values.get('deliverNow')
@@ -512,7 +512,14 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 			record['DeliveryDate'] = None
 		record['Immediate'] = bool(immediate)
 			
-		record['Message'] = values.get('message')
+		message = record['Message'] = values.get('message')
+		if (message or receiverName) and not receiver:
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a receiver email."),
+							'field': 'message' },
+						None)
+
 		purchasable_id = record['PurchasableID']
 		description = record['Description']
 		if not description:
