@@ -503,7 +503,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 				raise_error(request,
 							hexc.HTTPUnprocessableEntity,
 							{	'message': _("Please provide a receiver email."),
-								'field': 'receiver' },
+								'field': 'immediate' },
 							None)
 			today = date.today()
 			now = datetime(year=today.year, month=today.month, day=today.day)
