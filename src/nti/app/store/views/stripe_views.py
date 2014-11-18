@@ -468,7 +468,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 
 		try:
 			checkEmailAddress(creator)
-		except StandardError as e:
+		except Exception as e:
 			exc_info = sys.exc_info()
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
@@ -485,7 +485,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 		if receiver:
 			try:
 				checkEmailAddress(receiver)
-			except StandardError as e:
+			except Exception as e:
 				exc_info = sys.exc_info()
 				raise_error(request,
 							hexc.HTTPUnprocessableEntity,

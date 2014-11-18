@@ -267,6 +267,100 @@ class TestStripeViews(ApplicationLayerTest):
 		self.testapp.get(url, params=params, status=200)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.get_transaction_runner')
+	def test_gift_stripe_payment_preflight(self, mock_aach, mock_cc, mock_gtr):
+		mock_aach.is_callable().with_args().calls(do_purchase)
+		mock_gtr.is_callable().with_args().returns(MockRunner())
+
+		self._create_fakge_charge(199, mock_cc)
+		
+		# no purchasable
+		url = '/dataserver2/store/gift_stripe_payment_preflight'
+		params = {'purchasableID':None}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# invalid purchasable
+		params = {'purchasableID':'foo'}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# no token
+		params = {'purchasableID':self.purchasable_id,
+				  'amount':300,
+				  'token':None}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# invalid amount
+		params = {'purchasableID':self.purchasable_id,
+				  'amount':'foo',
+				  'token':"tok_1053"}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# no sender
+		params = {'purchasableID':self.purchasable_id,
+				  'amount':300,
+				  'token':"tok_1053",
+				  "from":None}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# invalid from
+		params = {'purchasableID':self.purchasable_id,
+				  'amount':300,
+				  'token':"tok_1053",
+				  "from":'foo'}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# invalid receiver
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'from': 'ichigo@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'receiver': 'aizen',
+				  'token': "tok_1053",
+				  'immediate':True}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# no receiver
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'from': 'ichigo@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'token': "tok_1053",
+				  'message':'gift'}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+		
+		# no receiver
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'from': 'ichigo@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'token': "tok_1053",
+				  'To': 'Aizen Sosuke'}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=422)
+				
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'from': 'ichigo@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'receiver': 'aizen@bleach.org',
+				  'To': 'Aizen Sosuke',
+				  'message': 'Getsuga Tenshou',
+				  'token': "tok_1053",
+				  'immediate':True}
+		body = json.dumps(params)
+		self.testapp.post(url, body, status=200)
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_invalid_post_stripe_payment(self):
 		url = '/dataserver2/store/post_stripe_payment'
 		params = {'purchasableID':'not found',
