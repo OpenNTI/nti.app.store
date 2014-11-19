@@ -75,6 +75,8 @@ from nti.store.interfaces import GiftPurchaseAttemptRedeemed
 from nti.utils.maps import CaseInsensitiveDict
 
 from ..utils import AbstractPostView
+
+from ..utils import to_boolean
 from ..utils import is_valid_pve_int
 from ..utils import is_valid_timestamp
 
@@ -241,13 +243,15 @@ class GetGiftPurchaseAttemptView(AbstractView, BaseGetPurchaseAttemptView):
 
 	def __call__(self):
 		values = CaseInsensitiveDict(self.request.params)
-		purchase_id = 	values.get('purchaseID') or \
-						values.get('purchase_id') or \
-						values.get('purchase')
+		purchase_id = values.get('purchaseID') or \
+					  values.get('purchase_id') or \
+					  values.get('purchase')
+
 		username = 	values.get('username') or \
 					values.get('creator') or \
 					values.get('sender') or \
 					values.get('from')
+
 		result = self._do_get(purchase_id, username)
 		return result
 
@@ -415,6 +419,11 @@ class RedeemGiftView(AbstractPostView):
 			msg = _("Must specify a valid gift code")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
+		allow_vendor_updates = 	values.get('AllowVendorUpdates') or \
+								values.get('allow_vendor_updates')
+		if allow_vendor_updates is not None:
+			allow_vendor_updates = to_boolean(allow_vendor_updates)
+	
 		try:
 			purchase = get_purchase_by_code(gift_code)
 		except ValueError:
@@ -431,6 +440,11 @@ class RedeemGiftView(AbstractPostView):
 			if purchase.is_redeemed():
 				result = IRedemptionError(_("Gift purchase already redeemded"))
 				self.request.response.status_int = 422
+				
+			if allow_vendor_updates is not None:
+				context = purchase.Context
+				context['AllowVendorUpdates'] = allow_vendor_updates
+				
 			notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
 		except RedemptionException as e:
 			result = IRedemptionError(e)
