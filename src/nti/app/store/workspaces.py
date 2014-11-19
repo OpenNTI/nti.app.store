@@ -90,6 +90,8 @@ class _StoreCollection(object):
 					'get_gift_purchase_attempt',
 					'price_purchasable',
 					## stripe links
+					'gift_stripe_payment',
+					'gift_stripe_payment_preflight',
 					'price_purchasable_with_stripe_coupon'):
 			link = Link(STORE, rel=rel, elements=(rel,))
 			link.__name__ = link.target

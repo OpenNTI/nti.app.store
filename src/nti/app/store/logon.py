@@ -33,11 +33,12 @@ class _BaseStoreLinkProvider(object):
 		root = self.request.route_path('objects.generic.traversal', traverse=())
 		root = root[:-1] if root.endswith('/') else root
 		for name in ('get_purchasables',
-					 'gift_stripe_payment', 
-					 'get_gift_pending_purchases',
-					 'get_gift_purchase_attempt',
 					 'price_purchasable',
+					 'get_gift_purchase_attempt',
+					 'get_gift_pending_purchases',
 					 ## stripe links
+					 'gift_stripe_payment',
+					 'gift_stripe_payment_preflight',
 					 'price_purchasable_with_stripe_coupon'):
 			elements = (STORE, name)
 			link = Link(root, elements=elements, rel=name)
@@ -75,6 +76,9 @@ class _GetGiftPurchaseAttemptMissingUserLinkProvider(_StoreMissingUserLinkProvid
 class _GiftStripePaymentMissingUserLinkProvider(_StoreMissingUserLinkProvider):
 	rel = 'gift_stripe_payment'
 
+class _GiftStripePaymentPreflightMissingUserLinkProvider(_StoreMissingUserLinkProvider):
+	rel = 'gift_stripe_payment_preflight'
+	
 class _GetPurchasablesMissingUserLinkProvider(_StoreMissingUserLinkProvider):
 	rel = 'get_purchasables'
 	

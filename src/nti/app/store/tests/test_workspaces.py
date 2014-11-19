@@ -36,4 +36,4 @@ class TestUserService(ApplicationLayerTest):
 		store_wss = [x for x in ext_object['Items'] if x['Title'] == 'store']
 		assert_that( store_wss, has_length( 1 ))
 		store_wss, = store_wss
-		assert_that(store_wss['Items'], has_item( has_entry( 'Links', has_length(10))))
+		assert_that(store_wss['Items'], has_item( has_entry( 'Links', has_length(12))))

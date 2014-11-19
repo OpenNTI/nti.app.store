@@ -19,6 +19,7 @@ class TestLogon(ApplicationLayerTest):
 						   extra_environ={b'HTTP_ORIGIN': b'http://platform.ou.edu'})
 		self.require_link_href_with_rel( res.json_body, 'get_purchasables' )
 		self.require_link_href_with_rel( res.json_body, 'gift_stripe_payment' )
+		self.require_link_href_with_rel( res.json_body, 'gift_stripe_payment_preflight' )
 		self.require_link_href_with_rel( res.json_body, 'get_gift_pending_purchases' )
 		self.require_link_href_with_rel( res.json_body, 'price_purchasable' )
 		self.require_link_href_with_rel( res.json_body, 'price_purchasable_with_stripe_coupon' )

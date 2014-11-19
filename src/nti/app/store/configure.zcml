@@ -32,13 +32,16 @@
 	<subscriber factory=".logon._GetGiftPurchaseAttemptMissingUserLinkProvider"
 				provides="nti.appserver.interfaces.ILogonLinkProvider" />
 				
-	<subscriber factory=".logon._GiftStripePaymentMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-
 	<subscriber factory=".logon._GetPurchasablesMissingUserLinkProvider"
 				provides="nti.appserver.interfaces.ILogonLinkProvider" />
 				
 	<subscriber factory=".logon._GetGiftPendingPurchasesMissingUserLinkProvider"
+				provides="nti.appserver.interfaces.ILogonLinkProvider" />
+	
+	<subscriber factory=".logon._GiftStripePaymentMissingUserLinkProvider"
+				provides="nti.appserver.interfaces.ILogonLinkProvider" />
+	
+	<subscriber factory=".logon._GiftStripePaymentPreflightMissingUserLinkProvider"
 				provides="nti.appserver.interfaces.ILogonLinkProvider" />
 	
 	<subscriber factory=".logon._PricePurchasableMissingUserLinkProvider"
