@@ -15,8 +15,6 @@ from datetime import date
 from datetime import datetime
 from functools import partial
 
-import zope.intid
-
 from zope import component
 from zope.event import notify
 
@@ -33,18 +31,15 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
 
-from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.externalization import to_external_object
-
-from nti.ntiids.ntiids import is_valid_ntiid_string
-from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store import PricingException
 from nti.store import InvalidPurchasable
 
 from nti.store.store import get_purchasable
+from nti.store.store import get_purchase_attempt
 from nti.store.store import get_purchase_by_code
 from nti.store.store import get_pending_purchases
 from nti.store.store import create_purchase_attempt
@@ -54,7 +49,6 @@ from nti.store.store import create_gift_purchase_attempt
 from nti.store.store import register_gift_purchase_attempt
 
 from nti.store.interfaces import IPricingError
-from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
@@ -581,53 +575,94 @@ class GiftWithStripeView(GiftWithStripePreflightView):
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
+
+def find_purchase(key):
+	try:
+		purchase = get_purchase_by_code(key)
+	except ValueError:
+		purchase = get_purchase_attempt(key)
+	return purchase
+	
 @view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
-	def _get_purchase(self, key):
-		try:
-			integer_strings.from_external_string(key)
-			purchase = get_purchase_by_code(key)
-		except ValueError:
-			if is_valid_ntiid_string(key):
-				purchase = find_object_with_ntiid(key)
-			else:
-				purchase = None
-		return purchase
-
 	def __call__(self):
 		values = self.readInput()
-		transaction = values.get('transaction') or \
-					  values.get('purchaseId') or \
-                      values.get('code')
-		if not transaction:
-			msg = _("Must specified a valid transaction or purchase code")
-			raise hexc.HTTPUnprocessableEntity(msg)
+		trx_id = values.get('transactionId') or \
+				 values.get('transaction') or \
+				 values.get('purchaseId') or \
+				 values.get('purchase') or \
+                 values.get('code')
+		if not trx_id:
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a transaction id."),
+							'field': 'transaction' },
+						None)
 
-		purchase = self._get_purchase(transaction)
-		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPNotFound(detail=_('Transaction not found'))
+		purchase = find_purchase(trx_id)
+		if purchase is None:
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Transaction not found."),
+							'field': 'transaction' },
+						None)
 		elif not purchase.has_succeeded():
-			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase was not successful'))
-
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Transaction was not successful."),
+							'field': 'transaction' },
+						None)
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 		payment_charge = manager.get_payment_charge(purchase)
 
 		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
 		return hexc.HTTPNoContent()
 
+def refund_purchase(purchase, amount, refund_application_fee, request, processor=STRIPE):
+	manager = component.getUtility(IPaymentProcessor, name=processor)
+	return manager.refund_purchase(	purchase, amount=amount,
+									refund_application_fee=refund_application_fee,
+									request=request)
+
 @view_config(name="refund_payment_with_stripe", **_admin_view_defaults)
 class RefundPaymentWithStripeView(_PostStripeView):
 
 	def processInput(self):
 		values = self.readInput()
-		trax_id = values.get('transactionId', values.get('transaction_id', None))
-		if not trax_id:
-			raise hexc.HTTPUnprocessableEntity(_("No transaction id specified"))
+		trx_id = values.get('transactionId') or \
+				 values.get('transaction') or \
+				 values.get('purchaseId') or \
+				 values.get('purchase') or \
+                 values.get('code')
+		if not trx_id:
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a transaction id."),
+							'field': 'transaction' },
+						None)
 
+		purchase = find_purchase(trx_id)
+		if purchase is None:
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Transaction not found."),
+							'field': 'transaction' },
+						None)
+		elif not purchase.has_succeeded():
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Transaction was not successful."),
+							'field': 'transaction' },
+						None)
+			
 		amount = values.get('amount', None)
 		if amount is not None and not is_valid_amount(amount):
-			raise hexc.HTTPUnprocessableEntity(_("Invalid amount"))
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a valid amount."),
+							'field': 'amount' },
+						None)
 		amount = float(amount) if amount is not None else None
 
 		refund_application_fee = values.get('refundApplicationFee') or \
@@ -635,26 +670,30 @@ class RefundPaymentWithStripeView(_PostStripeView):
 
 		if refund_application_fee is not None:
 			if not is_valid_boolean(refund_application_fee):
-				raise hexc.HTTPUnprocessableEntity(_("Invalid refund application fee"))
+				raise_error(self.request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Please provide a valid application fee."),
+								'field': 'refundApplicationFee' },
+							None)
 			refund_application_fee = to_boolean(refund_application_fee)
+
+		return purchase, amount, refund_application_fee
 
 	def __call__(self):
 		request = self.request
-		trx_id, amount, refund_application_fee = self.processInput()
-		manager = component.getUtility(IPaymentProcessor, name=self.processor)
+		purchase, amount, refund_application_fee = self.processInput()
 		try:
-			manager.refund_purchase(trx_id, amount=amount,
-									refund_application_fee=refund_application_fee,
-									request=request)
-		except StandardError:
+			refund_purchase(purchase, amount=amount,
+							refund_application_fee=refund_application_fee,
+							request=request)
+		except Exception as e:
 			logger.exception("Error while refunding transaction")
-			msg = _("Error while refunding transaction")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
-		# return
-		uid = integer_strings.from_external_string(trx_id)
-		zope_iids = component.getUtility(zope.intid.IIntIds)
-		purchase = zope_iids.queryObject(uid)
+			exc_info = sys.exc_info()
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Error while refunding transaction."),
+							'code': e.__class__.__name__ },
+						exc_info[2])
 
 		result = LocatedExternalDict({ITEMS:[purchase],
 									  LAST_MODIFIED:purchase.lastModified})
