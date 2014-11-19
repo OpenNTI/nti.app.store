@@ -22,8 +22,10 @@ class AbstractPostView(AbstractAuthenticatedView,
 					   ModeledContentUploadRequestUtilsMixin):
 
 	def readInput(self, value=None):
-		values = super(AbstractPostView, self).readInput(value=value)
-		result = CaseInsensitiveDict(values)
+		result = CaseInsensitiveDict()
+		if self.request.body:
+			values = super(AbstractPostView, self).readInput(value=value)
+			result.update(values)
 		return result
 
 def is_valid_timestamp(ts):
