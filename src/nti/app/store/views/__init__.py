@@ -441,7 +441,7 @@ class RedeemGiftView(AbstractPostView):
 				result = IRedemptionError(_("Gift purchase already redeemded"))
 				self.request.response.status_int = 422
 				
-			## CS: Modify context of original purchase so it cane copied
+			## CS: Modify the context of the original purchase so it can copied
 			## to the new redeemed purchase
 			if allow_vendor_updates is not None:
 				context = purchase.Context
