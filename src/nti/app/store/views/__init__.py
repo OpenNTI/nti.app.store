@@ -451,6 +451,9 @@ class RedeemGiftView(AbstractPostView):
 		except RedemptionException as e:
 			result = IRedemptionError(e)
 			self.request.response.status_int = 422
+		except ValueError as e:
+			result = IRedemptionError(e)
+			self.request.response.status_int = 409
 		else:
 			result = hexc.HTTPNoContent()
 		return result
