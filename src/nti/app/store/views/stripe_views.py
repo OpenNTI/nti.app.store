@@ -132,11 +132,15 @@ class CreateStripeTokenView(_PostStripeView):
 						('exp_month', 'expMonth', 'exp_month'),
 						('number', 'CC', 'number'))
 
-			for k, p, a in required:
-				value = values.get(p) or values.get(a)
+			for key, param, alias in required:
+				value = values.get(param) or values.get(alias)
 				if not value:
-					raise hexc.HTTPBadRequest(detail='Invalid %s value' % p)
-				params[k] = safestr(value)
+					raise_error(self.request,
+								hexc.HTTPUnprocessableEntity,
+								{	'message': _("Invalid value."),
+									'field': param },
+								None)
+				params[key] = safestr(value)
 		else:
 			params['customer_id'] = customer_id
 
