@@ -231,7 +231,7 @@ class TestStripeViews(ApplicationLayerTest):
 		url = '/dataserver2/store/gift_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
-				  'from': 'ichigo@bleach.org',
+				  'from': 'ichigo+@bleach.org',
 				  'sender': 'Ichigo Kurosaki',
 				  'receiver': 'aizen@bleach.org',
 				  'To': 'Aizen Sosuke',
@@ -256,14 +256,14 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
 		assert_that(items[0], has_entry('ID', is_not(none())))
 		assert_that(items[0], has_entry('NTIID', is_not(none())))
-		assert_that(items[0], has_entry('Creator', is_('ichigo@bleach.org')))
+		assert_that(items[0], has_entry('Creator', is_('ichigo+@bleach.org')))
 		assert_that(items[0], has_entry('SenderName', is_('Ichigo Kurosaki')))
 		assert_that(items[0], has_entry('ReceiverName', is_('Aizen Sosuke')))
 		assert_that(items[0], has_entry('DeliveryDate', is_not(none())))
 
 		url = '/dataserver2/store/get_gift_purchase_attempt'
 		params ={ "purchaseID":items[0]['NTIID'],
-				  'creator': 'ichigo@bleach.org' }
+				  'creator': 'ichigo+@bleach.org' }
 		self.testapp.get(url, params=params, status=200)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
