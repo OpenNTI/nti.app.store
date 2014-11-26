@@ -77,6 +77,7 @@ from nti.utils.maps import CaseInsensitiveDict
 from ..utils import AbstractPostView
 
 from ..utils import to_boolean
+from ..utils import parse_datetime
 from ..utils import is_valid_pve_int
 from ..utils import is_valid_timestamp
 
@@ -149,24 +150,15 @@ class GetGiftPendingPurchasesView(AbstractAuthenticatedView):
 @view_config(name="get_purchase_history", **_view_defaults)
 class GetPurchaseHistoryView(AbstractAuthenticatedView):
 
-	def _parse_datetime(self, t):
-		result = t
-		if is_valid_timestamp(t):
-			result = float(t)
-		elif isinstance(t, six.string_types):
-			result = time.mktime(isodate.parse_datetime(t).timetuple())
-		return result if isinstance(t, numbers.Number) else None
-
 	def __call__(self):
 		request = self.request
 		username = self.remoteUser.username
 		values = CaseInsensitiveDict(request.params)
 		purchasable_id = values.get('purchasableID') or \
-						 values.get('purchasable_id') or \
 						 values.get('purchasable')
 		if not purchasable_id:
-			end_time = self._parse_datetime(values.get('endTime', None))
-			start_time = self._parse_datetime(values.get('startTime', None))
+			end_time = parse_datetime(values.get('endTime', None))
+			start_time = parse_datetime(values.get('startTime', None))
 			purchases = get_purchase_history(username, start_time, end_time)
 		else:
 			purchases = get_purchase_history_by_item(username, purchasable_id)

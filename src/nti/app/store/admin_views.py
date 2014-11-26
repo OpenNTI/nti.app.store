@@ -54,6 +54,7 @@ from nti.store.interfaces import PurchaseAttemptSuccessful
 from nti.utils.maps import CaseInsensitiveDict
 
 from .utils import to_boolean
+from .utils import parse_datetime
 from .utils import AbstractPostView
 
 from .views import StorePathAdapter
@@ -192,6 +193,9 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 		all_failed = to_boolean(params.get('failed'))
 		all_succeeded = to_boolean(params.get('succeeded'))
 
+		end_time = parse_datetime(params.get('endTime', None))
+		start_time = parse_datetime(params.get('startTime', None))
+			
 		stream = BytesIO()
 		writer = csv.writer(stream)
 		response = request.response
@@ -208,7 +212,8 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 			if usernames and username not in usernames:
 				continue
 	
-			purchases = get_gift_purchase_history(username)
+			purchases = get_gift_purchase_history(username, start_time=start_time,
+												  end_time=end_time)
 			if all_succeeded:
 				purchases = [p for p in purchases if p.has_succeeded()]
 			elif all_failed:

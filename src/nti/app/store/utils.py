@@ -9,6 +9,11 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import six
+import time
+import isodate
+import numbers
+from datetime import date
+from datetime import datetime
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
@@ -76,3 +81,17 @@ def is_true(value):
 def safestr(s):
 	s = s.decode("utf-8") if isinstance(s, bytes) else s
 	return unicode(s) if s is not None else None
+
+def parse_datetime(t):
+	result = t
+	if t is None:
+		result = None
+	elif is_valid_timestamp(t):
+		result = float(t)
+	elif isinstance(t, six.string_types):
+		result = time.mktime(isodate.parse_datetime(t).timetuple())
+	elif isinstance(t, (date,datetime)):
+		result = time.mktime(t.timetuple())
+	result = result if isinstance(t, numbers.Number) else None
+	return result
+	
