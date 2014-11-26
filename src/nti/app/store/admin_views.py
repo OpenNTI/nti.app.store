@@ -35,19 +35,21 @@ from nti.externalization import integer_strings
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.store.store import get_gift_code
+from nti.store.store import get_gift_registry
+from nti.store.store import get_invitation_code
+from nti.store.store import get_purchase_by_code
 from nti.store.store import get_purchase_attempt
 from nti.store.store import get_purchase_history
 from nti.store.store import delete_purchase_history
 from nti.store.store import remove_purchase_attempt
+from nti.store.store import get_gift_purchase_history
 
 from nti.store.purchasable import get_purchasable
 from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import PurchaseAttemptSuccessful
-
-from nti.store.invitations import get_invitation_code
-from nti.store.invitations import get_purchase_by_code
 
 from nti.utils.maps import CaseInsensitiveDict
 
@@ -72,6 +74,11 @@ _post_view_defaults['request_method'] = 'POST'
 _admin_view_defaults = _post_view_defaults.copy()
 _admin_view_defaults['permission'] = nauth.ACT_MODERATE
 
+def _tx_string(s):
+	if s is not None and isinstance(s, unicode):
+		s = s.encode('utf-8')
+	return s
+
 @view_config(name="get_users_purchase_history", **_view_admin_defaults)
 class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
@@ -92,11 +99,13 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			name = entry['name'].encode('utf-8', 'replace')
 			username = entry['username'].encode('utf-8', 'replace')
 			for trx in transactions:
-				writer.writerow( [ 	username, name, email,
-									trx['transaction'],
-									trx['date'],
-									trx['amount'],
-									trx['status'] ] )
+				row_data = [ username, name, email,
+							 trx['transaction'],
+							 trx['date'],
+							 trx['amount'],
+							 trx['status'] ]
+				writer.writerow([ _tx_string(x) for x in row_data])
+
 		stream.flush()
 		stream.seek(0)
 		response.body_file = stream
@@ -168,6 +177,86 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
 		result['Total'] = len(items)
 		result = result if not as_csv else self._to_csv(request, result)
+		return result
+
+@view_config(name="get_users_gift_history", **_view_admin_defaults)
+class GetUsersGiftHistoryView(AbstractAuthenticatedView):
+
+	def _to_csv(self, request, result):
+		stream = BytesIO()
+		writer = csv.writer(stream)
+		response = request.response
+		response.content_encoding = str('identity' )
+		response.content_type = str('text/csv; charset=UTF-8')
+		response.content_disposition = str( 'attachment; filename="purchases.csv"' )
+		
+		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
+		writer.writerow(header)
+		
+		for entry in result[ITEMS]:
+			email = entry['email']
+			transactions = entry['transactions']
+			name = entry['name'].encode('utf-8', 'replace')
+			username = entry['username'].encode('utf-8', 'replace')
+			for trx in transactions:
+				writer.writerow( [ 	username, name, email,
+									trx['transaction'],
+									trx['date'],
+									trx['amount'],
+									trx['status'] ] )
+		stream.flush()
+		stream.seek(0)
+		response.body_file = stream
+		return response
+
+	def __call__(self):
+		request = self.request
+		params = CaseInsensitiveDict(request.params)
+		usernames = params.get('usernames') or params.get('username')
+		if usernames:
+			usernames = set(usernames.split(","))
+	
+		all_failed = to_boolean(params.get('failed'))
+		all_succeeded = to_boolean(params.get('succeeded'))
+
+		stream = BytesIO()
+		writer = csv.writer(stream)
+		response = request.response
+		response.content_encoding = str('identity' )
+		response.content_type = str('text/csv; charset=UTF-8')
+		response.content_disposition = str( 'attachment; filename="gifts.csv"' )
+		
+		header = ["transaction", "from", 'sender', 'to', 'receiver', 'date', 
+				  'amount', 'status']
+		writer.writerow(header)
+		
+		items = []
+		registry = get_gift_registry()
+		result = LocatedExternalDict({ITEMS:items})
+		for username in registry.keys():
+			if usernames and username not in usernames:
+				continue
+	
+			purchases = get_gift_purchase_history(username)
+			if all_succeeded:
+				purchases = [p for p in purchases if p.has_succeeded()]
+			elif all_failed:
+				purchases = [p for p in purchases if p.has_failed()]
+
+			for p in purchases:
+				started = isodate.date_isoformat(datetime.fromtimestamp(p.StartTime))
+				amount = getattr(p.Pricing, 'TotalPurchasePrice', None) or u''
+				row_data = [get_gift_code(p), 
+							username, p.SenderName,
+							p.Receiver, p.ReceiverName,
+							started,
+							amount,
+							p.State]
+				writer.writerow([ _tx_string(x) for x in row_data])
+
+		stream.flush()
+		stream.seek(0)
+		response.body_file = stream
 		return result
 
 # post views
