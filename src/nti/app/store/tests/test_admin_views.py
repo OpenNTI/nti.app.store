@@ -191,3 +191,33 @@ class TestAdminViews(ApplicationLayerTest):
 		body = json.dumps(body)
 		
 		self.testapp.post(url, body, status=204)
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+	@fudge.patch('nti.store.payments.stripe.processor.purchase.get_transaction_runner')
+	def test_get_users_gift_history(self, mock_aach, mock_cc, mock_gtr):
+		mock_aach.is_callable().with_args().calls(do_purchase)
+		mock_gtr.is_callable().with_args().returns(MockRunner())
+
+		self._create_fakge_charge(199, mock_cc)
+		url = '/dataserver2/store/gift_stripe_payment'
+		params = {'purchasableID':self.purchasable_id,
+				  'amount': 300,
+				  'from': 'ichigo+@bleach.org',
+				  'sender': 'Ichigo Kurosaki',
+				  'receiver': 'aizen@bleach.org',
+				  'To': 'Aizen Sosuke',
+				  'message': 'Getsuga Tenshou',
+				  'token': "tok_1053",
+				  'immediate':True}
+		body = json.dumps(params)
+
+		self.testapp.post(url, body, status=200)
+		url = '/dataserver2/store/get_users_gift_history'
+		params = {'username':'ichigo+@bleach.org'}
+		res = self.testapp.get(url, params, status=200)
+		stream = StringIO(res.text)
+		reader = csv.reader(stream)
+		lines = list(reader)
+		assert_that(lines, has_length(2))

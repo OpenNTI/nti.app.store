@@ -114,9 +114,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 	def __call__(self):
 		request = self.request
 		params = CaseInsensitiveDict(request.params)
-		purchasable_id = params.get('purchasableID') or \
-						 params.get('purchasable_id') or \
-						 params.get('purchasable')
+		purchasable_id = params.get('purchasableID') or params.get('purchasable')
 		if not purchasable_id:
 			msg = _("Must specify a valid purchasable id")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -134,8 +132,10 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			usernames = _users.keys()
 
 		as_csv = to_boolean(params.get('csv'))
+		
 		all_failed = to_boolean(params.get('failed'))
 		all_succeeded = to_boolean(params.get('succeeded'))
+		
 		inactive = to_boolean(params.get('inactive')) or False
 
 		items = []
@@ -182,33 +182,6 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 @view_config(name="get_users_gift_history", **_view_admin_defaults)
 class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 
-	def _to_csv(self, request, result):
-		stream = BytesIO()
-		writer = csv.writer(stream)
-		response = request.response
-		response.content_encoding = str('identity' )
-		response.content_type = str('text/csv; charset=UTF-8')
-		response.content_disposition = str( 'attachment; filename="purchases.csv"' )
-		
-		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
-		writer.writerow(header)
-		
-		for entry in result[ITEMS]:
-			email = entry['email']
-			transactions = entry['transactions']
-			name = entry['name'].encode('utf-8', 'replace')
-			username = entry['username'].encode('utf-8', 'replace')
-			for trx in transactions:
-				writer.writerow( [ 	username, name, email,
-									trx['transaction'],
-									trx['date'],
-									trx['amount'],
-									trx['status'] ] )
-		stream.flush()
-		stream.seek(0)
-		response.body_file = stream
-		return response
-
 	def __call__(self):
 		request = self.request
 		params = CaseInsensitiveDict(request.params)
@@ -230,9 +203,7 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 				  'amount', 'status']
 		writer.writerow(header)
 		
-		items = []
 		registry = get_gift_registry()
-		result = LocatedExternalDict({ITEMS:items})
 		for username in registry.keys():
 			if usernames and username not in usernames:
 				continue
@@ -257,7 +228,7 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 		stream.flush()
 		stream.seek(0)
 		response.body_file = stream
-		return result
+		return response
 
 # post views
 
