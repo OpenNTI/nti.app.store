@@ -172,7 +172,7 @@ def _sync_purchase(purchase, request):
 	creator = purchase.creator
 	username = getattr(creator, 'username', creator)
 	site_names = get_possible_site_names(request)
-	
+
 	def sync_purchase():
 		manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
 		manager.sync_purchase(purchase_id=purchase_id,
@@ -201,7 +201,7 @@ class BaseGetPurchaseAttemptView(object):
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")
 			raise hexc.HTTPUnprocessableEntity(msg)
-		
+
 		if not username:
 			msg = _("Must specify a valid user/creator name")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -217,7 +217,7 @@ class BaseGetPurchaseAttemptView(object):
 		result[LAST_MODIFIED] = purchase.lastModified
 		interface.alsoProvides(result, IUncacheableInResponse)
 		return result
-	
+
 @view_config(name="get_purchase_attempt", **_view_defaults)
 class GetPurchaseAttemptView(AbstractAuthenticatedView, BaseGetPurchaseAttemptView):
 
@@ -281,7 +281,7 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 		if ntiids:
 			ntiids = ntiids.split()
 			ntiids = {unquote(x).lower() for x in ntiids}
-			
+
 		purchasables = []
 		for p in get_all_purchasables():
 			if 	self._check_access(p) and \
@@ -297,7 +297,7 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 			 context=IPurchasable,
 			 request_method='GET')
 class PurchasableGetView(GenericGetView):
-	
+
 	def __call__(self):
 		result = GenericGetView.__call__(self)
 		if 	result is not None and \
@@ -415,7 +415,7 @@ class RedeemGiftView(AbstractPostView):
 								values.get('allow_vendor_updates')
 		if allow_vendor_updates is not None:
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
-	
+
 		try:
 			purchase = get_purchase_by_code(gift_code)
 		except ValueError:
@@ -424,21 +424,21 @@ class RedeemGiftView(AbstractPostView):
 
 		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
 			self.request.response.status_int = 404
-			result = IRedemptionError(_('Purchase gift not found'))
+			result = IRedemptionError(_('Gift purchase not found'))
 			return result
 
 		user = self.remoteUser
 		try:
 			if purchase.is_redeemed():
-				result = IRedemptionError(_("Gift purchase already redeemded"))
+				result = IRedemptionError(_("Gift purchase already redeemed"))
 				self.request.response.status_int = 422
-				
+
 			## CS: Modify the context of the original purchase so it can copied
 			## to the new redeemed purchase
 			if allow_vendor_updates is not None:
 				context = purchase.Context
 				context['AllowVendorUpdates'] = allow_vendor_updates
-				
+
 			notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
 		except RedemptionException as e:
 			result = IRedemptionError(e)
