@@ -3,6 +3,7 @@
 """
 .. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -154,7 +155,7 @@ class GetPurchaseHistoryView(AbstractAuthenticatedView):
 		request = self.request
 		username = self.remoteUser.username
 		values = CaseInsensitiveDict(request.params)
-		purchasable_id = values.get('purchasableID') or \
+		purchasable_id = values.get('purchasableId') or \
 						 values.get('purchasable')
 		if not purchasable_id:
 			end_time = parse_datetime(values.get('endTime', None))
@@ -224,8 +225,7 @@ class GetPurchaseAttemptView(AbstractAuthenticatedView, BaseGetPurchaseAttemptVi
 	def __call__(self):
 		username = self.remoteUser.username
 		values = CaseInsensitiveDict(self.request.params)
-		purchase_id = 	values.get('purchaseID') or \
-						values.get('purchase_id') or \
+		purchase_id = 	values.get('purchaseId') or \
 						values.get('purchase')
 		result = self._do_get(purchase_id, username)
 		return result
@@ -235,8 +235,7 @@ class GetGiftPurchaseAttemptView(AbstractView, BaseGetPurchaseAttemptView):
 
 	def __call__(self):
 		values = CaseInsensitiveDict(self.request.params)
-		purchase_id = values.get('purchaseID') or \
-					  values.get('purchase_id') or \
+		purchase_id = values.get('purchaseId') or \
 					  values.get('purchase')
 
 		username = 	values.get('username') or \

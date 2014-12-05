@@ -3,6 +3,7 @@
 """
 .. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -129,8 +130,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			usernames = usernames.split(",")
 		else:
 			dataserver = component.getUtility(IDataserver)
-			_users = IShardLayout(dataserver).users_folder
-			usernames = _users.keys()
+			users_folder = IShardLayout(dataserver).users_folder
+			usernames = users_folder.keys()
 
 		as_csv = to_boolean(params.get('csv'))
 		
@@ -211,7 +212,6 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 		for username in registry.keys():
 			if usernames and username not in usernames:
 				continue
-	
 			purchases = get_gift_purchase_history(username, start_time=start_time,
 												  end_time=end_time)
 			if all_succeeded:
@@ -244,8 +244,7 @@ class DeletePurchaseAttemptView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchase_id = 	values.get('purchaseID') or \
-						values.get('purchase_id') or \
+		purchase_id = 	values.get('purchaseId') or \
 						values.get('purchase')
 		if not purchase_id:
 			msg = _("Must specify a valid purchase attempt id")

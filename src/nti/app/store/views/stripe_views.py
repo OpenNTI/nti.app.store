@@ -3,6 +3,7 @@
 """
 .. $Id$
 """
+
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
@@ -268,7 +269,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 	def getPaymentRecord(self, request, values=None):
 		values = values or self.readInput()
 		result = CaseInsensitiveDict()
-		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
+		purchasable_id = values.get('purchasableId') or values.get('purchasable')
 		if not purchasable_id:
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
@@ -578,7 +579,6 @@ class GiftWithStripeView(GiftWithStripePreflightView):
 
 		result = self.processPurchase(purchase_attempt, record)
 		return result
-
 
 def find_purchase(key):
 	try:
