@@ -54,7 +54,7 @@ from nti.store.purchasable import get_all_purchasables
 
 from nti.store.store import get_purchase_by_code
 
-from nti.store.invitations import InvitationAlreadyAccepted
+from nti.store.invitations import InvitationAlreadyAccepted, InvitationExpired
 from nti.store.invitations import InvitationCapacityExceeded
 from nti.store.invitations import create_store_purchase_invitation
 
@@ -65,7 +65,7 @@ from nti.store.purchase_history import get_purchase_history
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_history import get_purchase_history_by_item
 
-from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchasable, IInvitationPurchaseAttempt
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IPaymentProcessor
@@ -349,53 +349,79 @@ class PricePurchasableView(AbstractPostView):
 		result = self.price_purchasable()
 		return result
 
-@view_config(name="redeem_purchase_code", **_post_view_defaults)
-class RedeemPurchaseCodeView(AbstractPostView):
-
-	def __call__(self):
-		values = self.readInput()
-		purchasable_id = values.get('purchasableID') or \
-						 values.get('purchasable_id') or \
-						 values.get('purchasable')
-		if not purchasable_id:
-			msg = _("Must specify a valid purchasable id")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
-		invitation_code = values.get('invitationCode') or \
-						  values.get('invitation_code') or \
-						  values.get('invitation') or \
- 						  values.get('code')
-		if not invitation_code:
-			msg = _("Must specify a valid invitation code")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
+def redeem_purchase(user, code, purchasable=None, vendor_updates=None, request=None):
+	try:
+		purchase = get_purchase_by_code(code)
+	except ValueError:
+		# improper key
+		purchase = None
+			
+	if purchase is None or not IPurchaseAttempt.providedBy(purchase):
+		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
+	
+	is_gift = IGiftPurchaseAttempt.providedBy(purchase)
+	is_invitation = IInvitationPurchaseAttempt.providedBy(purchase)
+	
+	if not (is_gift or is_invitation):
+		msg = _('Purchase attempt is not redeemable')
+		raise hexc.HTTPUnprocessableEntity(msg)
+	
+	if purchasable and purchasable not in purchase.Items:
+		msg = _("The code is not for this purchasable")
+		raise hexc.HTTPUnprocessableEntity(msg)
+	
+	if is_invitation:
 		try:
-			purchase = get_purchase_by_code(invitation_code)
-		except ValueError:
-			# improper key
-			purchase = None
-
-		if purchase is None or not IPurchaseAttempt.providedBy(purchase):
-			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
-
-		if purchase.Quantity is None:
-			raise hexc.HTTPUnprocessableEntity(detail=_('Not redeemable purchase'))
-
-		if purchasable_id not in purchase.Items:
-			msg = _("The invitation code is not for this purchasable")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
-		username = self.remoteUser.username
-		try:
-			invite = create_store_purchase_invitation(purchase, invitation_code)
-			invite.accept(username)
+			invite = create_store_purchase_invitation(purchase, code)
+			invite.accept(user.username)
+			# returned redeemed purchase attempt
+			purchase_id = purchase.linked_purchase_id(user)
+			purchase = get_purchase_attempt(purchase_id)
+			# set vendor updates
+			if vendor_updates is not None:
+				purchase.Context['AllowVendorUpdates'] = vendor_updates
 		except InvitationAlreadyAccepted:
 			msg = _("The invitation code has already been accepted")
 			raise hexc.HTTPUnprocessableEntity(msg)
 		except InvitationCapacityExceeded:
 			msg = _("There are no remaining invitations for this code")
 			raise hexc.HTTPUnprocessableEntity(msg)
+		except InvitationExpired:
+			msg = _("This invitation is expired")
+			raise hexc.HTTPUnprocessableEntity(msg)
+	elif is_gift:
+		if purchase.is_redeemed():
+			msg = _("Gift purchase already redeemed")
+			raise hexc.HTTPUnprocessableEntity(msg)	
+		# set vendor updates before called notify	
+		if vendor_updates is not None:
+			purchase.Context['AllowVendorUpdates'] = vendor_updates
+		notify(GiftPurchaseAttemptRedeemed(purchase, user, request))
+	else:
+		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
+	return purchase
 
+@view_config(name="redeem_purchase_code", **_post_view_defaults)
+class RedeemPurchaseCodeView(AbstractPostView):
+
+	def __call__(self):
+		values = self.readInput()
+		purchasable = 	values.get('purchasableID') or \
+						values.get('purchasable')
+		if not purchasable:
+			msg = _("Must specify a valid purchasable id")
+			raise hexc.HTTPUnprocessableEntity(msg)
+
+		invitation_code = values.get('invitationCode') or \
+						  values.get('invitation') or \
+ 						  values.get('code')
+		if not invitation_code:
+			msg = _("Must specify a valid invitation code")
+			raise hexc.HTTPUnprocessableEntity(msg)
+
+		redeem_purchase(self.remoteUser, invitation_code, 
+						purchasable=purchasable,
+						request=self.request)
 		return hexc.HTTPNoContent()
 
 @view_config(name="redeem_gift", **_post_view_defaults)
@@ -416,37 +442,19 @@ class RedeemGiftView(AbstractPostView):
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
 
 		try:
-			purchase = get_purchase_by_code(gift_code)
-		except ValueError:
-			# improper key
-			purchase = None
-
-		if purchase is None or not IGiftPurchaseAttempt.providedBy(purchase):
+			redeem_purchase(self.remoteUser, gift_code, 
+							request=self.request,
+							vendor_updates=allow_vendor_updates)
+			result = hexc.HTTPNoContent()
+		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
-			result = IRedemptionError(_('Gift purchase not found'))
-			return result
-
-		user = self.remoteUser
-		try:
-			if purchase.is_redeemed():
-				result = IRedemptionError(_("Gift purchase already redeemed"))
-				self.request.response.status_int = 422
-
-			## CS: Modify the context of the original purchase so it can copied
-			## to the new redeemed purchase
-			if allow_vendor_updates is not None:
-				context = purchase.Context
-				context['AllowVendorUpdates'] = allow_vendor_updates
-
-			notify(GiftPurchaseAttemptRedeemed(purchase, user, self.request))
-		except RedemptionException as e:
-			result = IRedemptionError(e)
+			result = IRedemptionError(_('Gift/Invitation not found'))
+		except hexc.HTTPUnprocessableEntity as e:
+			result = IRedemptionError(e.detail)
 			self.request.response.status_int = 422
 		except ValueError as e:
 			result = IRedemptionError(e)
 			self.request.response.status_int = 409
-		else:
-			result = hexc.HTTPNoContent()
 		return result
 
 # object get views

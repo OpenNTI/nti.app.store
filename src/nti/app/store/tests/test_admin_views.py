@@ -235,3 +235,15 @@ class TestAdminViews(ApplicationLayerTest):
 		assert_that(res.json_body, has_entry('ExpirationTime', is_not(none())))
 		assert_that(res.json_body, has_entry('InvitationCode', is_not(none())))
 		assert_that(res.json_body, has_entry('MimeType', u'application/vnd.nextthought.store.invitationpurchaseattempt'))
+		
+		code = res.json_body['InvitationCode']
+		for username, api in (('ichigo', 'redeem_purchase_code'), 
+							  ('azien', 'redeem_gift')):
+			with mock_dataserver.mock_db_trans(self.ds):
+				self._create_user(username=username)
+			
+			environ = self._make_extra_environ(username=username)
+			url = '/dataserver2/store/%s' % api
+			params = {'code':code, 'AllowVendorUpdates':True, 
+					  'purchasable':self.purchasable_id}
+			self.testapp.post_json(url, params, status=204, extra_environ=environ )
