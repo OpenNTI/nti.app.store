@@ -49,7 +49,7 @@ def is_valid_amount(amount):
 
 def is_valid_pve_int(value):
 	try:
-		value = float(value)
+		value = int(value)
 		return value > 0
 	except (TypeError, ValueError):
 		return False

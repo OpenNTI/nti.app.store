@@ -336,7 +336,7 @@ class PricePurchasableView(AbstractPostView):
 		# check quantity
 		quantity = values.get('quantity', 1)
 		if not is_valid_pve_int(quantity):
-			raise hexc.HTTPBadRequest(_('Invalid quantity'))
+			raise hexc.HTTPUnprocessableEntity(_('Invalid quantity'))
 		quantity = int(quantity)
 
 		try:

@@ -46,10 +46,19 @@ from nti.store.store import delete_purchase_history
 from nti.store.store import remove_purchase_attempt
 from nti.store.store import get_gift_purchase_history
 
+from nti.store.purchase_order import create_purchase_item
+from nti.store.purchase_order import create_purchase_order
+from nti.store.purchase_attempt import create_purchase_attempt
+
 from nti.store.purchasable import get_purchasable
 from nti.store.purchase_history import get_purchase_history_by_item
 
+from nti.store.interfaces import PA_STATE_SUCCESS
+from nti.store.interfaces import PAYMENT_PROCESSORS
+
+from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.utils.maps import CaseInsensitiveDict
@@ -57,6 +66,7 @@ from nti.utils.maps import CaseInsensitiveDict
 from ..utils import to_boolean
 from ..utils import parse_datetime
 from ..utils import AbstractPostView
+from ..utils import is_valid_pve_int
 
 from . import StorePathAdapter
 
@@ -301,7 +311,7 @@ class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 
 		purchase = self._get_purchase(transaction)
 		if purchase is None:
-			raise hexc.HTTPNotFound(detail=_('Transaction not found'))
+			raise hexc.HTTPUnprocessableEntity(detail=_('Transaction not found'))
 		elif not purchase.has_succeeded():
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchase was not successful'))
 
@@ -311,6 +321,61 @@ class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
 		notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
 		return hexc.HTTPNoContent()
 	
+@view_config(name="create_invitation_purchase", **_admin_view_defaults)
+class CreateInviationPurchaseAttemptView(_BasePostStoreView):
+	
+	def price_order(self, order):
+		pricer = component.getUtility(IPurchasablePricer)
+		result = pricer.evaluate(order)
+		return result
+	
+	def price_purchase(self, purchase):
+		result = self.price_order(purchase.Order)
+		return result
+
+	def create_purchase_attempt(self, item, quantity=None, expiration=None,
+								processor=PAYMENT_PROCESSORS[0]):
+		state = PA_STATE_SUCCESS
+		p_item = create_purchase_item(item, 1)
+		p_order = create_purchase_order(p_item, quantity=quantity)
+		purchase = create_purchase_attempt(	p_order, 
+											state=state,
+											processor=processor,
+									 		expiration=expiration)
+		purchase.Pricing = self.price_purchase(purchase)
+		return purchase
+
+	def __call__(self):
+		values = self.readInput()
+		purchasable_id = values.get('purchasable') or values.get('item')
+		if not purchasable_id:
+			msg = _("Must specify a valid purchasable")
+			raise hexc.HTTPUnprocessableEntity(msg)
+
+		purchase = get_purchasable(purchasable_id)
+		if not purchase:
+			msg = _('Purchasable not found')
+			raise hexc.HTTPUnprocessableEntity(msg)
+		
+		quantity = values.get('quantity') or 0
+		if not is_valid_pve_int(quantity):
+			msg = _('Must specify a valid quantity')
+			raise hexc.HTTPUnprocessableEntity(msg)
+		
+		expiration = values.get('expiration') or values.get('expiry') or \
+					 values.get('expirationTime') or values.get('expirationDate')
+		if expiration:
+			expiration = parse_datetime(expiration)
+			if expiration is None:
+				msg = _('Invalid expiration date')
+				raise hexc.HTTPUnprocessableEntity(msg)
+		
+		user = self.remoteUser
+		hist = IPurchaseHistory(user)
+		purchase = self.create_purchase_attempt(quantity=quantity)
+		hist.add_purchase(purchase)
+		return purchase
+		
 del _view_defaults
 del _post_view_defaults
 del _admin_view_defaults
