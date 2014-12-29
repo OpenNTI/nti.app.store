@@ -11,7 +11,6 @@ logger = __import__('logging').getLogger(__name__)
 import six
 import time
 import isodate
-import numbers
 from datetime import date
 from datetime import datetime
 
@@ -82,16 +81,23 @@ def safestr(s):
 	s = s.decode("utf-8") if isinstance(s, bytes) else s
 	return unicode(s) if s is not None else None
 
-def parse_datetime(t):
-	result = t
-	if t is None:
-		result = None
-	elif is_valid_timestamp(t):
-		result = float(t)
-	elif isinstance(t, six.string_types):
-		result = time.mktime(isodate.parse_datetime(t).timetuple())
-	elif isinstance(t, (date,datetime)):
-		result = time.mktime(t.timetuple())
-	result = result if isinstance(t, numbers.Number) else None
-	return result
-	
+def parse_datetime(t, safe=False):
+	try:
+		result = t
+		if t is None:
+			result = None
+		elif is_valid_timestamp(t):
+			result = float(t)
+		elif isinstance(t, six.string_types):
+			try:
+				result = isodate.parse_datetime(t)
+			except Exception:
+				result = isodate.parse_date(t)
+			result = time.mktime(result.timetuple())
+		elif isinstance(t, (date,datetime)):
+			result = time.mktime(t.timetuple())
+		return result
+	except Exception as e:
+		if safe:
+			return None
+		raise e

@@ -347,7 +347,8 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchasable_id = values.get('purchasable') or values.get('item')
+		purchasable_id = values.get('purchasable') or values.get('item') or\
+						 values.get('purchasableId')
 		if not purchasable_id:
 			msg = _("Must specify a valid purchasable")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -365,14 +366,15 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 		expiration = values.get('expiration') or values.get('expiry') or \
 					 values.get('expirationTime') or values.get('expirationDate')
 		if expiration:
-			expiration = parse_datetime(expiration)
+			expiration = parse_datetime(expiration, safe=True)
 			if expiration is None:
 				msg = _('Invalid expiration date')
 				raise hexc.HTTPUnprocessableEntity(msg)
 		
 		user = self.remoteUser
 		hist = IPurchaseHistory(user)
-		purchase = self.create_purchase_attempt(quantity=quantity)
+		purchase = self.create_purchase_attempt(purchasable_id, quantity=quantity,
+												expiration=expiration)
 		hist.add_purchase(purchase)
 		return purchase
 		

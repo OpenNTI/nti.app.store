@@ -221,3 +221,17 @@ class TestAdminViews(ApplicationLayerTest):
 		reader = csv.reader(stream)
 		lines = list(reader)
 		assert_that(lines, has_length(2))
+		
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_create_invitation_purchase(self):
+		url = '/dataserver2/store/create_invitation_purchase'
+		params = {'purchasable':self.purchasable_id,
+				  'expiration': '2030-11-30',
+				  'quantity':5}
+		body = json.dumps(params)
+		res = self.testapp.post(url, body, status=200)
+		assert_that(res.json_body, has_entry('IsExpired', is_(False)))
+		assert_that(res.json_body, has_entry('RemainingInvitations', is_(5)))
+		assert_that(res.json_body, has_entry('ExpirationTime', is_not(none())))
+		assert_that(res.json_body, has_entry('InvitationCode', is_not(none())))
+		assert_that(res.json_body, has_entry('MimeType', u'application/vnd.nextthought.store.invitationpurchaseattempt'))
