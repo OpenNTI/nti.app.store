@@ -333,7 +333,7 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 		result = self.price_order(purchase.Order)
 		return result
 
-	def create_purchase_attempt(self, item, quantity=None, expiration=None,
+	def create_purchase_attempt(self, item, quantity=None, expirationTime=None,
 								processor=PAYMENT_PROCESSORS[0]):
 		state = PA_STATE_SUCCESS
 		p_item = create_purchase_item(item, 1)
@@ -341,7 +341,7 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 		purchase = create_purchase_attempt(	p_order, 
 											state=state,
 											processor=processor,
-									 		expiration=expiration)
+									 		expiration=expirationTime)
 		purchase.Pricing = self.price_purchase(purchase)
 		return purchase
 
@@ -366,16 +366,22 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 		expiration = values.get('expiration') or values.get('expiry') or \
 					 values.get('expirationTime') or values.get('expirationDate')
 		if expiration:
-			expiration = parse_datetime(expiration, safe=True)
-			if expiration is None:
-				msg = _('Invalid expiration date')
+			expirationTime = parse_datetime(expiration, safe=True)
+			if expirationTime is None:
+				msg = _('Invalid expiration date/time')
 				raise hexc.HTTPUnprocessableEntity(msg)
+		else:
+			expirationTime = None
 		
 		user = self.remoteUser
 		hist = IPurchaseHistory(user)
 		purchase = self.create_purchase_attempt(purchasable_id, quantity=quantity,
-												expiration=expiration)
+												expirationTime=expirationTime)
 		hist.add_purchase(purchase)
+		
+		logger.info("Invitation purchase %s created for user %s. " +
+					"Redemption(s) %s. Expiration %s",
+					get_invitation_code(purchase), user, quantity, expiration)
 		return purchase
 		
 del _view_defaults
