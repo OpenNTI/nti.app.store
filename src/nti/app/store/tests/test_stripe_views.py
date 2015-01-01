@@ -11,6 +11,7 @@ from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
 from hamcrest import has_key
+from hamcrest import has_item
 from hamcrest import has_entry
 from hamcrest import has_length
 from hamcrest import assert_that
@@ -217,8 +218,32 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('ChargeID', 'charge_1046'))
 		assert_that(items[0], has_entry('TokenID', 'tok_1053'))
 		assert_that(items[0], has_entry('ID', is_not(none())))
+		assert_that(items[0], has_entry('TransactionID', is_not(none())))
 		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
-
+		
+		#from IPython.core.debugger import Tracer; Tracer()()
+		#'TransactionID': u'wvRNFPu3rM6'
+		pid = items[0]['ID']
+		url = '/dataserver2/store/get_purchase_attempt'
+		params = {'purchase':pid}
+		res = self.testapp.get(url, params=params, status=200)
+		assert_that(res.json_body, has_entry('Items', 
+											 has_item(has_entry('Class', 'PurchaseAttempt'))))
+		
+		url = '/dataserver2/store/get_purchase_attempt/%s' % pid
+		res = self.testapp.get(url, status=200)
+		assert_that(res.json_body, has_entry('Items', 
+											 has_item(has_entry('Class', 'PurchaseAttempt'))))
+		
+		tid = items[0]['TransactionID']
+		url = '/dataserver2/store/get_purchase_attempt/%s' % tid
+		res = self.testapp.get(url, status=200)
+		assert_that(res.json_body, has_entry('Items', 
+											 has_item(has_entry('Class', 'PurchaseAttempt'))))
+		
+		url = '/dataserver2/store/get_purchase_attempt/foo'
+		res = self.testapp.get(url, status=404)
+	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
 	@fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')

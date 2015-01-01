@@ -207,6 +207,12 @@ class BaseGetPurchaseAttemptView(object):
 			msg = _("Must specify a valid user/creator name")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
+		try:
+			purchase = get_purchase_by_code(purchase_id)
+			purchase_id = purchase.id if purchase is not None else purchase_id
+		except ValueError:
+			pass
+	
 		purchase = get_purchase_attempt(purchase_id, username)
 		if purchase is None:
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
@@ -223,10 +229,13 @@ class BaseGetPurchaseAttemptView(object):
 class GetPurchaseAttemptView(AbstractAuthenticatedView, BaseGetPurchaseAttemptView):
 
 	def __call__(self):
+		request = self.request
 		username = self.remoteUser.username
-		values = CaseInsensitiveDict(self.request.params)
-		purchase_id = 	values.get('purchaseId') or \
-						values.get('purchase')
+		purchase_id = request.subpath[0] if request.subpath else None
+		if not purchase_id:
+			values = CaseInsensitiveDict(self.request.params)
+			purchase_id = 	values.get('purchaseId') or \
+							values.get('purchase')
 		result = self._do_get(purchase_id, username)
 		return result
 
