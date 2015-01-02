@@ -65,12 +65,13 @@ from nti.store.purchase_history import get_purchase_history
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_history import get_purchase_history_by_item
 
-from nti.store.interfaces import IPurchasable, IInvitationPurchaseAttempt
+from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import IGiftPurchaseAttempt
+from nti.store.interfaces import IInvitationPurchaseAttempt
 from nti.store.interfaces import GiftPurchaseAttemptRedeemed
 
 from nti.utils.maps import CaseInsensitiveDict
@@ -437,10 +438,10 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("Must specify a valid invitation code.")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		redeem_purchase(self.remoteUser, invitation_code,
-						purchasable=purchasable,
-						request=self.request)
-		return hexc.HTTPNoContent()
+		purchase = redeem_purchase(self.remoteUser, invitation_code,
+								   purchasable=purchasable,
+								   request=self.request)
+		return purchase
 
 @view_config(name="redeem_gift", **_post_view_defaults)
 class RedeemGiftView(AbstractPostView):
@@ -460,10 +461,9 @@ class RedeemGiftView(AbstractPostView):
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
 
 		try:
-			redeem_purchase(self.remoteUser, gift_code,
-							request=self.request,
-							vendor_updates=allow_vendor_updates)
-			result = hexc.HTTPNoContent()
+			result = redeem_purchase(self.remoteUser, gift_code,
+									 request=self.request,
+									 vendor_updates=allow_vendor_updates)
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))

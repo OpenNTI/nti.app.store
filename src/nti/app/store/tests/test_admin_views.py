@@ -246,4 +246,5 @@ class TestAdminViews(ApplicationLayerTest):
 			url = '/dataserver2/store/%s' % api
 			params = {'code':code, 'AllowVendorUpdates':True, 
 					  'purchasable':self.purchasable_id}
-			self.testapp.post_json(url, params, status=204, extra_environ=environ )
+			res = self.testapp.post_json(url, params, status=200, extra_environ=environ)
+			assert_that(res.json_body, has_entry('MimeType', 'application/vnd.nextthought.store.redeemedpurchaseattempt'))
