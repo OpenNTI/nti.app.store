@@ -313,6 +313,12 @@ class PurchasableGetView(GenericGetView):
 			raise hexc.HTTPForbidden()
 		return result
 
+def check_purchase_attempt_access(purchase, username):
+	creator = purchase.creator
+	creator = getattr(creator, 'username', creator)
+	result = creator.lower() == username.lower()
+	return result
+
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IPurchaseAttempt,
@@ -320,7 +326,10 @@ class PurchasableGetView(GenericGetView):
 class PurchaseAttemptGetView(GenericGetView):
 
 	def __call__(self):
+		username = self.request.authenticated_userid
 		purchase = super(PurchaseAttemptGetView, self).__call__()
+		if not check_purchase_attempt_access(purchase, username):
+			raise hexc.HTTPForbidden()
 		if purchase.is_pending() and _should_sync(purchase):
 			_sync_purchase(purchase, self.request)
 		return purchase
