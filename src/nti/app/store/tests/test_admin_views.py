@@ -234,8 +234,10 @@ class TestAdminViews(ApplicationLayerTest):
 		assert_that(res.json_body, has_entry('RemainingInvitations', is_(5)))
 		assert_that(res.json_body, has_entry('ExpirationTime', is_not(none())))
 		assert_that(res.json_body, has_entry('InvitationCode', is_not(none())))
-		assert_that(res.json_body, has_entry('MimeType', u'application/vnd.nextthought.store.invitationpurchaseattempt'))
+		assert_that(res.json_body, has_entry('MimeType',
+											 u'application/vnd.nextthought.store.invitationpurchaseattempt'))
 		
+		pid = res.json_body['ID']
 		code = res.json_body['InvitationCode']
 		for username, api in (('ichigo', 'redeem_purchase_code'), 
 							  ('azien', 'redeem_gift')):
@@ -247,4 +249,9 @@ class TestAdminViews(ApplicationLayerTest):
 			params = {'code':code, 'AllowVendorUpdates':True, 
 					  'purchasable':self.purchasable_id}
 			res = self.testapp.post_json(url, params, status=200, extra_environ=environ)
-			assert_that(res.json_body, has_entry('MimeType', 'application/vnd.nextthought.store.redeemedpurchaseattempt'))
+			assert_that(res.json_body, has_entry('MimeType',
+												 'application/vnd.nextthought.store.redeemedpurchaseattempt'))
+
+		url = '/dataserver2/store/get_purchase_attempt/%s' % pid
+		res = self.testapp.get(url, body, status=200)
+		assert_that(res.json_body['Items'][0], has_entry('Consumers', has_length(2)))
