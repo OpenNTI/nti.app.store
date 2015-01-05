@@ -220,6 +220,8 @@ class BaseGetPurchaseAttemptView(object):
 		elif purchase.is_pending() and _should_sync(purchase):
 			_sync_purchase(purchase, self.request)
 
+		## CS: we return the purchase attempt inside a ITEMS collection
+		## due to legacy code
 		result = LocatedExternalDict()
 		result[ITEMS] = [purchase]
 		result[LAST_MODIFIED] = purchase.lastModified

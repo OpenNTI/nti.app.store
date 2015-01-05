@@ -160,7 +160,6 @@ class CreateStripeTokenView(_PostStripeView):
 		token = manager.create_token(**params)
 		return LocatedExternalDict(Token=token.id)
 
-
 def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE):
 	pricer = component.getUtility(IPurchasablePricer, name=processor)
 	priceable = create_stripe_priceable(ntiid=purchasable_id,
