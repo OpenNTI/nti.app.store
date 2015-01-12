@@ -78,13 +78,13 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  context=StorePathAdapter,
 					  request_method='GET')
 _view_admin_defaults = _view_defaults.copy()
-_view_admin_defaults['permission'] = nauth.ACT_MODERATE
+_view_admin_defaults['permission'] = nauth.ACT_NTI_ADMIN
 
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
 
 _admin_view_defaults = _post_view_defaults.copy()
-_admin_view_defaults['permission'] = nauth.ACT_MODERATE
+_admin_view_defaults['permission'] = nauth.ACT_NTI_ADMIN
 
 def _tx_string(s):
 	if s is not None and isinstance(s, unicode):
@@ -143,7 +143,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			users_folder = IShardLayout(dataserver).users_folder
 			usernames = users_folder.keys()
 
-		as_csv = to_boolean(params.get('csv'))
+		as_json= to_boolean(params.get('json'))
 		
 		all_failed = to_boolean(params.get('failed'))
 		all_succeeded = to_boolean(params.get('succeeded'))
@@ -169,7 +169,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 				array = purchases
 
 			if array or inactive:
-				profile = IUserProfile(user)
+				profile = IUserProfile(user, None)
 				email = getattr(profile, 'email', None) or u''
 				name = getattr(profile, 'realname', None) or user.username
 
@@ -187,8 +187,10 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 										 'amount':amount, 'status':p.State})
 				items.append(entry)
 
-		result['Total'] = len(items)
-		result = result if not as_csv else self._to_csv(request, result)
+		if as_json:
+			result['Total'] = len(items)
+		else:
+			result = self._to_csv(request, result)
 		return result
 
 @view_config(name="get_users_gift_history", **_view_admin_defaults)
