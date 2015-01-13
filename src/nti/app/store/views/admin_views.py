@@ -100,13 +100,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 	def __call__(self):
 		request = self.request
 		params = CaseInsensitiveDict(request.params)
-		purchasable_id = params.get('purchasableID') or params.get('purchasable')
-		if not purchasable_id:
-			msg = _("Must specify a valid purchasable id")
-			raise hexc.HTTPUnprocessableEntity(msg)
-
-		purchasable_obj = get_purchasable(purchasable_id)
-		if not purchasable_obj:
+		purchasable = params.get('purchasableID') or params.get('purchasable')
+		if purchasable and get_purchasable(purchasable) is None:
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchasable not found'))
 
 		all_failed = to_boolean(params.get('failed'))
@@ -145,6 +140,9 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 			except (POSError, TypeError):
 				continue
 			
+			if purchasable and purchasable not in purchase.Items:
+				continue
+	
 			if  (all_succeeded and not purchase.has_succeeded()) or \
 				(all_failed and not purchase.has_failed()):
 				continue
