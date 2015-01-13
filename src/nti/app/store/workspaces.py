@@ -23,9 +23,7 @@ from nti.appserver.interfaces import IContainerCollection
 from nti.dataserver.links import Link
 from nti.dataserver.interfaces import IDataserverFolder
 
-from nti.store.purchasable import Purchasable
-from nti.store.course import PurchasableCourse
-from nti.store.purchase_attempt import PurchaseAttempt
+from nti.store.utils import STORE_MIME_BASE as MIME_BASE
 
 from nti.utils.property import Lazy
 from nti.utils.property import alias
@@ -107,6 +105,10 @@ class _StoreCollection(object):
 
 	@property
 	def accepts(self):
-		return (PurchaseAttempt.mimeType,
-				getattr(Purchasable, 'mimeType', getattr(Purchasable, 'mime_type')),
-				getattr(PurchasableCourse, 'mimeType', getattr(PurchasableCourse, 'mime_type')))
+		mime_types = [MIME_BASE+x for x in (b'.purchaseattempt',
+											b'.invitationpurchaseattempt',
+											b'.redeemedpurchaseattempt',
+											b'.giftpurchaseattempt',
+											b'.purchasable'
+											b'.purchasablecourse')]
+		return mime_types

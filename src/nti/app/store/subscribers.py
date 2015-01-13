@@ -25,7 +25,7 @@ from nti.externalization.externalization import to_external_object
 
 from nti.mailer.interfaces import ITemplatedMailer
 
-from nti.store.invitations import get_invitation_code
+from nti.store.store import get_transaction_code
 
 DEFAULT_EMAIL_SUBJECT = _("Purchase Confirmation")
 DEFAULT_PURCHASE_TEMPLATE = 'purchase_confirmation_email'
@@ -52,7 +52,8 @@ def send_purchase_confirmation(	event, email,
 	profile = purchase.Profile
 	if IUser.providedBy(user):
 		user_ext = to_external_object(user)
-		informal_username = user_ext.get('NonI18NFirstName', profile.realname) or user.username
+		informal_username = user_ext.get('NonI18NFirstName', profile.realname) or \
+							user.username
 	else:
 		informal_username = profile.realname or str(user)
 
@@ -63,10 +64,11 @@ def send_purchase_confirmation(	event, email,
 				 event.purchase.Pricing.TotalPurchasePrice)
 	formatted_discount = component.getAdapter(purchase.Pricing, IPathAdapter,
 											  name='currency')
-	formatted_discount = formatted_discount.format_currency_object(discount, request=request)
+	formatted_discount = formatted_discount.format_currency_object(discount,
+																   request=request)
 
 	charge_name = getattr(event.charge, 'Name', None)
-
+	
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
@@ -74,7 +76,7 @@ def send_purchase_confirmation(	event, email,
 			'format_currency_attribute': currency.format_currency_attribute,
 			'discount': discount,
 			'formatted_discount': formatted_discount,
-			'transaction_id': get_invitation_code(purchase),  # We use invitation code as trx id
+			'transaction_id': get_transaction_code(purchase), 
 			'informal_username': informal_username,
 			'billed_to': charge_name or profile.realname or informal_username,
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
@@ -98,9 +100,11 @@ def safe_send_purchase_confirmation(event, email,
 									add_args=None):
 	try:
 		send_purchase_confirmation(event, email, subject=subject,
-								   template=template, package=package, add_args=add_args)
+								   template=template, package=package, 
+								   add_args=add_args)
 	except Exception:
-		logger.exception("Error while sending purchase confirmation email to %s", email)
+		logger.exception("Error while sending purchase confirmation email to %s",
+						 email)
 
 def store_purchase_attempt_successful(event,
 									  subject=DEFAULT_EMAIL_SUBJECT,
