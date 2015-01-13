@@ -156,14 +156,7 @@ class TestAdminViews(ApplicationLayerTest):
 		
 		url = '/dataserver2/store/get_users_purchase_history'
 		params = {'username':self.default_username,
-				  'purchasable':self.purchasable_id,
-				  'json':True}
-		res = self.testapp.get(url, params, status=200)
-		assert_that(res.json_body, has_entry('Total', is_(1)))
-		assert_that(res.json_body, has_entry('Items', has_length(1)))
-		assert_that(res.json_body['Items'][0], has_entry('transactions', has_length(1)))
-		
-		params['json'] = False
+				  'purchasable':self.purchasable_id}
 		res = self.testapp.get(url, params, status=200)
 		stream = StringIO(res.text)
 		reader = csv.reader(stream)

@@ -16,8 +16,14 @@ import isodate
 from io import BytesIO
 from datetime import datetime
 
+import zope.intid
+
 from zope import component
 from zope.event import notify
+from zope.catalog.interfaces import ICatalog
+
+from ZODB.interfaces import IBroken
+from ZODB.POSException import POSError
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -27,13 +33,10 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.dataserver.users import User
 from nti.dataserver import authorization as nauth
 
-from nti.dataserver.interfaces import IUser
-from nti.dataserver.interfaces import IDataserver
-from nti.dataserver.interfaces import IShardLayout
-from nti.dataserver.users.interfaces import IUserProfile
+from nti.dataserver.metadata_index import IX_MIMETYPE, IX_CREATOR
+from nti.dataserver.metadata_index import CATALOG_NAME as METADATA_CATALOG_NAME
 
 from nti.externalization import integer_strings
-from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.store.store import get_gift_code
@@ -41,7 +44,6 @@ from nti.store.store import get_gift_registry
 from nti.store.store import get_invitation_code
 from nti.store.store import get_purchase_by_code
 from nti.store.store import get_purchase_attempt
-from nti.store.store import get_purchase_history
 from nti.store.store import delete_purchase_history
 from nti.store.store import remove_purchase_attempt
 from nti.store.store import get_gift_purchase_history
@@ -51,7 +53,6 @@ from nti.store.purchase_order import create_purchase_order
 from nti.store.purchase_attempt import create_purchase_attempt
 
 from nti.store.purchasable import get_purchasable
-from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
@@ -60,6 +61,8 @@ from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
+
+from nti.store.utils import STORE_MIME_BASE as MIME_BASE
 
 from nti.utils.maps import CaseInsensitiveDict
 
@@ -94,35 +97,6 @@ def _tx_string(s):
 @view_config(name="get_users_purchase_history", **_view_admin_defaults)
 class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 
-	def _to_csv(self, request, result):
-		stream = BytesIO()
-		writer = csv.writer(stream)
-		response = request.response
-		response.content_encoding = str('identity' )
-		response.content_type = str('text/csv; charset=UTF-8')
-		response.content_disposition = str( 'attachment; filename="purchases.csv"' )
-		
-		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
-		writer.writerow(header)
-		
-		for entry in result[ITEMS]:
-			email = entry['email']
-			transactions = entry['transactions']
-			name = entry['name'].encode('utf-8', 'replace')
-			username = entry['username'].encode('utf-8', 'replace')
-			for trx in transactions:
-				row_data = [ username, name, email,
-							 trx['transaction'],
-							 trx['date'],
-							 trx['amount'],
-							 trx['status'] ]
-				writer.writerow([ _tx_string(x) for x in row_data])
-
-		stream.flush()
-		stream.seek(0)
-		response.body_file = stream
-		return response
-
 	def __call__(self):
 		request = self.request
 		params = CaseInsensitiveDict(request.params)
@@ -135,63 +109,63 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		if not purchasable_obj:
 			raise hexc.HTTPUnprocessableEntity(detail=_('Purchasable not found'))
 
-		usernames = params.get('usernames') or params.get('username')
-		if usernames:
-			usernames = usernames.split(",")
-		else:
-			dataserver = component.getUtility(IDataserver)
-			users_folder = IShardLayout(dataserver).users_folder
-			usernames = users_folder.keys()
-
-		as_json= to_boolean(params.get('json'))
-		
 		all_failed = to_boolean(params.get('failed'))
 		all_succeeded = to_boolean(params.get('succeeded'))
 		
-		inactive = to_boolean(params.get('inactive')) or False
+		mime_types = [MIME_BASE+x for x in (b'.purchaseattempt',
+											b'.invitationpurchaseattempt',
+											b'.redeemedpurchaseattempt',
+											b'.giftpurchaseattempt')]
+		catalog = component.getUtility(ICatalog, METADATA_CATALOG_NAME)
+		intids_purchases = catalog[IX_MIMETYPE].apply({'any_of': mime_types})
+		
+		usernames = params.get('usernames') or params.get('username')
+		if usernames:
+			usernames = [x.lower() for x in usernames.split(",")]
+			creator_intids = catalog[IX_CREATOR].apply({'any_of': usernames})
+			intids_purchases = catalog.family.IF.intersection(intids_purchases,
+															  creator_intids )
 
-		items = []
-		result = LocatedExternalDict({ITEMS:items})
-		for username in usernames:
-			user = User.get_user(username)
-			if not user or not IUser.providedBy(user):
+		stream = BytesIO()
+		writer = csv.writer(stream)
+		response = request.response
+		response.content_encoding = str('identity' )
+		response.content_type = str('text/csv; charset=UTF-8')
+		response.content_disposition = str( 'attachment; filename="purchases.csv"' )
+		
+		header = ["username", 'name', 'email', 'transaction', 'date', 'amount', 'status']
+		writer.writerow(header)
+	
+		intids = component.getUtility(zope.intid.IIntIds)	
+		for uid in intids_purchases:
+			try:
+				purchase = intids.queryObject(uid)
+				if purchase is None or IBroken.providedBy(purchase):
+					continue
+			except (POSError, TypeError):
 				continue
-			history = get_purchase_history(user, safe=False)
-			if history is None:
+			
+			if  (all_succeeded and not purchase.has_succeeded()) or \
+				(all_failed and not purchase.has_failed()):
 				continue
+			
+			status = purchase.State
+			code = get_invitation_code(purchase)
+			date = isodate.date_isoformat(datetime.fromtimestamp(purchase.StartTime))
+			amount = getattr(purchase.Pricing, 'TotalPurchasePrice', None) or u''
+					
+			username = getattr(purchase.creator, 'username', purchase.creator).lower()
+			profile = purchase.profile
+			email = getattr(profile, 'email', None) or u''
+			name = getattr(profile, 'realname', None) or username
 
-			purchases = get_purchase_history_by_item(user, purchasable_id)
-			if all_succeeded:
-				array = [p for p in purchases if p.has_succeeded()]
-			elif all_failed:
-				array = [p for p in purchases if p.has_failed()]
-			else:
-				array = purchases
+			row_data = [ username, name, email, code, date, amount, status ]
+			writer.writerow([ _tx_string(x) for x in row_data])
 
-			if array or inactive:
-				profile = IUserProfile(user, None)
-				email = getattr(profile, 'email', None) or u''
-				name = getattr(profile, 'realname', None) or user.username
-
-				transactions = []
-				entry = {'username':user.username,
-						 'name':name,
-						 'email':email,
-						 'transactions':transactions}
-
-				for p in purchases:
-					code = get_invitation_code(p)
-					date = isodate.date_isoformat(datetime.fromtimestamp(p.StartTime))
-					amount = getattr(p.Pricing, 'TotalPurchasePrice', None) or u''
-					transactions.append({'transaction':code, 'date':date,
-										 'amount':amount, 'status':p.State})
-				items.append(entry)
-
-		if as_json:
-			result['Total'] = len(items)
-		else:
-			result = self._to_csv(request, result)
-		return result
+		stream.flush()
+		stream.seek(0)
+		response.body_file = stream
+		return response
 
 @view_config(name="get_users_gift_history", **_view_admin_defaults)
 class GetUsersGiftHistoryView(AbstractAuthenticatedView):
