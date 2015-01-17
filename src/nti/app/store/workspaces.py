@@ -23,7 +23,7 @@ from nti.appserver.interfaces import IContainerCollection
 from nti.dataserver.links import Link
 from nti.dataserver.interfaces import IDataserverFolder
 
-from nti.store.utils import STORE_MIME_BASE as MIME_BASE
+from nti.store.utils import ALL_STORE_MIME_TYPES
 
 from nti.utils.property import Lazy
 from nti.utils.property import alias
@@ -105,10 +105,5 @@ class _StoreCollection(object):
 
 	@property
 	def accepts(self):
-		mime_types = [MIME_BASE+x for x in (b'.purchaseattempt',
-											b'.invitationpurchaseattempt',
-											b'.redeemedpurchaseattempt',
-											b'.giftpurchaseattempt',
-											b'.purchasable'
-											b'.purchasablecourse')]
+		mime_types = ALL_STORE_MIME_TYPES
 		return mime_types

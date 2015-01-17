@@ -54,7 +54,7 @@ from nti.store.purchase_attempt import create_purchase_attempt
 
 from nti.store.purchasable import get_purchasable
 
-from nti.store.interfaces import PA_STATE_SUCCESS
+from nti.store.interfaces import PA_STATE_SUCCESS, IPurchaseAttempt
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
 from nti.store.interfaces import IPurchaseHistory
@@ -62,7 +62,7 @@ from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
-from nti.store.utils import STORE_MIME_BASE as MIME_BASE
+from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
 from nti.utils.maps import CaseInsensitiveDict
 
@@ -107,10 +107,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		all_failed = to_boolean(params.get('failed'))
 		all_succeeded = to_boolean(params.get('succeeded'))
 		
-		mime_types = [MIME_BASE+x for x in (b'.purchaseattempt',
-											b'.invitationpurchaseattempt',
-											b'.redeemedpurchaseattempt',
-											b'.giftpurchaseattempt')]
+		mime_types = PURCHASE_ATTEMPT_MIME_TYPES
 		catalog = component.getUtility(ICatalog, METADATA_CATALOG_NAME)
 		intids_purchases = catalog[IX_MIMETYPE].apply({'any_of': mime_types})
 		
@@ -135,7 +132,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 		for uid in intids_purchases:
 			try:
 				purchase = intids.queryObject(uid)
-				if purchase is None or IBroken.providedBy(purchase):
+				if 	purchase is None or IBroken.providedBy(purchase) or \
+					not IPurchaseAttempt.providedBy(purchase):
 					continue
 			except (POSError, TypeError):
 				continue
