@@ -30,6 +30,8 @@ from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
+from nti.common.maps import CaseInsensitiveDict
+
 from nti.dataserver.users import User
 from nti.dataserver import authorization as nauth
 
@@ -63,8 +65,6 @@ from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
-
-from nti.utils.maps import CaseInsensitiveDict
 
 from ..utils import to_boolean
 from ..utils import parse_datetime

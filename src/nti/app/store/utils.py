@@ -18,10 +18,9 @@ from datetime import datetime
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
-from nti.utils.maps import CaseInsensitiveDict
-
-true_values = ('1', 'y', 'yes', 't', 'true')
-false_values = ('0', 'n', 'no', 'f', 'false')
+from nti.common.maps import CaseInsensitiveDict
+from nti.common.string import TRUE_VALUES as true_values 
+from nti.common.string import FALSE_VALUES as false_values 
 
 class AbstractPostView(AbstractAuthenticatedView,
 					   ModeledContentUploadRequestUtilsMixin):
@@ -77,10 +76,6 @@ def to_boolean(value):
 def is_true(value):
 	value = value if isinstance(value, six.string_types) else str(value)
 	return value.lower() in true_values
-
-def safestr(s):
-	s = s.decode("utf-8") if isinstance(s, bytes) else s
-	return unicode(s) if s is not None else None
 
 def parse_datetime(t, safe=False):
 	try:

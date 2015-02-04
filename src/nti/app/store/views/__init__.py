@@ -37,6 +37,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
+from nti.common.maps import CaseInsensitiveDict
+
 from nti.dataserver import authorization as nauth
 from nti.dataserver.interfaces import IDataserverTransactionRunner
 
@@ -73,8 +75,6 @@ from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import IGiftPurchaseAttempt
 from nti.store.interfaces import IInvitationPurchaseAttempt
 from nti.store.interfaces import GiftPurchaseAttemptRedeemed
-
-from nti.utils.maps import CaseInsensitiveDict
 
 from ..utils import AbstractPostView
 

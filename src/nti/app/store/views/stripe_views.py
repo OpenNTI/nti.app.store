@@ -29,6 +29,9 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.error import raise_json_error as raise_error
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
+from nti.common.string import safestr
+from nti.common.maps import CaseInsensitiveDict
+
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
 
@@ -62,10 +65,7 @@ from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
 
-from nti.utils.maps import CaseInsensitiveDict
-
 from ..utils import is_true
-from ..utils import safestr
 from ..utils import to_boolean
 from ..utils import is_valid_amount
 from ..utils import is_valid_pve_int
