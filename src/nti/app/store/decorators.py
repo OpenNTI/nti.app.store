@@ -13,6 +13,7 @@ import urllib
 
 from zope import interface
 from zope import component
+
 from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator

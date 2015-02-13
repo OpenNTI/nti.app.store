@@ -16,9 +16,9 @@ from zope.location.interfaces import ILocation
 
 from pyramid.traversal import find_interface
 
-from nti.appserver.interfaces import IUserService
-from nti.appserver.interfaces import IUserWorkspace
-from nti.appserver.interfaces import IContainerCollection
+from nti.appserver.workspaces.interfaces import IUserService
+from nti.appserver.workspaces.interfaces import IUserWorkspace
+from nti.appserver.workspaces.interfaces import IContainerCollection
 
 from nti.common.property import Lazy
 from nti.common.property import alias
@@ -88,7 +88,7 @@ class _StoreCollection(object):
 					'get_gift_pending_purchases', 
 					'get_gift_purchase_attempt',
 					'price_purchasable',
-					## stripe links
+					 ## stripe links
 					'gift_stripe_payment',
 					'gift_stripe_payment_preflight',
 					'price_purchasable_with_stripe_coupon'):
