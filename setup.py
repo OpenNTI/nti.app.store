@@ -6,7 +6,7 @@ VERSION = '0.0.0'
 entry_points = {
 	'console_scripts': [
 	],
-    "z3c.autoinclude.plugin": [
+	"z3c.autoinclude.plugin": [
 		'target = nti.app',
 	],
 }
@@ -30,9 +30,8 @@ setup(
 		'Operating System :: OS Independent',
 		'Programming Language :: Python :: 2',
 		'Programming Language :: Python :: 2.7',
-		'Programming Language :: Python :: 3',
-		'Programming Language :: Python :: 3.3',
-		],
+		'Programming Language :: Python :: Implementation :: CPython'
+	],
 	packages=find_packages('src'),
 	package_dir={'': 'src'},
 	namespace_packages=['nti', 'nti.app'],
