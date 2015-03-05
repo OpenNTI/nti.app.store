@@ -18,11 +18,11 @@ from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
-from nti.dataserver.links import Link
-
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.externalization import to_external_object
 from nti.externalization.interfaces import IExternalObjectDecorator
+
+from nti.links.links import Link
 
 from nti.store.interfaces import IPurchasable
 from nti.store.store import is_item_activated

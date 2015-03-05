@@ -19,8 +19,9 @@ from nti.appserver.interfaces import ILogonLinkProvider
 from nti.appserver.interfaces import IAuthenticatedUserLinkProvider
 from nti.appserver.interfaces import IUnauthenticatedUserLinkProvider
 
-from nti.dataserver.links import Link
 from nti.dataserver.interfaces import IUser
+
+from nti.links.links import Link
 
 from . import STORE
 

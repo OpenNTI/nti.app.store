@@ -23,8 +23,9 @@ from nti.appserver.workspaces.interfaces import IContainerCollection
 from nti.common.property import Lazy
 from nti.common.property import alias
 
-from nti.dataserver.links import Link
 from nti.dataserver.interfaces import IDataserverFolder
+
+from nti.links.links import Link
 
 from nti.store.utils import ALL_STORE_MIME_TYPES
 
