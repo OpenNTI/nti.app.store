@@ -14,8 +14,6 @@ from zope import component
 
 from pyramid.interfaces import IRequest
 
-from nti.appserver.interfaces import IMissingUser
-from nti.appserver.interfaces import ILogonLinkProvider
 from nti.appserver.interfaces import IAuthenticatedUserLinkProvider
 from nti.appserver.interfaces import IUnauthenticatedUserLinkProvider
 
@@ -29,7 +27,7 @@ class _BaseStoreLinkProvider(object):
 
 	def __init__(self, request):
 		self.request = request
-	
+
 	def link_map(self):
 		result = {}
 		root = self.request.route_path('objects.generic.traversal', traverse=())
@@ -64,31 +62,3 @@ class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 		super(_StoreAuthenticatedUserLinkProvider, self).__init__(request)
 		self.user = user
 
-@interface.implementer(ILogonLinkProvider)
-@component.adapter(IMissingUser, IRequest)
-class _StoreMissingUserLinkProvider(_StoreAuthenticatedUserLinkProvider):
-	
-	def __call__(self):
-		result = self.link_map().get(self.rel)
-		return result
-	
-class _GetGiftPurchaseAttemptMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'get_gift_purchase_attempt'
-	
-class _GiftStripePaymentMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'gift_stripe_payment'
-
-class _GiftStripePaymentPreflightMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'gift_stripe_payment_preflight'
-	
-class _GetPurchasablesMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'get_purchasables'
-	
-class _GetGiftPendingPurchasesMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'get_gift_pending_purchases'
-
-class _PricePurchasableMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'price_purchasable'
-
-class _PricePurchasableWithStripeCouponMissingUserLinkProvider(_StoreMissingUserLinkProvider):
-	rel = 'price_purchasable_with_stripe_coupon'

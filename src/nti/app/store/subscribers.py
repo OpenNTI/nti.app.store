@@ -118,7 +118,7 @@ def store_purchase_attempt_successful(event,
 	email = purchase.Profile.email
 	if email:
 		safe_send_purchase_confirmation(event, email, subject=subject,
-										template=template, package=package, 
+										template=template, package=package,
 										add_args=add_args)
 	else:
 		logger.warn("Not sending purchase email because no user email was found")

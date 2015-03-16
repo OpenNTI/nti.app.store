@@ -20,7 +20,7 @@
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
 				for="nti.store.interfaces.IPurchasable
 					 pyramid.interfaces.IRequest" />
-					 
+
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
@@ -28,28 +28,6 @@
 	<adapter factory=".workspaces.StoreWorkspace"
 			 provides=".interfaces.IStoreWorkspace" />
 
-	<!-- Link Providers -->
-	<subscriber factory=".logon._GetGiftPurchaseAttemptMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-				
-	<subscriber factory=".logon._GetPurchasablesMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-				
-	<subscriber factory=".logon._GetGiftPendingPurchasesMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-	
-	<subscriber factory=".logon._GiftStripePaymentMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-	
-	<subscriber factory=".logon._GiftStripePaymentPreflightMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-	
-	<subscriber factory=".logon._PricePurchasableMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-	
-	<subscriber factory=".logon._PricePurchasableWithStripeCouponMissingUserLinkProvider"
-				provides="nti.appserver.interfaces.ILogonLinkProvider" />
-							
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
 
