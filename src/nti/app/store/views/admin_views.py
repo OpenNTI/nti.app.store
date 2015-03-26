@@ -22,9 +22,6 @@ from zope import component
 from zope.event import notify
 from zope.catalog.interfaces import ICatalog
 
-from ZODB.interfaces import IBroken
-from ZODB.POSException import POSError
-
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
@@ -65,6 +62,8 @@ from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
+
+from nti.zodb import is_broken
 
 from ..utils import to_boolean
 from ..utils import parse_datetime
@@ -130,12 +129,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
 	
 		intids = component.getUtility(zope.intid.IIntIds)	
 		for uid in intids_purchases:
-			try:
-				purchase = intids.queryObject(uid)
-				if 	purchase is None or IBroken.providedBy(purchase) or \
-					not IPurchaseAttempt.providedBy(purchase):
-					continue
-			except (POSError, TypeError):
+			purchase = intids.queryObject(uid)
+			if is_broken(purchase, uid) or not IPurchaseAttempt.providedBy(purchase):
 				continue
 			
 			if purchasable and purchasable not in purchase.Items:
