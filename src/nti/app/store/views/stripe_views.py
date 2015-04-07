@@ -286,7 +286,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		result = CaseInsensitiveDict(result or {})
 		return result
 
-	def parseContext(self, values, *purchasables):
+	def parseContext(self, values, purchasables=()):
 		context = dict()
 		for purchasable in purchasables:
 			vendor = to_external_object(purchasable.VendorInfo) \
@@ -308,17 +308,17 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
 						{	'message': _("Please provide a valid purchasable."),
+							'field' : 'purchasables',
 							'value': purchasable_id },
 						None)
 		return purchasable
 
-	def validatePurchasables(self, request, *purchasables):
+	def validatePurchasables(self, request, values, purchasables=()):
 		result = [self.validatePurchasable(request, p) for p in purchasables]
 		return result
 
-	def validateStripeKey(self, request, *purchasables):
+	def validateStripeKey(self, request, purchasables=()):
 		result = None
-		count = len(purchasables)
 		for purchasable in purchasables:
 			provider = purchasable.Provider
 			stripe_key = component.queryUtility(IStripeConnectKey, provider)
@@ -326,7 +326,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 				raise_error(request,
 							hexc.HTTPUnprocessableEntity,
 							{	'message': _("Invalid purchasable provider."),
-								'field': 'purchasables' if count > 1 else 'purchasableID' },
+								'field': 'purchasables',
+								'value': provider },
 							None)
 			if result is None:
 				result = stripe_key
@@ -348,17 +349,17 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
 						{	'message': _("Please provide a purchasable."),
-							'field': 'purchasableID' },
+							'field': 'purchasables' },
 						None)
 		elif isinstance(purchasables, six.string_types):
 			purchasables = list(set(purchasables.split())) 
 		result['Purchasables'] = purchasables
 
-		purchasables = self.validatePurchasables(request, *purchasables)
-		stripe_key = self.validateStripeKey(request, *purchasables)
+		purchasables = self.validatePurchasables(request, values, purchasables)
+		stripe_key = self.validateStripeKey(request, purchasables)
 		result['StripeKey'] = stripe_key
 
-		context = self.parseContext(values, *purchasables)
+		context = self.parseContext(values, purchasables)
 		result['Context'] = context
 
 		token = values.get('token', None)
@@ -508,8 +509,8 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 @view_config(name="gift_stripe_payment_preflight", **_noauth_post_view_defaults)
 class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
-	def readInput(self):
-		values = super(GiftWithStripePreflightView, self).readInput()
+	def readInput(self, value=None):
+		values = super(GiftWithStripePreflightView, self).readInput(value=value)
 		values.pop('Quantity', None) # ignore quantity
 		return values
 
