@@ -417,7 +417,7 @@ def redeem_purchase(user, code, purchasable=None, vendor_updates=None, request=N
 		# set vendor updates before called notify
 		if vendor_updates is not None:
 			purchase.Context['AllowVendorUpdates'] = vendor_updates
-		notify(GiftPurchaseAttemptRedeemed(purchase, user, request))
+		notify(GiftPurchaseAttemptRedeemed(purchase, user, purchasable, request))
 	else:
 		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found.'))
 	return purchase
