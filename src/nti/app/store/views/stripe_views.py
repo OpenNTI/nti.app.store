@@ -61,7 +61,9 @@ from nti.store.interfaces import PurchaseAttemptSuccessful
 from nti.store.payments.stripe import STRIPE
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
+from nti.store.payments.stripe.utils import replace_items_coupon
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
+from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
 from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
@@ -169,16 +171,47 @@ def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE
 	result = pricer.price(priceable)
 	return result
 
+def price_order(order, processor=STRIPE):
+	pricer = component.getUtility(IPurchasablePricer, name=processor)
+	result = pricer.evaluate(order)
+	return result
+
+def _call_pricing_func(func):
+	try:
+		result = func()
+	except NoSuchStripeCoupon:
+		result = IPricingError(_("Invalid coupon"))
+	except InvalidStripeCoupon:
+		result = IPricingError(_("Invalid coupon"))
+	except InvalidPurchasable:
+		result = IPricingError(_("Invalid purchasable"))
+	except PricingException as e:
+		result = IPricingError(e)
+	except Exception:
+		raise
+	return result
+
+@view_config(name="price_stripe_order", **_noauth_post_view_defaults)
+class PriceStripeOrderView(AbstractAuthenticatedView,
+						   ModeledContentUploadRequestUtilsMixin):
+	
+	content_predicate = IStripePurchaseOrder.providedBy
+
+	def _do_call(self):
+		order = self.readInput()
+		assert IStripePurchaseOrder.providedBy(order)
+		if order.Coupon: # replace item coupons
+			replace_items_coupon(order, None)
+
+		result = _call_pricing_func(partial(price_order, order))
+		status = 422 if IPricingError.providedBy(result) else 200
+		self.request.response.status_int = status
+		return result
+	
 @view_config(name="price_purchasable_with_stripe_coupon", **_noauth_post_view_defaults)
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
-	def price(self, purchasable_id, quantity=None, coupon=None):
-		result = perform_pricing(purchasable_id, quantity=quantity, coupon=coupon,
-								 processor=self.processor)
-		return result
-
 	def price_purchasable(self, values=None):
-		result = None
 		values = values or self.readInput()
 		coupon = values.get('coupon') or values.get('couponCode')
 		purchasable_id = values.get('purchasable') or \
@@ -195,29 +228,19 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 						None)
 		quantity = int(quantity)
 
-		status = 422
-		try:
-			result = self.price(purchasable_id, quantity, coupon)
-		except NoSuchStripeCoupon:
-			result = IPricingError(_("Invalid coupon"))
-		except InvalidStripeCoupon:
-			result = IPricingError(_("Invalid coupon"))
-		except InvalidPurchasable:
-			result = IPricingError(_("Invalid purchasable"))
-		except PricingException as e:
-			result = IPricingError(e)
-		except StandardError:
-			raise
-		else:
-			status = 200
-
+		pricing_func = partial(perform_pricing, 
+					  		   purchasable_id=purchasable_id,
+					   		   quantity=quantity, 
+					   		   coupon=coupon)
+		result = _call_pricing_func(pricing_func)
+		status = 422 if IPricingError.providedBy(result) else 200
 		self.request.response.status_int = status
 		return result
 
 	def __call__(self):
 		result = self.price_purchasable()
 		return result
-
+	
 def process_purchase(manager, purchase_id, username, token, expected_amount,
 					 stripe_key, request, site_names=()):
 	logger.info("Processing purchase %s", purchase_id)
