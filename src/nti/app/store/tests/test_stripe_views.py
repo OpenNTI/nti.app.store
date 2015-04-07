@@ -11,6 +11,7 @@ from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
 from hamcrest import has_key
+from hamcrest import contains
 from hamcrest import has_item
 from hamcrest import has_entry
 from hamcrest import has_length
@@ -26,12 +27,16 @@ import anyjson as json
 
 from zope import interface
 
+from nti.app.store.views.stripe_views import process_purchase
+
+from nti.externalization.externalization import to_external_object
+
 from nti.store import PricingException
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
 from nti.store.payments.stripe.interfaces import IStripeCoupon
-
-from nti.app.store.views.stripe_views import process_purchase
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -110,6 +115,25 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(json_body, has_entry('PurchasePrice', 270.0))
 		assert_that(json_body, has_entry('NonDiscountedPrice', 300.0))
 		assert_that(json_body, has_key('Coupon'))
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_price_stripe_order(self):
+		item = create_stripe_purchase_item(self.purchasable_id, quantity=2)
+		order = create_stripe_purchase_order((item,))
+		
+		body = to_external_object(order)
+		url = '/dataserver2/store/price_stripe_order'
+		
+		res = self.testapp.post_json(url, body, status=200)
+		json_body = res.json_body
+		assert_that(json_body, has_entry('Currency', 'USD'))
+		assert_that(json_body, has_entry('Class', 'PricingResults'))
+		assert_that(json_body, has_entry('Items', contains(has_entry('Amount', 300.0))))
+		assert_that(json_body, has_entry('Items', contains(has_entry('Currency', 'USD'))))
+		assert_that(json_body, has_entry('Items', contains(has_entry('PurchasePrice', 600.0))))
+		assert_that(json_body, has_entry('Items', contains(has_entry('Quantity', 2))))
+		assert_that(json_body, has_entry('TotalPurchasePrice', 600.0))
+		assert_that(json_body, has_entry('TotalNonDiscountedPrice', 600.0))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
