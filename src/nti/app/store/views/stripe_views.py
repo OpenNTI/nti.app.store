@@ -11,6 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
+import six
 import sys
 from datetime import date
 from datetime import datetime
@@ -180,7 +181,9 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		result = None
 		values = values or self.readInput()
 		coupon = values.get('coupon') or values.get('couponCode')
-		purchasable_id = values.get('purchasableID') or values.get('purchasable_id')
+		purchasable_id = values.get('purchasable') or \
+						 values.get('purchasableId') or \
+						 values.get('purchasable_Id')
 
 		# check quantity
 		quantity = values.get('quantity', 1)
@@ -251,11 +254,13 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		result = CaseInsensitiveDict(result or {})
 		return result
 
-	def parseContext(self, values, purchasable):
-		# get purchasable vendor info
-		context = to_external_object(purchasable.VendorInfo) \
-				  if purchasable.VendorInfo else dict()
-
+	def parseContext(self, values, *purchasables):
+		context = dict()
+		for purchasable in purchasables:
+			vendor = to_external_object(purchasable.VendorInfo) \
+					 if purchasable.VendorInfo else None
+			context.update(vendor or {})
+			
 		# capture user context data
 		data = CaseInsensitiveDict(values.get('Context') or {})
 		for name, alias, klass in self.KEYS:
@@ -265,38 +270,63 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 				context[name] = klass(value)
 		return context
 
-	def getPaymentRecord(self, request, values=None):
-		values = values or self.readInput()
-		result = CaseInsensitiveDict()
-		purchasable_id = values.get('purchasableId') or values.get('purchasable')
-		if not purchasable_id:
-			raise_error(request,
-						hexc.HTTPUnprocessableEntity,
-						{	'message': _("Please provide a purchasable."),
-							'field': 'purchasableID' },
-						None)
-		result['PurchasableID'] = purchasable_id
-
-		stripe_key = None
+	def validatePurchasable(self, request, purchasable_id):
 		purchasable = get_purchasable(purchasable_id)
 		if purchasable is None:
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
 						{	'message': _("Please provide a valid purchasable."),
-							'field': 'purchasableID' },
+							'value': purchasable_id },
 						None)
-		else:
+		return purchasable
+
+	def validatePurchasables(self, request, *purchasables):
+		result = [self.validatePurchasable(request, p) for p in purchasables]
+		return result
+
+	def validateStripeKey(self, request, *purchasables):
+		result = None
+		count = len(purchasables)
+		for purchasable in purchasables:
 			provider = purchasable.Provider
 			stripe_key = component.queryUtility(IStripeConnectKey, provider)
-			if not stripe_key:
+			if stripe_key is None:
 				raise_error(request,
 							hexc.HTTPUnprocessableEntity,
 							{	'message': _("Invalid purchasable provider."),
-								'field': 'purchasableID' },
+								'field': 'purchasables' if count > 1 else 'purchasableID' },
 							None)
+			if result is None:
+				result = stripe_key
+			elif result !=  stripe_key:
+				raise_error(request,
+							hexc.HTTPUnprocessableEntity,
+							{	'message': _("Cannot mix purchasable providers."),
+								'field': 'purchasables' },
+							None)
+		return result
+	
+	def getPaymentRecord(self, request, values=None):
+		values = values or self.readInput()
+		result = CaseInsensitiveDict()
+		purchasables = 	values.get('purchasableId') or \
+						values.get('purchasable') or \
+						values.get('purchasables')
+		if not purchasables:
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Please provide a purchasable."),
+							'field': 'purchasableID' },
+						None)
+		elif isinstance(purchasables, six.string_types):
+			purchasables = list(set(purchasables.split())) 
+		result['Purchasables'] = purchasables
+
+		purchasables = self.validatePurchasables(request, *purchasables)
+		stripe_key = self.validateStripeKey(request, *purchasables)
 		result['StripeKey'] = stripe_key
 
-		context = self.parseContext(values, purchasable)
+		context = self.parseContext(values, *purchasables)
 		result['Context'] = context
 
 		token = values.get('token', None)
@@ -358,8 +388,9 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		return record
 	
 	def createPurchaseOrder(self, record):
-		item = create_stripe_purchase_item(record['PurchasableID'] )
-		result = create_stripe_purchase_order(item, quantity=record['Quantity'],
+		items = [create_stripe_purchase_item(p) for p in record['Purchasables']]
+		result = create_stripe_purchase_order(tuple(items),
+											  quantity=record['Quantity'],
 											  coupon=record['coupon'])
 		return result
 
@@ -414,10 +445,6 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 
 	def getPaymentRecord(self, request, values=None):
 		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord(request, values)
-		purchasable_id = record['PurchasableID']
-		description = record['Description']
-		if not description:
-			record['Description'] = "%s's payment for '%r'" % (self.username, purchasable_id)
 		return record
 
 	@property
@@ -517,11 +544,6 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 						{	'message': _("Please provide a receiver email."),
 							'field': 'message' },
 						None)
-
-		purchasable_id = record['PurchasableID']
-		description = record['Description']
-		if not description:
-			record['Description'] = "payment for gift '%r'" % purchasable_id
 		return record
 
 	@property
