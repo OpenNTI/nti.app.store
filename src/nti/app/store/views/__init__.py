@@ -427,8 +427,8 @@ class RedeemPurchaseCodeView(AbstractPostView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchasable = 	values.get('purchasableID') or \
-						values.get('purchasable')
+		purchasable = 	values.get('purchasable') or \
+						values.get('purchasableId')
 		if not purchasable:
 			msg = _("Must specify a valid purchasable id.")
 			raise hexc.HTTPUnprocessableEntity(msg)
@@ -462,8 +462,11 @@ class RedeemGiftView(AbstractPostView):
 		if allow_vendor_updates is not None:
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
 
+		purchasable =	values.get('purchasable') or \
+						values.get('purchasableId')
 		try:
 			result = redeem_purchase(self.remoteUser, gift_code,
+									 purchasable=purchasable,
 									 request=self.request,
 									 vendor_updates=allow_vendor_updates)
 		except hexc.HTTPNotFound:
