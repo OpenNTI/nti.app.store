@@ -417,7 +417,7 @@ def redeem_purchase(user, code, purchasable=None, vendor_updates=None, request=N
 		# set vendor updates before called notify
 		if vendor_updates is not None:
 			purchase.Context['AllowVendorUpdates'] = vendor_updates
-		notify(GiftPurchaseAttemptRedeemed(purchase, user, purchasable, request))
+		notify(GiftPurchaseAttemptRedeemed(purchase, user, request))
 	else:
 		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found.'))
 	return purchase
@@ -440,9 +440,10 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("Must specify a valid invitation code.")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchase = redeem_purchase(self.remoteUser, invitation_code,
-								   purchasable=purchasable,
-								   request=self.request)
+		purchase = redeem_purchase(	self.remoteUser, 
+									invitation_code,
+								  	purchasable=purchasable,
+								 	request=self.request)
 		return purchase
 
 @view_config(name="redeem_gift", **_post_view_defaults)
@@ -465,7 +466,8 @@ class RedeemGiftView(AbstractPostView):
 		purchasable =	values.get('purchasable') or \
 						values.get('purchasableId')
 		try:
-			result = redeem_purchase(self.remoteUser, gift_code,
+			result = redeem_purchase(self.remoteUser, 
+									 gift_code,
 									 purchasable=purchasable,
 									 request=self.request,
 									 vendor_updates=allow_vendor_updates)
