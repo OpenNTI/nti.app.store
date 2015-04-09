@@ -522,6 +522,17 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 		values.pop('Quantity', None) # ignore quantity
 		return values
 
+	def validatePurchasables(self, request, values, purchasables=()):
+		result = super(GiftWithStripePreflightView, self).validatePurchasables(request, values, purchasables)
+		count = sum(1 for x in result if IPurchasableChoiceBundle.providedBy(x))
+		if count and len(result) > 1:
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Can only purchase one bundle item at a time."),
+							'field' : 'purchasables' },
+						None)
+		return result
+	
 	def getPaymentRecord(self, request, values):
 		record = super(GiftWithStripePreflightView, self).getPaymentRecord(request, values)
 		creator = values.get('from') or values.get('sender') or values.get('creator')
