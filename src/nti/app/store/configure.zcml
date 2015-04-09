@@ -33,10 +33,10 @@
 
 	<!--
 	Provide access to the store views under .../store/.
-	NOTE: This could be in site configuration.
 	-->
 	<adapter name="store"
 			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
 			 factory=".views.StorePathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
+
 </configure>

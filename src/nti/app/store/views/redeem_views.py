@@ -11,12 +11,9 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
-from zope import interface
 from zope.event import notify
 
-from zope.container.contained import Contained
-
-from zope.traversing.interfaces import IPathAdapter
+from zope.proxy import ProxyBase
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -24,8 +21,6 @@ from pyramid import httpexceptions as hexc
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import StandardExternalFields
-
-from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.purchasable import get_purchasable
 
@@ -38,9 +33,9 @@ from nti.store.invitations import create_store_purchase_invitation
 
 from nti.store.store import get_purchase_attempt
 
-from nti.store.interfaces import IPurchasable, IPurchasableChoiceBundle
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IGiftPurchaseAttempt
+from nti.store.interfaces import IPurchasableChoiceBundle
 from nti.store.interfaces import IInvitationPurchaseAttempt
 from nti.store.interfaces import GiftPurchaseAttemptRedeemed
 
@@ -48,20 +43,10 @@ from ..utils import AbstractPostView
 
 from ..utils import to_boolean
 
-from .. import STORE
+from . import StorePathAdapter
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
-
-@interface.implementer(IPathAdapter)
-class StorePathAdapter(Contained):
-
-	__name__ = STORE
-
-	def __init__(self, context, request):
-		self.context = context
-		self.request = request
-		self.__parent__ = context
 
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
@@ -70,6 +55,19 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  request_method='GET')
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
+
+class PurchaseAttemptProxy(ProxyBase):
+	
+	Items = property(
+					lambda s: s.__dict__.get('_v_items'),
+					lambda s, v: s.__dict__.__setitem__('_v_items', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, items=None):
+		ProxyBase.__init__(self, base)
+		self.Items = items
 
 def find_redeemable_purchase(code):
 	try:
@@ -109,7 +107,6 @@ def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, req
 
 def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
-	
 	if IInvitationPurchaseAttempt.providedBy(purchase): # legacy cases
 		return redeem_invitation_purchase(user, code, 
 										  request=request,
@@ -126,8 +123,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	# set vendor updates before called notify
 	if vendor_updates is not None:
 		purchase.Context['AllowVendorUpdates'] = vendor_updates
-	
-	items = None
+
 	purchasables = {get_purchasable(x) for x in purchase.Items}
 	purchasables.discard(None)
 	if not purchasables:
@@ -142,13 +138,12 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			if not item:
 				msg = _("Must specify a redeemable item.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			obj = find_object_with_ntiid(item)
-			purchasable = IPurchasable(obj, None)
-			if purchasable is None:
-				msg = _("Could not find the specified redeemable item.")
+			if item not in purchase.Items:
+				msg = _("The redeemable item is not in this purchasable.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			items = purchasable.Items ## items to be redeemed
-	notify(GiftPurchaseAttemptRedeemed(purchase, user, items=items, request=request))
+			## proxy purchase
+			purchase = PurchaseAttemptProxy(purchase, (item,))
+	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
 	return purchase
 
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
