@@ -477,7 +477,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	if vendor_updates is not None:
 		purchase.Context['AllowVendorUpdates'] = vendor_updates
 		
-	notify(GiftPurchaseAttemptRedeemed(purchase, user, request))
+	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
 	return purchase
 
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
