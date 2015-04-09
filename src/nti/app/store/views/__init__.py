@@ -22,7 +22,9 @@ from functools import partial
 from zope import component
 from zope import interface
 from zope.event import notify
+
 from zope.container.contained import Contained
+
 from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.view import view_config
@@ -30,10 +32,13 @@ from pyramid import httpexceptions as hexc
 from pyramid.authorization import ACLAuthorizationPolicy
 
 from nti.app.authentication import get_remote_user
-from nti.app.renderers.interfaces import IUncacheableInResponse
 
 from nti.app.base.abstract_views import AbstractView
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+
+from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+
+from nti.app.renderers.interfaces import IUncacheableInResponse
 
 from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
 
@@ -45,18 +50,23 @@ from nti.dataserver.interfaces import IDataserverTransactionRunner
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.externalization.internalization import find_factory_for
+from nti.externalization.internalization import update_from_external_object
+
 from nti.store import InvalidPurchasable
 from nti.store.priceable import create_priceable
 
 from nti.site.site import get_site_for_site_names
 
+from nti.store import PricingException
 from nti.store import RedemptionException
 
 from nti.store.purchasable import get_all_purchasables
 
 from nti.store.store import get_purchase_by_code
 
-from nti.store.invitations import InvitationAlreadyAccepted, InvitationExpired
+from nti.store.invitations import InvitationExpired
+from nti.store.invitations import InvitationAlreadyAccepted
 from nti.store.invitations import InvitationCapacityExceeded
 from nti.store.invitations import create_store_purchase_invitation
 
@@ -68,6 +78,8 @@ from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_history import get_purchase_history_by_item
 
 from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPricingError
+from nti.store.interfaces import IPurchaseOrder
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IPaymentProcessor
@@ -339,20 +351,36 @@ class PurchaseAttemptGetView(GenericGetView):
 
 # post views
 
+def perform_pricing(purchasable, quantity):
+	pricer = component.getUtility(IPurchasablePricer)
+	priceable = create_priceable(ntiid=purchasable, quantity=quantity)
+	result = pricer.price(priceable)
+	return result
+
+def price_order(order):
+	pricer = component.getUtility(IPurchasablePricer)
+	result = pricer.evaluate(order)
+	return result
+
+def _call_pricing_func(func):
+	try:
+		result = func()
+	except InvalidPurchasable:
+		result = IPricingError(_("Invalid purchasable"))
+	except PricingException as e:
+		result = IPricingError(e)
+	except Exception:
+		raise
+	return result
+
 @view_config(name="price_purchasable", **_noauth_post_defaults)
 class PricePurchasableView(AbstractPostView):
 
-	def price(self, purchasable_id, quantity):
-		pricer = component.getUtility(IPurchasablePricer)
-		source = create_priceable(purchasable_id, quantity)
-		result = pricer.price(source)
-		return result
-
 	def price_purchasable(self, values=None):
 		values = values or self.readInput()
-		purchasable_id = values.get('purchasableID') or \
-						 values.get('purchasable_id') or \
-						 values.get('purchasable') or u''
+		purchasable = values.get('purchasable ') or \
+					  values.get('purchasableId') or \
+					  values.get('purchasable_id') or u''
 
 		# check quantity
 		quantity = values.get('quantity', 1)
@@ -360,14 +388,37 @@ class PricePurchasableView(AbstractPostView):
 			raise hexc.HTTPUnprocessableEntity(_('Invalid quantity'))
 		quantity = int(quantity)
 
-		try:
-			result = self.price(purchasable_id, quantity)
-			return result
-		except InvalidPurchasable:
-			raise hexc.HTTPUnprocessableEntity(_('Purchasable not found.'))
+		pricing_func = partial(perform_pricing, 
+					   		   quantity=quantity,
+					   		   purchasable=purchasable)
+		result = _call_pricing_func(pricing_func)
+		status = 422 if IPricingError.providedBy(result) else 200
+		self.request.response.status_int = status
+		return result
 
 	def __call__(self):
 		result = self.price_purchasable()
+		return result
+
+@view_config(name="price_order", **_noauth_post_defaults)
+class PriceOrderView(AbstractAuthenticatedView,
+					 ModeledContentUploadRequestUtilsMixin):
+	
+	content_predicate = IPurchaseOrder.providedBy
+
+	def readCreateUpdateContentObject(self, *args, **kwargs):
+		externalValue = self.readInput()
+		result = find_factory_for(externalValue)()
+		update_from_external_object(result, externalValue)
+		return result
+		
+	def _do_call(self):
+		order = self.readCreateUpdateContentObject()
+		assert IPurchaseOrder.providedBy(order)
+
+		result = _call_pricing_func(partial(price_order, order))
+		status = 422 if IPricingError.providedBy(result) else 200
+		self.request.response.status_int = status
 		return result
 
 def redeem_purchase(user, code, purchasable=None, vendor_updates=None, request=None):

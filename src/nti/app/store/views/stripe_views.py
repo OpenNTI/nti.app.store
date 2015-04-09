@@ -37,8 +37,9 @@ from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
 
 from nti.externalization.interfaces import LocatedExternalDict
-from nti.externalization.internalization import find_factory_for
 from nti.externalization.interfaces import StandardExternalFields
+
+from nti.externalization.internalization import find_factory_for
 from nti.externalization.externalization import to_external_object
 from nti.externalization.internalization import update_from_external_object
 
@@ -202,8 +203,7 @@ class PriceStripeOrderView(AbstractAuthenticatedView,
 
 	def readCreateUpdateContentObject(self, *args, **kwargs):
 		externalValue = self.readInput()
-		factory = find_factory_for(externalValue)
-		result = factory()
+		result = find_factory_for(externalValue)()
 		update_from_external_object(result, externalValue)
 		return result
 		
@@ -226,7 +226,7 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		coupon = values.get('coupon') or values.get('couponCode')
 		purchasable_id = values.get('purchasable') or \
 						 values.get('purchasableId') or \
-						 values.get('purchasable_Id')
+						 values.get('purchasable_Id') or u''
 
 		# check quantity
 		quantity = values.get('quantity', 1)
