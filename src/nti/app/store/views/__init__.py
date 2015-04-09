@@ -5,6 +5,7 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from nti.ntiids.ntiids import find_object_with_ntiid
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -61,7 +62,7 @@ from nti.site.site import get_site_for_site_names
 from nti.store import PricingException
 from nti.store import RedemptionException
 
-from nti.store.purchasable import get_all_purchasables
+from nti.store.purchasable import get_all_purchasables, get_purchasable
 
 from nti.store.store import get_purchase_by_code
 
@@ -77,7 +78,7 @@ from nti.store.purchase_history import get_purchase_history
 from nti.store.purchase_history import get_pending_purchases
 from nti.store.purchase_history import get_purchase_history_by_item
 
-from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchasable, IPurchasableChoiceBundle
 from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPurchaseOrder
 from nti.store.interfaces import IPurchaseAttempt
@@ -476,8 +477,29 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	# set vendor updates before called notify
 	if vendor_updates is not None:
 		purchase.Context['AllowVendorUpdates'] = vendor_updates
-		
-	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
+	
+	items = None
+	purchasables = {get_purchasable(x) for x in purchase.Items}
+	purchasables.discard(None)
+	if not purchasables:
+		msg = _("No valid purchasables found.")
+		raise hexc.HTTPUnprocessableEntity(msg)
+	elif len(purchase.Items) != len(purchasables):
+		msg = _("Purchase contain missing purchasables.")
+		raise hexc.HTTPUnprocessableEntity(msg)
+	elif len(purchasables) == 1: ## check for bundle choice
+		purchasable = purchasables.__iter__().next()
+		if IPurchasableChoiceBundle.providedBy(purchasable):
+			if not item:
+				msg = _("Must specify a redeemable item.")
+				raise hexc.HTTPUnprocessableEntity(msg)
+			obj = find_object_with_ntiid(item)
+			purchasable = IPurchasable(obj, None)
+			if purchasable is None:
+				msg = _("Could not find the specified redeemable item.")
+				raise hexc.HTTPUnprocessableEntity(msg)
+			items = purchasable.Items ## items to be redeemed
+	notify(GiftPurchaseAttemptRedeemed(purchase, user, items=items, request=request))
 	return purchase
 
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
