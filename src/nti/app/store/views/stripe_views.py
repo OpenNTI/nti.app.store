@@ -58,6 +58,7 @@ from nti.store.store import register_gift_purchase_attempt
 from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
+from nti.store.interfaces import IPurchasableChoiceBundle
 from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.store.payments.stripe import STRIPE
@@ -476,10 +477,17 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 @view_config(name="post_stripe_payment", **_post_view_defaults)
 class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
-	def getPaymentRecord(self, request, values=None):
-		record = super(ProcessPaymentWithStripeView, self).getPaymentRecord(request, values)
-		return record
-
+	def validatePurchasable(self, request, purchasable_id):
+		purchasable = super(ProcessPaymentWithStripeView, self).validatePurchasable(request, purchasable_id)
+		if IPurchasableChoiceBundle.providedBy(purchasable):
+			raise_error(request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Cannot purchase a bundle item."),
+							'field' : 'purchasables',
+							'value': purchasable_id },
+						None)
+		return purchasable
+	
 	@property
 	def username(self):
 		return self.remoteUser.username
