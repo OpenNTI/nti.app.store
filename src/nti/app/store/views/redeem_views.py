@@ -165,7 +165,7 @@ def _transform_object(obj, request=None):
 		return result
 	except Exception:
 		logger.warn("Failed to transform incoming object", exc_info=True)
-		raise obj
+		return obj
 		
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
 class RedeemPurchaseCodeView(AbstractPostView):
