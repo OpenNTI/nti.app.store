@@ -11,12 +11,18 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
+from zope import component
+
 from zope.event import notify
 
 from zope.proxy import ProxyBase
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
+
+from nti.appserver.interfaces import INewObjectTransformer
+
+from nti.common.functional import identity
 
 from nti.dataserver import authorization as nauth
 
@@ -146,6 +152,21 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
 	return purchase
 
+def _transform_object(obj, request=None):
+	try:
+		transformer = component.queryMultiAdapter( (request, obj),
+												   INewObjectTransformer )
+		if transformer is None:
+			transformer = component.queryAdapter( obj,
+												  INewObjectTransformer,
+												  default=identity)
+
+		result = transformer( obj )
+		return result
+	except Exception:
+		logger.warn("Failed to transform incoming object", exc_info=True)
+		raise obj
+		
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
 class RedeemPurchaseCodeView(AbstractPostView):
 
@@ -194,6 +215,7 @@ class RedeemGiftView(AbstractPostView):
 									 	  item=item,
 									 	  request=self.request,
 										  vendor_updates=allow_vendor_updates)
+			result = _transform_object(result, self.request)
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))
