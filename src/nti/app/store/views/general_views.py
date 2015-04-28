@@ -21,7 +21,6 @@ from zope import interface
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
-from pyramid.authorization import ACLAuthorizationPolicy
 
 from nti.app.authentication import get_remote_user
 
@@ -246,25 +245,9 @@ def check_purchasable_access(purchasable, remoteUser=None):
 @view_config(name="get_purchasables", **_noauth_view_defaults)
 class GetPurchasablesView(AbstractAuthenticatedView):
 
-	def _is_permitted(self, p):
-		if hasattr(p, 'HACK_make_acl'):
-			acl = p.HACK_make_acl()
-			class Dummy(object):
-				__acl__ = None
-			dummy = Dummy()
-			dummy.__acl__ = acl
-			policy = ACLAuthorizationPolicy()
-			principals = self.request.effective_principals
-			result = policy.permits(dummy, principals, nauth.ACT_READ)
-		else:
-			result = True
-		return result
-
 	def _check_access(self, purchasable):
-		is_authenticated = (self.remoteUser is not None)
 		result = purchasable.isPublic and \
-				 ( (is_authenticated and self._is_permitted(purchasable)) or \
-				 	check_purchasable_access(purchasable, self.remoteUser) )
+				 check_purchasable_access(purchasable, self.remoteUser)
 		return result
 
 	def __call__(self):
