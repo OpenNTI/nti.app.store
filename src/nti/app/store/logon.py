@@ -9,8 +9,8 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from zope import interface
 from zope import component
+from zope import interface
 
 from pyramid.interfaces import IRequest
 
@@ -61,4 +61,3 @@ class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 	def __init__(self, user, request):
 		super(_StoreAuthenticatedUserLinkProvider, self).__init__(request)
 		self.user = user
-

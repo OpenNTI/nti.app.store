@@ -11,7 +11,9 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import component
 from zope import interface
+
 from zope.container.contained import Contained
+
 from zope.location.interfaces import ILocation
 
 from pyramid.traversal import find_interface

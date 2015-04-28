@@ -53,9 +53,10 @@ from nti.store.purchase_attempt import create_purchase_attempt
 
 from nti.store.purchasable import get_purchasable
 
-from nti.store.interfaces import PA_STATE_SUCCESS, IPurchaseAttempt
+from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
+from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
