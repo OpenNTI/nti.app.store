@@ -15,8 +15,6 @@ from zope import component
 
 from zope.event import notify
 
-from zope.proxy import ProxyBase
-
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
@@ -27,8 +25,6 @@ from nti.common.functional import identity
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import StandardExternalFields
-
-from nti.store.purchasable import get_purchasable
 
 from nti.store.store import get_purchase_by_code
 
@@ -50,6 +46,8 @@ from ..utils import AbstractPostView
 from ..utils import to_boolean
 
 from . import StorePathAdapter
+from . import PurchaseAttemptProxy
+from . import get_purchase_purchasables
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
@@ -61,19 +59,6 @@ _view_defaults = dict(route_name='objects.generic.traversal',
 					  request_method='GET')
 _post_view_defaults = _view_defaults.copy()
 _post_view_defaults['request_method'] = 'POST'
-
-class PurchaseAttemptProxy(ProxyBase):
-	
-	Items = property(
-					lambda s: s.__dict__.get('_v_items'),
-					lambda s, v: s.__dict__.__setitem__('_v_items', v))
-	
-	def __new__(cls, base, *args, **kwargs):
-		return ProxyBase.__new__(cls, base)
-
-	def __init__(self, base, items=None):
-		ProxyBase.__init__(self, base)
-		self.Items = items
 
 def find_redeemable_purchase(code):
 	try:
@@ -130,8 +115,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	if vendor_updates is not None:
 		purchase.Context['AllowVendorUpdates'] = vendor_updates
 
-	purchasables = {get_purchasable(x) for x in purchase.Items}
-	purchasables.discard(None)
+	purchasables = get_purchase_purchasables(purchase)
 	if not purchasables:
 		msg = _("No valid purchasables found.")
 		raise hexc.HTTPUnprocessableEntity(msg)
