@@ -12,9 +12,11 @@ logger = __import__('logging').getLogger(__name__)
 from .. import MessageFactory as _
 
 from zope import component
-from zope import lifecycleevent
+from zope import interface
 
 from zope.event import notify
+
+from zope.proxy import ProxyBase
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -27,6 +29,8 @@ from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.ntiids.ntiids import find_object_with_ntiid
+
 from nti.store.store import get_purchase_by_code
 
 from nti.store.invitations import InvitationExpired
@@ -36,6 +40,10 @@ from nti.store.invitations import create_store_purchase_invitation
 
 from nti.store.store import get_purchase_attempt
 
+from nti.store.interfaces import IPriceable
+from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchaseOrder
+from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IGiftPurchaseAttempt
 from nti.store.interfaces import IPurchasableChoiceBundle
@@ -67,6 +75,56 @@ def find_redeemable_purchase(code):
 		purchase = None
 	return purchase
 
+@interface.implementer(IPriceable)
+class PurchaseItemProxy(ProxyBase):
+	
+	NTIID = property(
+					lambda s: s.__dict__.get('_v_ntiid'),
+					lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, ntiid=None):
+		ProxyBase.__init__(self, base)
+		self.NTIID = ntiid
+
+@interface.implementer(IPurchaseOrder)
+class PurchaseOrderProxy(ProxyBase):
+	
+	Items = property(
+					lambda s: s.__dict__.get('_v_items'),
+					lambda s, v: s.__dict__.__setitem__('_v_items', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, items=()):
+		ProxyBase.__init__(self, base)
+		self.Items = items
+		
+@interface.implementer(IPurchaseAttempt)
+class PurchaseAttemptProxy(ProxyBase):
+	
+	Order = property(
+					lambda s: s.__dict__.get('_v_order'),
+					lambda s, v: s.__dict__.__setitem__('_v_order', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, order=None):
+		ProxyBase.__init__(self, base)
+		self.Order = order
+		
+def _proxy_purchase(purchase, *ntiids):
+	items = []
+	for idx, item in enumerate(purchase.Order.Items):
+		items.append(PurchaseItemProxy(item, ntiids[idx]))	
+	order = PurchaseOrderProxy(purchase.Order, items)
+	purchase = PurchaseAttemptProxy(purchase, order)
+	return purchase
+	
 def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
 	if not IInvitationPurchaseAttempt.providedBy(purchase):
@@ -96,12 +154,6 @@ def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, req
 		raise hexc.HTTPUnprocessableEntity(msg)
 	return purchase
 
-def _replace_item(purchase, item):
-	order = purchase.Order
-	for item in order.Items:
-		item.NTIID = item
-	return purchase
-	
 def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
 	if IInvitationPurchaseAttempt.providedBy(purchase): # legacy cases
@@ -137,9 +189,10 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			if item not in purchase.Items:
 				msg = _("The redeemable item is not in this purchasable.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			## replace item to reflect the actual redeem operation
-			purchase = _replace_item(purchase, item)
-			lifecycleevent.modified(purchase)
+			## find the source object
+			source = find_object_with_ntiid(item)
+			purchasable = IPurchasable(source)
+			purchase = _proxy_purchase(purchase, purchasable.NTIID)
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
 	return purchase
 
