@@ -12,6 +12,7 @@ logger = __import__('logging').getLogger(__name__)
 from .. import MessageFactory as _
 
 from zope import component
+from zope import lifecycleevent
 
 from zope.event import notify
 
@@ -46,7 +47,6 @@ from ..utils import AbstractPostView
 from ..utils import to_boolean
 
 from . import StorePathAdapter
-from . import PurchaseAttemptProxy
 from . import get_purchase_purchasables
 
 ITEMS = StandardExternalFields.ITEMS
@@ -96,6 +96,12 @@ def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, req
 		raise hexc.HTTPUnprocessableEntity(msg)
 	return purchase
 
+def _replace_item(purchase, item):
+	order = purchase.Order
+	for item in order.Items:
+		item.NTIID = item
+	return purchase
+	
 def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
 	if IInvitationPurchaseAttempt.providedBy(purchase): # legacy cases
@@ -131,8 +137,9 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			if item not in purchase.Items:
 				msg = _("The redeemable item is not in this purchasable.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			## proxy purchase
-			purchase = PurchaseAttemptProxy(purchase, (item,))
+			## replace item to reflect the actual redeem operation
+			purchase = _replace_item(purchase, item)
+			lifecycleevent.modified(purchase)
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
 	return purchase
 
