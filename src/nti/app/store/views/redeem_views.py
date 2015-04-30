@@ -263,7 +263,7 @@ class RedeemGiftView(AbstractPostView):
 		if allow_vendor_updates is not None:
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
 
-		item = values.get('purchasable') or values.get('item')
+		item = values.get('purchasable') or values.get('item') or values.get('ntiid')
 		try:
 			result = redeem_gift_purchase(self.remoteUser, 
 									 	  gift_code,
