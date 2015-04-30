@@ -17,6 +17,7 @@ from zope import interface
 from zope.event import notify
 
 from zope.proxy import ProxyBase
+from zope.proxy import removeAllProxies
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -78,52 +79,62 @@ def find_redeemable_purchase(code):
 @interface.implementer(IPriceable)
 class PurchaseItemProxy(ProxyBase):
 	
-	NTIID = property(
-					lambda s: s.__dict__.get('_v_ntiid'),
-					lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
-	
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
 	def __init__(self, base, ntiid=None):
 		ProxyBase.__init__(self, base)
-		self.NTIID = ntiid
+		self._v_ntiid = ntiid
+		
+	@property
+	def NTIID(self):
+		return self._v_ntiid
 
 @interface.implementer(IPurchaseOrder)
 class PurchaseOrderProxy(ProxyBase):
-	
-	Items = property(
-					lambda s: s.__dict__.get('_v_items'),
-					lambda s, v: s.__dict__.__setitem__('_v_items', v))
-	
+
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
 	def __init__(self, base, items=()):
 		ProxyBase.__init__(self, base)
-		self.Items = items
+		self._v_items = items
+	
+	@property
+	def Items(self):
+		return self._v_items
 		
+	@property
+	def NTIIDs(self):
+		result = tuple(x.NTIID for x in self.Items)
+		return result
+	
 @interface.implementer(IPurchaseAttempt)
 class PurchaseAttemptProxy(ProxyBase):
-	
-	Order = property(
-					lambda s: s.__dict__.get('_v_order'),
-					lambda s, v: s.__dict__.__setitem__('_v_order', v))
-	
+
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
 	def __init__(self, base, order=None):
 		ProxyBase.__init__(self, base)
-		self.Order = order
+		self._v_order = order
+	
+	@property
+	def Order(self):
+		return self._v_order
+	
+	@property
+	def Items(self):
+		return self.Order.NTIIDs
 		
 def _proxy_purchase(purchase, *ntiids):
 	items = []
 	for idx, item in enumerate(purchase.Order.Items):
-		items.append(PurchaseItemProxy(item, ntiids[idx]))	
+		proxy = PurchaseItemProxy(item, ntiids[idx])
+		items.append(proxy)	
 	order = PurchaseOrderProxy(purchase.Order, items)
-	purchase = PurchaseAttemptProxy(purchase, order)
-	return purchase
+	result = PurchaseAttemptProxy(purchase, order)
+	return result
 	
 def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
@@ -186,15 +197,17 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			if not item:
 				msg = _("Must specify a redeemable item.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			if item not in purchase.Items:
+			if item not in purchasable.Items:
 				msg = _("The redeemable item is not in this purchasable.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			## find the source object
+			## find the source object 
 			source = find_object_with_ntiid(item)
 			purchasable = IPurchasable(source)
+			## proxy the purchase so change purchase order to include
+			## the correct purchasable
 			purchase = _proxy_purchase(purchase, purchasable.NTIID)
-	notify(GiftPurchaseAttemptRedeemed(purchase, user, request=request))
-	return purchase
+	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
+	return removeAllProxies(purchase) ## remove proxies
 
 def _transform_object(obj, request=None):
 	try:
@@ -204,7 +217,6 @@ def _transform_object(obj, request=None):
 			transformer = component.queryAdapter( obj,
 												  INewObjectTransformer,
 												  default=identity)
-
 		result = transformer( obj )
 		return result
 	except Exception:
