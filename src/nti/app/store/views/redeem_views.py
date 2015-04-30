@@ -36,6 +36,7 @@ from nti.store.invitations import InvitationCapacityExceeded
 from nti.store.invitations import create_store_purchase_invitation
 
 from nti.store.store import get_purchase_attempt
+from nti.store.store import get_purchase_purchasables
 
 from nti.store.interfaces import IPriceable
 from nti.store.interfaces import IPurchasable
@@ -53,7 +54,6 @@ from ..utils import AbstractPostView
 from ..utils import to_boolean
 
 from . import StorePathAdapter
-from . import get_purchase_purchasables
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED

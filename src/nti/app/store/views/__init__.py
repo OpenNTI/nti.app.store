@@ -15,8 +15,6 @@ from zope.container.contained import Contained
 
 from zope.traversing.interfaces import IPathAdapter
 
-from nti.store.purchasable import get_purchasable
-
 from .. import STORE
 
 @interface.implementer(IPathAdapter)
@@ -28,8 +26,3 @@ class StorePathAdapter(Contained):
 		self.context = context
 		self.request = request
 		self.__parent__ = context
-		
-def get_purchase_purchasables(purchase):
-	purchasables = {get_purchasable(x) for x in purchase.Items}
-	purchasables.discard(None)
-	return purchasables
