@@ -22,10 +22,6 @@ from zope.proxy import removeAllProxies
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
-from nti.appserver.interfaces import INewObjectTransformer
-
-from nti.common.functional import identity
-
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import StandardExternalFields
@@ -46,6 +42,7 @@ from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseOrder
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
+from nti.store.interfaces import IObjectTransformer
 from nti.store.interfaces import IGiftPurchaseAttempt
 from nti.store.interfaces import IPurchasableChoiceBundle
 from nti.store.interfaces import IInvitationPurchaseAttempt
@@ -209,14 +206,16 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
 	return purchase
 
+def _id(o, *args, **kwargs): return o
+
 def _transform_object(obj, request=None):
 	try:
 		transformer = component.queryMultiAdapter( (request, obj),
-												   INewObjectTransformer )
+												   IObjectTransformer )
 		if transformer is None:
 			transformer = component.queryAdapter( obj,
-												  INewObjectTransformer,
-												  default=identity)
+												  IObjectTransformer,
+												  default=_id)
 		result = transformer( obj )
 		return result
 	except Exception:
