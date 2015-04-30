@@ -208,7 +208,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 
 def _id(o, *args, **kwargs): return o
 
-def _transform_object(obj, request=None):
+def _transform_object(obj, user, request=None):
 	try:
 		transformer = component.queryMultiAdapter( (request, obj),
 												   IObjectTransformer )
@@ -216,7 +216,7 @@ def _transform_object(obj, request=None):
 			transformer = component.queryAdapter( obj,
 												  IObjectTransformer,
 												  default=_id)
-		result = transformer( obj )
+		result = transformer( obj, user )
 		return result
 	except Exception:
 		logger.warn("Failed to transform incoming object", exc_info=True)
@@ -270,8 +270,8 @@ class RedeemGiftView(AbstractPostView):
 									 	  item=item,
 									 	  request=self.request,
 										  vendor_updates=allow_vendor_updates)
-			result = _transform_object(result, self.request)
-			result = removeAllProxies(result)
+			result = _transform_object(result, self.remoteUser, self.request)
+			result = removeAllProxies(result) ## remove all proxies
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))
