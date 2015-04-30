@@ -180,7 +180,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			## the correct purchasable
 			purchase = _proxy_purchase(purchase, purchasable.NTIID)
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
-	return removeAllProxies(purchase) ## remove proxies
+	return purchase
 
 def _transform_object(obj, request=None):
 	try:
@@ -245,6 +245,7 @@ class RedeemGiftView(AbstractPostView):
 									 	  request=self.request,
 										  vendor_updates=allow_vendor_updates)
 			result = _transform_object(result, self.request)
+			result = removeAllProxies(result) ## remove proxies
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))
