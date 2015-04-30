@@ -41,7 +41,9 @@ from nti.store.invitations import create_store_purchase_invitation
 
 from nti.store.store import get_purchase_attempt
 
+from nti.store.interfaces import IPriceable
 from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchaseOrder
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IRedemptionError
 from nti.store.interfaces import IGiftPurchaseAttempt
@@ -73,39 +75,64 @@ def find_redeemable_purchase(code):
 	except ValueError:
 		purchase = None
 	return purchase
+
+@interface.implementer(IPriceable)
+class PurchaseItemProxy(ProxyBase):
 	
+	NTIID = property(
+					lambda s: s.__dict__.get('_v_ntiid'),
+					lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, ntiid=None):
+		ProxyBase.__init__(self, base)
+		self.NTIID = ntiid
+
+@interface.implementer(IPurchaseOrder)
+class PurchaseOrderProxy(ProxyBase):
+
+	Items = property(
+					lambda s: s.__dict__.get('_v_items'),
+					lambda s, v: s.__dict__.__setitem__('_v_items', v))
+	
+	def __new__(cls, base, *args, **kwargs):
+		return ProxyBase.__new__(cls, base)
+
+	def __init__(self, base, items=()):
+		ProxyBase.__init__(self, base)
+		self.Items = items
+	
+	@property
+	def NTIIDs(self):
+		result = tuple(x.NTIID for x in self.Items)
+		return result
+
 @interface.implementer(IPurchaseAttempt)
 class PurchaseAttemptProxy(ProxyBase):
 
+	Order = property(
+					lambda s: s.__dict__.get('_v_order'),
+					lambda s, v: s.__dict__.__setitem__('_v_order', v))
+	
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
 	def __init__(self, base, order=None):
 		ProxyBase.__init__(self, base)
-		self._v_order = order
-	
-	@property
-	def Order(self):
-		return self._v_order
-	
+		self.Order = order
+
 	@property
 	def Items(self):
 		return self.Order.NTIIDs
 		
 def _proxy_purchase(purchase, *ntiids):
-	## make copy of the purchase items
 	items = []
-	order = purchase.Order
-	for idx, item in enumerate(order.Items):
-		proxy = item.copy(ntiids[idx])
-		items.append(proxy)
-	## make a copy of the purchase order.
-	## we should proxy but there are issues 
-	## with schema configured objects
-	order = order.copy()
-	order.Items = tuple(items)
-	## proxy the purchase attempt with new order object
-	## we proxy so state modifications can be made
+	for idx, item in enumerate(purchase.Order.Items):
+		proxy = PurchaseItemProxy(item, ntiids[idx])
+		items.append(proxy)	
+	order = PurchaseOrderProxy(purchase.Order, items)
 	result = PurchaseAttemptProxy(purchase, order)
 	return result
 	
@@ -245,7 +272,7 @@ class RedeemGiftView(AbstractPostView):
 									 	  request=self.request,
 										  vendor_updates=allow_vendor_updates)
 			result = _transform_object(result, self.request)
-			result = removeAllProxies(result) ## remove proxies
+			result = removeAllProxies(result)
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))
