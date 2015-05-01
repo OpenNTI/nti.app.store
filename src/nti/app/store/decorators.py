@@ -152,4 +152,4 @@ class _PricedItemDecorator(object):
 
 	def decorateExternalObject(self, original, external):
 		item = find_object_with_ntiid(original.NTIID)
-		external['Item'] =  to_external_object(item)
+		external['Item'] =  to_external_object(item) if item is not None else None

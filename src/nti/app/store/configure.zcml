@@ -21,6 +21,10 @@
 				for="nti.store.interfaces.IPurchasable
 					 pyramid.interfaces.IRequest" />
 
+	<subscriber factory=".decorators._PricedItemDecorator"
+				for="nti.store.interfaces.IPricedItem"
+				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
+				
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
