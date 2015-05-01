@@ -39,25 +39,32 @@ from . import STORE
 
 LINKS = StandardExternalFields.LINKS
 		
-@component.adapter(IPurchasable)
 @interface.implementer(IExternalObjectDecorator)
-class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
+class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
 	def _predicate(self, context, result):
 		return True
+	
+	@property
+	def ds_store_path(self):
+		request = self.request
+		try:
+			ds2 = request.path_info_peek()
+		except AttributeError: # in unit test we see this
+			ds2 = "dataserver2"
+		ds_store_path = '/%s/%s/' % (ds2, STORE)
+		return ds_store_path
+	
+@component.adapter(IPurchasable)
+class _PurchasableDecorator(_BaseRequestAwareDecorator):
 	
 	def set_links(self, original, external, username=None):
 		links = external.setdefault(LINKS, [])
 		
 		if original.Amount:
-			request = self.request
-			try:
-				ds2 = request.path_info_peek()
-			except AttributeError: # in unit test we see this
-				ds2 = "dataserver2"
-			ds_store_path = '/%s/%s/' % (ds2, STORE)
+			ds_store_path = self.ds_store_path
 			
-			# insert history link
+			## insert history link
 			if username and has_history_by_item(username, original.NTIID):
 				history_href = ds_store_path + 'get_purchase_history'
 				quoted = urllib.quote(original.NTIID)
@@ -66,7 +73,7 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 
-			# insert price link
+			## insert price link
 			for name in ('price', 'price_purchasable'):
 				price_href = ds_store_path + 'price_purchasable'
 				link = Link(price_href, rel=name, method='Post')
@@ -92,20 +99,11 @@ class _PurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 		self.set_links(original, external, username)
 
 @component.adapter(IPurchasable)
-@interface.implementer(IExternalObjectDecorator)
-class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
-
-	def _predicate(self, context, result):
-		return True
+class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 	
 	def set_links(self, original, external):
 		if original.Amount:
-			request = self.request
-			try:
-				ds2 = request.path_info_peek()
-			except AttributeError: # in unit test we see this
-				ds2 = "dataserver2"
-			ds_store_path = '/%s/%s/' % (ds2, STORE)
+			ds_store_path = self.ds_store_path
 			links = external.setdefault(LINKS, [])
 			
 			href = ds_store_path + 'price_purchasable_with_stripe_coupon'
