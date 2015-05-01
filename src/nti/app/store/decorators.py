@@ -18,15 +18,21 @@ from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
+from nti.externalization.singleton import SingletonDecorator
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.externalization import to_external_object
 from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.links.links import Link
 
-from nti.store.interfaces import IPurchasable
+from nti.ntiids.ntiids import find_object_with_ntiid
+
+from nti.store.interfaces import IPricedItem
+from nti.store.interfaces import IPurchasable 
+
 from nti.store.store import is_item_activated
 from nti.store.store import has_history_by_item
+
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
 from . import STORE
@@ -137,4 +143,13 @@ class _StripePurchasableDecorator(AbstractAuthenticatedRequestAwareDecorator):
 		if result is not None:
 			self.set_links(original, external)
 			external['StripeConnectKey'] = to_external_object(result)
-		
+
+@component.adapter(IPricedItem)
+@interface.implementer(IExternalObjectDecorator)
+class _PricedItemDecorator(object):
+
+	__metaclass__ = SingletonDecorator
+
+	def decorateExternalObject(self, original, external):
+		item = find_object_with_ntiid(original.NTIID)
+		external['Item'] =  to_external_object(item)
