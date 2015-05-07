@@ -117,7 +117,9 @@ class TestStoreViews(ApplicationLayerTest):
 	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_create_purchasable_invalid(self):
+		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
 		ext_obj = dict(self.purchasalbe)
+		ext_obj[NTIID] = ntiid
 		ext_obj[ITEMS] = list(['tag:nextthought.com,2011-10:NTI-HTML-no_in_database'])
 		
 		url = '/dataserver2/store/create_purchasable'
