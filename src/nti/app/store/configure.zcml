@@ -35,12 +35,6 @@
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
 
-	<!--
-	Provide access to the store views under .../store/.
-	-->
-	<adapter name="store"
-			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
-			 factory=".views.StorePathAdapter"
-			 provides="zope.traversing.interfaces.IPathAdapter" />
+	<include package=".views" />
 
 </configure>

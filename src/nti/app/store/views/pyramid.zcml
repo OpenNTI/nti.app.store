@@ -10,5 +10,6 @@
 	<pyramid:scan package='.redeem_views' />
 	<pyramid:scan package='.stripe_views' />
 	<pyramid:scan package='.general_views' />
+	<pyramid:scan package='.purchasable_views' />
 	
 </configure>

@@ -1,0 +1,21 @@
+<!-- -*- mode: nxml -*- -->
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:zcml="http://namespaces.zope.org/zcml">
+
+	<include package="zope.component" file="meta.zcml" />
+	<include package="zope.security" file="meta.zcml" />
+	<include package="zope.component" />
+	<include package="zope.security" />
+
+	<!-- Traversal -->
+	<adapter name="store"
+			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
+			 factory=".StorePathAdapter"
+			 provides="zope.traversing.interfaces.IPathAdapter" />
+
+	<adapter name="Purchasables"
+			 factory=".purchasable_views.PurchasablesPathAdapter"
+			 provides="zope.traversing.interfaces.IPathAdapter" />
+
+</configure>
