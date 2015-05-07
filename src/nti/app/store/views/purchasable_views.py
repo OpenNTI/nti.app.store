@@ -23,6 +23,8 @@ from pyramid import httpexceptions as hexc
 
 from nti.dataserver.interfaces import IDataserverFolder
 
+from nti.store.purchasable import get_purchasable
+
 from .. import PURCHASABLES
 
 # 
@@ -63,7 +65,7 @@ from .. import PURCHASABLES
 # from nti.store.purchase_order import create_purchase_order
 # from nti.store.purchase_attempt import create_purchase_attempt
 # 
-# from nti.store.purchasable import get_purchasable
+
 # 
 # from nti.store.interfaces import PA_STATE_SUCCESS
 # from nti.store.interfaces import PAYMENT_PROCESSORS
@@ -106,7 +108,6 @@ from .. import PURCHASABLES
 # 		s = s.encode('utf-8')
 # 	return s
 
-
 @interface.implementer(IPathAdapter)
 @component.adapter(IDataserverFolder, IRequest)
 class PurchasablesPathAdapter(Contained):
@@ -120,12 +121,9 @@ class PurchasablesPathAdapter(Contained):
 			raise hexc.HTTPNotFound()
 
 		ntiid = unquote(ntiid)
-# 		result = get_issuer(issuer_id)
-# 		if result is not None:
-# 			result = IIssuerOrganization(result)
-# 			result.__acl__ = acl_from_aces(
-# 								ace_allowing(EVERYONE_USER_NAME, nauth.ACT_READ))
-# 			return result
+		result = get_purchasable(ntiid)
+		if result is not None:
+			return result
 		raise KeyError(ntiid)
 	
 # class AssignmentSubmissionPostView(AbstractAuthenticatedView,
