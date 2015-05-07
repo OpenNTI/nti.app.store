@@ -114,3 +114,12 @@ class TestStoreViews(ApplicationLayerTest):
 		mock_gpi.is_callable().with_args().returns([1,2,3])
 		ext_obj[ITEMS] =  [u'tag:nextthought.com,2011-10:CMU-HTML-Bleach']
 		self.testapp.put_json(url, ext_obj, status=422)
+	
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	def test_create_purchasable_invalid(self):
+		ext_obj = dict(self.purchasalbe)
+		ext_obj[ITEMS] = list(['tag:nextthought.com,2011-10:NTI-HTML-no_in_database'])
+		
+		url = '/dataserver2/store/create_purchasable'
+		self.testapp.post_json(url, ext_obj, status=422)
+		
