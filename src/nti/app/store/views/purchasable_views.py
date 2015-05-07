@@ -13,6 +13,8 @@ from .. import MessageFactory as _
 
 from urllib import unquote
 
+import zope.intid
+
 from zope import component
 from zope import interface
 from zope import lifecycleevent
@@ -38,18 +40,26 @@ from nti.contentlibrary.interfaces import IGlobalContentPackageLibrary
 from nti.dataserver import authorization as nauth
 from nti.dataserver.interfaces import IDataserverFolder
 
+from nti.externalization.interfaces import StandardExternalFields
+
 from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.schema.interfaces import find_most_derived_interface
 
 from nti.site.interfaces import IHostPolicySiteManager
 
+from nti.store import get_catalog
 from nti.store.interfaces import IPurchasable
+from nti.store.purchase_index import IX_ITEMS
 from nti.store.purchasable import get_purchasable
+
+from nti.zope_catalog.catalog import ResultSet
 
 from .. import PURCHASABLES
 
 from . import StorePathAdapter
+
+NTIID = StandardExternalFields.NTIID
 
 @interface.implementer(IPathAdapter)
 @component.adapter(IDataserverFolder, IRequest)
@@ -140,6 +150,13 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		self.request.response.status_int =  201
 		return purchasable
 
+def get_purchases_for_items(*purchasables):
+	catalog = get_catalog()
+	intids = component.getUtility(zope.intid.IIntIds)
+	items_ids = catalog[IX_ITEMS].apply({'any_of': purchasables})
+	result = ResultSet(items_ids, intids, ignore_invalid=True)
+	return result
+
 @view_config(route_name='objects.generic.traversal',
 			 context=IPurchasable,
 			 request_method='PUT',
@@ -152,14 +169,25 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 	content_predicate = IPurchasable.providedBy
 	
 	def __call__(self):
-		theObject = self._get_object_to_update()
+		theObject = self.request.context
 		self._check_object_exists( theObject )
 		self._check_object_unmodified_since( theObject )
 		
+		## save old items
+		old_items = sorted(theObject.Items)
+		
 		externalValue = self.readInput()
+		externalValue.pop(NTIID, None) # don't allow  updating ntiid
 		self.updateContentObject(theObject, externalValue, notify=False)
 		
 		validate_purchasble_items(theObject)
-		lifecycleevent.modified(theObject)
 		
+		## check if items have been changed
+		new_items = sorted(theObject.Items)
+		if old_items != new_items:
+			purchases = get_purchases_for_items(theObject.NTIID)
+			if purchases: ## there are purchases
+				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items'))
+		
+		lifecycleevent.modified(theObject)
 		return theObject
