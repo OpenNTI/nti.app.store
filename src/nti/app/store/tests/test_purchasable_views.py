@@ -56,7 +56,7 @@ class TestStoreViews(ApplicationLayerTest):
 		self.testapp.get(url, status=200)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
-	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble')
+	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items')
 	def test_create_purchasable(self, mock_vp):
 		mock_vp.is_callable().with_args().returns(None)
 				

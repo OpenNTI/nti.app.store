@@ -29,6 +29,7 @@ from pyramid.interfaces import IRequest
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.contentlibrary.interfaces import IContentPackageLibrary
@@ -92,7 +93,7 @@ def unregisterUtility(registry, provided, name):
 	else:
 		return registry.unregisterUtility(provided=provided, name=name)
 	
-def validate_purchasble(purchasable):
+def validate_purchasble_items(purchasable):
 	for item in purchasable.Items:
 		obj = find_object_with_ntiid(item)
 		if obj is None:
@@ -125,7 +126,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		purchasable = self._createObject()
 		if get_purchasable(purchasable.NTIID) != None:
 			raise hexc.HTTPUnprocessableEntity(_('Purchasable already created'))
-		validate_purchasble(purchasable)
+		validate_purchasble_items(purchasable)
 		lifecycleevent.created(purchasable)
 		
 		## add object to conenction
@@ -134,7 +135,31 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		registerUtility(registry, purchasable, provided, purchasable.NTIID)
 		
 		IConnection(registry).add(purchasable)
-		lifecycleevent.added(purchasable) # get and iid
+		lifecycleevent.added(purchasable) # get an iid
 		
 		self.request.response.status_int =  201
 		return purchasable
+
+@view_config(route_name='objects.generic.traversal',
+			 context=IPurchasable,
+			 request_method='PUT',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 renderer='rest')
+class UpdatePurchasableView(AbstractAuthenticatedView,
+							ModeledContentEditRequestUtilsMixin,
+ 						 	ModeledContentUploadRequestUtilsMixin):
+
+	content_predicate = IPurchasable.providedBy
+	
+	def __call__(self):
+		theObject = self._get_object_to_update()
+		self._check_object_exists( theObject )
+		self._check_object_unmodified_since( theObject )
+		
+		externalValue = self.readInput()
+		self.updateContentObject(theObject, externalValue, notify=False)
+		
+		validate_purchasble_items(theObject)
+		lifecycleevent.modified(theObject)
+		
+		return theObject
