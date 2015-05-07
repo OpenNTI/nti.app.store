@@ -10,6 +10,9 @@
 
 	<include package="nti.store" />
 
+	<!-- ACLs -->
+	<adapter factory=".acl.PurchasableACLProvider" />
+	
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
