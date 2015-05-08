@@ -22,6 +22,7 @@ from pyramid import httpexceptions as hexc
 from nti.store.purchasable import get_purchasable
 
 from .. import STORE
+from .. import STRIPE
 from .. import PURCHASABLES
 
 @interface.implementer(IPathAdapter)
@@ -56,3 +57,11 @@ class PurchasablesPathAdapter(Contained):
 		if result is not None:
 			return result
 		raise KeyError(ntiid)
+
+@interface.implementer(IPathAdapter)
+class StripePathAdapter(Contained):
+
+	def __init__(self, parent, request):
+		self.request = request
+		self.__parent__ = parent
+		self.__name__ = STRIPE
