@@ -191,3 +191,31 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 		
 		lifecycleevent.modified(theObject)
 		return theObject
+
+@view_config(route_name='objects.generic.traversal',
+			 context=IPurchasable,
+			 request_method='DELETE',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 renderer='rest')
+class DeletePurchasableView(AbstractAuthenticatedView,
+							ModeledContentEditRequestUtilsMixin,
+ 						 	ModeledContentUploadRequestUtilsMixin):
+
+	content_predicate = IPurchasable.providedBy
+	
+	def __call__(self):
+		purchasable = self.request.context
+		self._check_object_exists( purchasable )
+		self._check_object_unmodified_since( purchasable )
+			
+		## check if items have been changed
+		purchases = get_purchases_for_items(purchasable.NTIID)
+		if purchases: ## there are purchases
+			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
+		
+		registry = _registry()
+		provided = find_most_derived_interface(purchasable, IPurchasable)
+		unregisterUtility(registry, provided, purchasable.NTIID)
+		lifecycleevent.removed(purchasable)
+
+		return hexc.HTTPNoContent()

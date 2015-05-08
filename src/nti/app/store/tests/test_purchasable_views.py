@@ -116,6 +116,36 @@ class TestStoreViews(ApplicationLayerTest):
 		self.testapp.put_json(url, ext_obj, status=422)
 	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items',
+				 'nti.app.store.views.purchasable_views.get_purchases_for_items')
+	def test_delete_purchasable(self, mock_vp, mock_gpi):
+		mock_vp.is_callable().with_args().returns(None)
+		mock_gpi.is_callable().with_args().returns([1,2,3])
+		
+		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-dare_devil'
+		
+		ext_obj = dict(self.purchasalbe)
+		ext_obj[NTIID] = ntiid
+		ext_obj[ITEMS] = list(ext_obj[ITEMS])
+		
+		url = '/dataserver2/store/create_purchasable'
+		self.testapp.post_json(url, ext_obj, status=201)
+		with mock_dataserver.mock_db_trans(self.ds):
+			p = get_purchasable(ntiid)
+			assert_that(p, is_not(none()))
+			
+		# try to delete
+		url = '/dataserver2/Purchasables/%s' % quote(ntiid)
+		self.testapp.delete(url, status=422)
+		
+		mock_gpi.is_callable().with_args().returns(None)
+		self.testapp.delete(url, status=204)
+		
+		with mock_dataserver.mock_db_trans(self.ds):
+			p = get_purchasable(ntiid)
+			assert_that(p, is_(none()))
+
+	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_create_purchasable_invalid(self):
 		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
 		ext_obj = dict(self.purchasalbe)
