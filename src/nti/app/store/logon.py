@@ -40,7 +40,7 @@ class _BaseStoreLinkProvider(object):
 					 'gift_stripe_payment',
 					 'gift_stripe_payment_preflight',
 					 'price_purchasable_with_stripe_coupon'):
-			elements = (STORE, name)
+			elements = (STORE, '@@'+name)
 			link = Link(root, elements=elements, rel=name)
 			result[name] = link
 		return result

@@ -77,7 +77,7 @@ class TestStripeViews(ApplicationLayerTest):
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_price_purchasable_with_stripe_coupon_quantity(self):
-		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
 		params = {'purchasableID':self.purchasable_id, 'quantity':2}
 		body = json.dumps(params)
 
@@ -105,7 +105,7 @@ class TestStripeViews(ApplicationLayerTest):
 		coupon.has_attr(max_redemptions=None)
 		interface.alsoProvides(coupon, IStripeCoupon)
 
-		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
 		params = {'coupon':code, 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
 
@@ -122,7 +122,7 @@ class TestStripeViews(ApplicationLayerTest):
 		order = create_stripe_purchase_order((item,))
 		
 		body = to_external_object(order)
-		url = '/dataserver2/store/price_stripe_order'
+		url = '/dataserver2/store/@@price_stripe_order'
 		
 		res = self.testapp.post_json(url, body, status=200)
 		json_body = res.json_body
@@ -141,7 +141,7 @@ class TestStripeViews(ApplicationLayerTest):
 
 		mock_pr.is_callable().with_args().raises(InvalidStripeCoupon())
 
-		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
 		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
 
@@ -156,7 +156,7 @@ class TestStripeViews(ApplicationLayerTest):
 
 		mock_pr.is_callable().with_args().raises(NoSuchStripeCoupon())
 
-		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
 		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
 
@@ -171,7 +171,7 @@ class TestStripeViews(ApplicationLayerTest):
 
 		mock_pr.is_callable().with_args().raises(PricingException("Aizen"))
 
-		url = '/dataserver2/store/price_purchasable_with_stripe_coupon'
+		url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
 		params = {'coupon':'123', 'purchasableID':self.purchasable_id}
 		body = json.dumps(params)
 
@@ -181,7 +181,7 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(json_body, has_entry('Message', 'Aizen'))
 
 	def _get_pending_purchases(self):
-		url = '/dataserver2/store/get_pending_purchases'
+		url = '/dataserver2/store/@@get_pending_purchases'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
@@ -223,7 +223,7 @@ class TestStripeViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(300, mock_cc)
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
 				  'token': "tok_1053"}
@@ -245,27 +245,25 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('TransactionID', is_not(none())))
 		assert_that(items[0], has_entry('Order', has_entry('Items', has_length(1))))
 		
-		#from IPython.core.debugger import Tracer; Tracer()()
-		#'TransactionID': u'wvRNFPu3rM6'
 		pid = items[0]['ID']
-		url = '/dataserver2/store/get_purchase_attempt'
+		url = '/dataserver2/store/@@get_purchase_attempt'
 		params = {'purchase':pid}
 		res = self.testapp.get(url, params=params, status=200)
 		assert_that(res.json_body, has_entry('Items', 
 											 has_item(has_entry('Class', 'PurchaseAttempt'))))
 		
-		url = '/dataserver2/store/get_purchase_attempt/%s' % pid
+		url = '/dataserver2/store/@@get_purchase_attempt/%s' % pid
 		res = self.testapp.get(url, status=200)
 		assert_that(res.json_body, has_entry('Items', 
 											 has_item(has_entry('Class', 'PurchaseAttempt'))))
 		
 		tid = items[0]['TransactionID']
-		url = '/dataserver2/store/get_purchase_attempt/%s' % tid
+		url = '/dataserver2/store/@@get_purchase_attempt/%s' % tid
 		res = self.testapp.get(url, status=200)
 		assert_that(res.json_body, has_entry('Items', 
 											 has_item(has_entry('Class', 'PurchaseAttempt'))))
 		
-		url = '/dataserver2/store/get_purchase_attempt/foo'
+		url = '/dataserver2/store/@@get_purchase_attempt/foo'
 		res = self.testapp.get(url, status=404)
 	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
@@ -277,7 +275,7 @@ class TestStripeViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(199, mock_cc)
-		url = '/dataserver2/store/gift_stripe_payment'
+		url = '/dataserver2/store/@@gift_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
 				  'from': 'ichigo+@bleach.org',
@@ -310,7 +308,7 @@ class TestStripeViews(ApplicationLayerTest):
 		assert_that(items[0], has_entry('ReceiverName', is_('Aizen Sosuke')))
 		assert_that(items[0], has_entry('DeliveryDate', is_not(none())))
 
-		url = '/dataserver2/store/get_gift_purchase_attempt'
+		url = '/dataserver2/store/@@get_gift_purchase_attempt'
 		params ={ "purchaseID":items[0]['NTIID'],
 				  'creator': 'ichigo+@bleach.org' }
 		self.testapp.get(url, params=params, status=200)
@@ -326,7 +324,7 @@ class TestStripeViews(ApplicationLayerTest):
 		self._create_fakge_charge(199, mock_cc)
 		
 		# no purchasable
-		url = '/dataserver2/store/gift_stripe_payment_preflight'
+		url = '/dataserver2/store/@@gift_stripe_payment_preflight'
 		params = {'purchasableID':None}
 		body = json.dumps(params)
 		self.testapp.post(url, body, status=422)
@@ -411,7 +409,7 @@ class TestStripeViews(ApplicationLayerTest):
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_invalid_post_stripe_payment(self):
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		params = {'purchasableID':'not found',
 				  'amount': 300,
 				  'token': 'xyz'}

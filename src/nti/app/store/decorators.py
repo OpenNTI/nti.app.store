@@ -68,7 +68,7 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
 			
 			## insert history link
 			if username and has_history_by_item(username, original.NTIID):
-				history_href = ds_store_path + 'get_purchase_history'
+				history_href = ds_store_path + '@@get_purchase_history'
 				quoted = urllib.quote(original.NTIID)
 				link = Link(history_href, rel="history", method='GET',
 							params={'purchasableID': quoted})
@@ -77,13 +77,13 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
 
 			## insert price link
 			for name in ('price', 'price_purchasable'):
-				price_href = ds_store_path + 'price_purchasable'
+				price_href = ds_store_path + '@@price_purchasable'
 				link = Link(price_href, rel=name, method='Post')
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 			
 		if original.Redeemable:
-			href = ds_store_path + 'redeem_gift'
+			href = ds_store_path + '@@redeem_gift'
 			link = Link(href, rel="redeem_gift", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
@@ -108,31 +108,31 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 			ds_store_path = self.ds_store_path
 			links = external.setdefault(LINKS, [])
 			
-			href = ds_store_path + 'price_purchasable_with_stripe_coupon'
+			href = ds_store_path + '@@price_purchasable_with_stripe_coupon'
 			link = Link(href, rel="price_purchasable_with_stripe_coupon", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
 			quoted = urllib.quote(original.Provider)
-			href = ds_store_path + 'get_stripe_connect_key'
+			href = ds_store_path + '@@get_stripe_connect_key'
 			link = Link(href, rel="get_stripe_connect_key", method='GET',
 						params={'provider':quoted})
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
-			href = ds_store_path + 'create_stripe_token'
+			href = ds_store_path + '@@create_stripe_token'
 			link = Link(href, rel="create_stripe_token", method='POST')
 			interface.alsoProvides(link, ILocation)
 			links.append(link)
 			
 			if self._is_authenticated:
-				href = ds_store_path + 'post_stripe_payment'
+				href = ds_store_path + '@@post_stripe_payment'
 				link = Link(href, rel="post_stripe_payment", method='POST')
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 			
 			if original.Giftable:
-				href = ds_store_path + 'gift_stripe_payment'
+				href = ds_store_path + '@@gift_stripe_payment'
 				link = Link(href, rel="gift_stripe_payment", method='POST')
 				interface.alsoProvides(link, ILocation)
 				links.append(link)

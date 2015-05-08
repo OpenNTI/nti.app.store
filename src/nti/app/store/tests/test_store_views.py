@@ -39,7 +39,7 @@ class TestStoreViews(ApplicationLayerTest):
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchasables(self):
-		url = '/dataserver2/store/get_purchasables'
+		url = '/dataserver2/store/@@get_purchasables'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
@@ -59,7 +59,7 @@ class TestStoreViews(ApplicationLayerTest):
 		assert_that(found, is_(True))
 		assert_that(sck, has_entry('Alias', 'CMU'))
 		
-		url = '/dataserver2/store/get_purchasables?purchasables=%s' % quote(ntiid)
+		url = '/dataserver2/store/@@get_purchasables?purchasables=%s' % quote(ntiid)
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('Items', has_length(1)))
@@ -73,7 +73,7 @@ class TestStoreViews(ApplicationLayerTest):
 		
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchase_history(self):
-		url = '/dataserver2/store/get_purchase_history'
+		url = '/dataserver2/store/@@get_purchase_history'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
@@ -82,7 +82,7 @@ class TestStoreViews(ApplicationLayerTest):
 		assert_that(items, has_length(greater_than_or_equal_to(0)))
 
 	def _get_pending_purchases(self):
-		url = '/dataserver2/store/get_pending_purchases'
+		url = '/dataserver2/store/@@get_pending_purchases'
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))

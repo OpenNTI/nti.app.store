@@ -85,7 +85,7 @@ class TestAdminViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(300, mock_cc)
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		body = {'purchasableID':self.purchasable_id,
 				'amount': 300,
 				'token': "tok_1053"}
@@ -98,7 +98,7 @@ class TestAdminViews(ApplicationLayerTest):
 			history = get_purchase_history(user, safe=False)
 			assert_that(history, has_length(1))
 		
-		url = '/dataserver2/store/delete_purchase_attempt'
+		url = '/dataserver2/store/@@delete_purchase_attempt'
 		body = {'purchase':pid}
 		body = json.dumps(body)
 		
@@ -117,7 +117,7 @@ class TestAdminViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(300, mock_cc)
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		body = {'purchasableID':self.purchasable_id,
 				'amount': 300,
 				'token': "tok_1053"}
@@ -128,7 +128,7 @@ class TestAdminViews(ApplicationLayerTest):
 			history = get_purchase_history(user, safe=False)
 			assert_that(history, has_length(1))
 		
-		url = '/dataserver2/store/delete_purchase_history'
+		url = '/dataserver2/store/@@delete_purchase_history'
 		body = {'username':self.default_username}
 		body = json.dumps(body)
 		
@@ -147,14 +147,14 @@ class TestAdminViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(300, mock_cc)
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		body = {'purchasableID':self.purchasable_id,
 				'amount': 300,
 				'token': "tok_1053"}
 		body = json.dumps(body)
 		self.testapp.post(url, body, status=200)
 		
-		url = '/dataserver2/store/get_users_purchase_history'
+		url = '/dataserver2/store/@@get_users_purchase_history'
 		params = {'username':self.default_username,
 				  'purchasable':self.purchasable_id}
 		res = self.testapp.get(url, params, status=200)
@@ -172,7 +172,7 @@ class TestAdminViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(300, mock_cc)
-		url = '/dataserver2/store/post_stripe_payment'
+		url = '/dataserver2/store/@@post_stripe_payment'
 		body = {'purchasableID':self.purchasable_id,
 				'amount': 300,
 				'token': "tok_1053"}
@@ -180,7 +180,7 @@ class TestAdminViews(ApplicationLayerTest):
 		res = self.testapp.post(url, body, status=200)
 		pid = res.json_body['Items'][0]['ID']
 		
-		url = '/dataserver2/store/generate_purchase_invoice'
+		url = '/dataserver2/store/@@generate_purchase_invoice'
 		body = {'purchase':pid}
 		body = json.dumps(body)
 		
@@ -195,7 +195,7 @@ class TestAdminViews(ApplicationLayerTest):
 		mock_gtr.is_callable().with_args().returns(MockRunner())
 
 		self._create_fakge_charge(199, mock_cc)
-		url = '/dataserver2/store/gift_stripe_payment'
+		url = '/dataserver2/store/@@gift_stripe_payment'
 		params = {'purchasableID':self.purchasable_id,
 				  'amount': 300,
 				  'from': 'ichigo+@bleach.org',
@@ -218,7 +218,7 @@ class TestAdminViews(ApplicationLayerTest):
 		
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_create_invitation_purchase(self):
-		url = '/dataserver2/store/create_invitation_purchase'
+		url = '/dataserver2/store/@@create_invitation_purchase'
 		params = {'purchasable':self.purchasable_id,
 				  'expiration': '2030-11-30',
 				  'quantity':5}
@@ -233,8 +233,8 @@ class TestAdminViews(ApplicationLayerTest):
 		
 		pid = res.json_body['ID']
 		code = res.json_body['InvitationCode']
-		for username, api in (('ichigo', 'redeem_purchase_code'), 
-							  ('azien', 'redeem_gift')):
+		for username, api in (('ichigo', '@@redeem_purchase_code'), 
+							  ('azien', '@@redeem_gift')):
 			with mock_dataserver.mock_db_trans(self.ds):
 				self._create_user(username=username)
 			
