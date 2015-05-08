@@ -15,7 +15,7 @@ MessageFactory = zope.i18nmessageid.MessageFactory('nti.dataserver')
 from pyramid.threadlocal import get_current_request
 
 STORE = 'store'
-PURCHASABLES = 'Purchasables'
+PURCHASABLES = 'purchasables'
 
 def get_possible_site_names(request=None, include_default=True):
     request = request or get_current_request()

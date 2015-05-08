@@ -11,23 +11,14 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
-from urllib import unquote
-
 import zope.intid
 
 from zope import component
-from zope import interface
 from zope import lifecycleevent
-
-from zope.container.contained import Contained
-
-from zope.traversing.interfaces import IPathAdapter
 
 from ZODB.interfaces import IConnection
 
 from pyramid.view import view_config
-from pyramid.view import view_defaults
-from pyramid.interfaces import IRequest
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
@@ -38,7 +29,6 @@ from nti.contentlibrary.interfaces import IContentPackageLibrary
 from nti.contentlibrary.interfaces import IGlobalContentPackageLibrary
 
 from nti.dataserver import authorization as nauth
-from nti.dataserver.interfaces import IDataserverFolder
 
 from nti.externalization.interfaces import StandardExternalFields
 
@@ -55,29 +45,9 @@ from nti.store.purchasable import get_purchasable
 
 from nti.zope_catalog.catalog import ResultSet
 
-from .. import PURCHASABLES
-
-from . import StorePathAdapter
+from . import PurchasablesPathAdapter
 
 NTIID = StandardExternalFields.NTIID
-
-@interface.implementer(IPathAdapter)
-@component.adapter(IDataserverFolder, IRequest)
-class PurchasablesPathAdapter(Contained):
-
-	def __init__(self, dataserver, request):
-		self.__parent__ = dataserver
-		self.__name__ = PURCHASABLES
-
-	def __getitem__(self, ntiid):
-		if not ntiid:
-			raise hexc.HTTPNotFound()
-
-		ntiid = unquote(ntiid)
-		result = get_purchasable(ntiid)
-		if result is not None:
-			return result
-		raise KeyError(ntiid)
 
 def _registry():
 	library = component.queryUtility(IContentPackageLibrary)
@@ -110,13 +80,11 @@ def validate_purchasble_items(purchasable):
 			logger.error("Cannot find item %s", item)
 			raise hexc.HTTPUnprocessableEntity(_('Cannot find purchasable item'))
 
-@view_config(name="CreatePurchasable")
-@view_config(name="create_purchasable")
-@view_defaults(	route_name='objects.generic.traversal',
-			  	context=StorePathAdapter,
-			 	request_method='POST',
-			 	permission=nauth.ACT_NTI_ADMIN,
-			  	renderer='rest')
+@view_config(route_name='objects.generic.traversal',
+			 context=PurchasablesPathAdapter,
+			 request_method='POST',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 renderer='rest')
 class CreatePurchasableView(AbstractAuthenticatedView,
  						 	ModeledContentUploadRequestUtilsMixin):
 

@@ -14,8 +14,4 @@
 			 factory=".StorePathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
 
-	<adapter name="Purchasables"
-			 factory=".purchasable_views.PurchasablesPathAdapter"
-			 provides="zope.traversing.interfaces.IPathAdapter" />
-
 </configure>

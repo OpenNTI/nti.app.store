@@ -95,7 +95,7 @@ class _StoreCollection(object):
 					'gift_stripe_payment',
 					'gift_stripe_payment_preflight',
 					'price_purchasable_with_stripe_coupon'):
-			link = Link(STORE, rel=rel, elements=(rel,))
+			link = Link(STORE, rel=rel, elements=('@@'+rel,))
 			link.__name__ = link.target
 			link.__parent__ = ds_folder
 			interface.alsoProvides(link, ILocation)

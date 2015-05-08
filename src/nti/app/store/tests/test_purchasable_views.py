@@ -58,7 +58,7 @@ class TestStoreViews(ApplicationLayerTest):
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_legacy_purchasable(self):
 		ntiid = "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
-		url = '/dataserver2/Purchasables/%s' % ntiid
+		url = '/dataserver2/store/purchasables/%s' % ntiid
 		self.testapp.get(url, status=200)
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
@@ -75,7 +75,7 @@ class TestStoreViews(ApplicationLayerTest):
 		ext_obj = dict(self.purchasalbe)
 		ext_obj[NTIID] = ntiid
 		
-		url = '/dataserver2/store/create_purchasable'
+		url = '/dataserver2/store/purchasables'
 		res = self.testapp.post_json(url, ext_obj, status=201)
 		assert_that(res.json_body, 
 					has_entries('OID', is_not(none()),
@@ -102,11 +102,11 @@ class TestStoreViews(ApplicationLayerTest):
 		ext_obj[NTIID] = ntiid
 		ext_obj[ITEMS] = list(ext_obj[ITEMS])
 		
-		url = '/dataserver2/store/create_purchasable'
+		url = '/dataserver2/store/purchasables'
 		self.testapp.post_json(url, ext_obj, status=201)
 		
 		# update
-		url = '/dataserver2/Purchasables/%s' % quote(ntiid)
+		url = '/dataserver2/store/purchasables/%s' % quote(ntiid)
 		ext_obj[ITEMS] =  [u'tag:nextthought.com,2011-10:CMU-HTML-Netflix']
 		res = self.testapp.put_json(url, ext_obj, status=200)
 		assert_that(res.json_body, has_entries('Items', is_(ext_obj[ITEMS])))
@@ -128,14 +128,14 @@ class TestStoreViews(ApplicationLayerTest):
 		ext_obj[NTIID] = ntiid
 		ext_obj[ITEMS] = list(ext_obj[ITEMS])
 		
-		url = '/dataserver2/store/create_purchasable'
+		url = '/dataserver2/store/purchasables'
 		self.testapp.post_json(url, ext_obj, status=201)
 		with mock_dataserver.mock_db_trans(self.ds):
 			p = get_purchasable(ntiid)
 			assert_that(p, is_not(none()))
 			
 		# try to delete
-		url = '/dataserver2/Purchasables/%s' % quote(ntiid)
+		url = '/dataserver2/store/purchasables/%s' % quote(ntiid)
 		self.testapp.delete(url, status=422)
 		
 		mock_gpi.is_callable().with_args().returns(None)
@@ -152,6 +152,6 @@ class TestStoreViews(ApplicationLayerTest):
 		ext_obj[NTIID] = ntiid
 		ext_obj[ITEMS] = list(['tag:nextthought.com,2011-10:NTI-HTML-no_in_database'])
 		
-		url = '/dataserver2/store/create_purchasable'
+		url = '/dataserver2/store/purchasables'
 		self.testapp.post_json(url, ext_obj, status=422)
 		
