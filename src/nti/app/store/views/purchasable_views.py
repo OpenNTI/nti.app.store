@@ -16,8 +16,6 @@ import zope.intid
 from zope import component
 from zope import lifecycleevent
 
-from ZODB.interfaces import IConnection
-
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
@@ -34,13 +32,12 @@ from nti.externalization.interfaces import StandardExternalFields
 
 from nti.ntiids.ntiids import find_object_with_ntiid
 
-from nti.schema.interfaces import find_most_derived_interface
-
-from nti.site.interfaces import IHostPolicySiteManager
-
-from nti.store import get_catalog
 from nti.store.interfaces import IPurchasable
 from nti.store.purchase_index import IX_ITEMS
+
+from nti.store import get_catalog
+from nti.store.store import remove_purchasable
+from nti.store.store import register_purchasable
 from nti.store.purchasable import get_purchasable
 
 from nti.zope_catalog.catalog import ResultSet
@@ -56,22 +53,6 @@ def _registry():
 	else:
 		registry = component.getSiteManager()
 	return registry
-
-def registerUtility(registry, component, provided, name):
-	if IHostPolicySiteManager.providedBy(registry):
-		return registry.subscribedRegisterUtility(component,
-									 			  provided=provided,
-									 			  name=name)
-	else:
-		return registry.registerUtility(component,
-									 	provided=provided,
-									 	name=name)
-
-def unregisterUtility(registry, provided, name):
-	if IHostPolicySiteManager.providedBy(registry):
-		return registry.subscribedUnregisterUtility(provided=provided, name=name)
-	else:
-		return registry.unregisterUtility(provided=provided, name=name)
 	
 def validate_purchasble_items(purchasable):
 	for item in purchasable.Items:
@@ -109,11 +90,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		
 		## add object to conenction
 		registry = _registry()
-		provided = find_most_derived_interface(purchasable, IPurchasable)
-		registerUtility(registry, purchasable, provided, purchasable.NTIID)
-		
-		IConnection(registry).add(purchasable)
-		lifecycleevent.added(purchasable) # get an iid
+		register_purchasable(purchasable, registry=registry)
 		
 		self.request.response.status_int =  201
 		return purchasable
@@ -182,8 +159,6 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
 		
 		registry = _registry()
-		provided = find_most_derived_interface(purchasable, IPurchasable)
-		unregisterUtility(registry, provided, purchasable.NTIID)
-		lifecycleevent.removed(purchasable)
+		remove_purchasable(purchasable, registry=registry)
 
 		return hexc.HTTPNoContent()
