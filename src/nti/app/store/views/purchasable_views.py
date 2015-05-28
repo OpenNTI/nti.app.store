@@ -119,7 +119,7 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 		self._check_object_unmodified_since(theObject)
 
 		# save old items
-		old_items = sorted(theObject.Items)
+		old_items = set(theObject.Items)
 
 		externalValue = self.readInput()
 		externalValue.pop(NTIID, None)  # don't allow  updating ntiid
@@ -128,8 +128,8 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 		validate_purchasble_items(theObject)
 
 		# check if items have been changed
-		new_items = sorted(theObject.Items)
-		if old_items != new_items:
+		new_items = set(theObject.Items)
+		if old_items.difference(new_items):
 			purchases = get_purchases_for_items(theObject.NTIID)
 			if purchases:  # there are purchases
 				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items'))
