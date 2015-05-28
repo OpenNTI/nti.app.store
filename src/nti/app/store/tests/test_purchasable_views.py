@@ -12,6 +12,7 @@ from hamcrest import none
 from hamcrest import is_not
 from hamcrest import assert_that
 from hamcrest import has_entries
+from hamcrest import has_property
 does_not = is_not
 
 import fudge
@@ -155,3 +156,29 @@ class TestStoreViews(ApplicationLayerTest):
 		url = '/dataserver2/store/purchasables'
 		self.testapp.post_json(url, ext_obj, status=422)
 		
+	@WithSharedApplicationMockDS(users=True, testapp=True)
+	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items')
+	def test_enable_purchasable(self, mock_vp):
+		mock_vp.is_callable().with_args().returns(None)
+		
+		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'		
+		ext_obj = dict(self.purchasalbe)
+		ext_obj[NTIID] = ntiid
+		ext_obj[ITEMS] = list(ext_obj[ITEMS])
+		
+		url = '/dataserver2/store/purchasables'
+		self.testapp.post_json(url, ext_obj, status=201)
+		
+		# disable
+		url = '/dataserver2/store/purchasables/%s/disable' % quote(ntiid)
+		self.testapp.post(url, status=200)
+		with mock_dataserver.mock_db_trans(self.ds):
+			p = get_purchasable(ntiid)
+			assert_that(p, has_property('Public', is_(False)))
+			
+		# disable
+		url = '/dataserver2/store/purchasables/%s/enable' % quote(ntiid)
+		self.testapp.post(url, status=200)
+		with mock_dataserver.mock_db_trans(self.ds):
+			p = get_purchasable(ntiid)
+			assert_that(p, has_property('Public', is_(True)))

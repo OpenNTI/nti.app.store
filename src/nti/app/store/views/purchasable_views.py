@@ -53,7 +53,7 @@ def _registry():
 	else:
 		registry = component.getSiteManager()
 	return registry
-	
+
 def validate_purchasble_items(purchasable):
 	for item in purchasable.Items:
 		obj = find_object_with_ntiid(item)
@@ -70,29 +70,29 @@ class CreatePurchasableView(AbstractAuthenticatedView,
  						 	ModeledContentUploadRequestUtilsMixin):
 
 	content_predicate = IPurchasable.providedBy
-	
+
 	def _createObject(self):
 		externalValue = self.readInput()
 		datatype = self.findContentType(externalValue)
-		result = self.createAndCheckContentObject(owner=None, 
+		result = self.createAndCheckContentObject(owner=None,
 										  		  creator=None,
 										  		  datatype=datatype,
 										  		  externalValue=externalValue)
 		self.updateContentObject(result, externalValue, notify=False)
 		return result
-	
+
 	def __call__(self):
 		purchasable = self._createObject()
 		if get_purchasable(purchasable.NTIID) != None:
 			raise hexc.HTTPUnprocessableEntity(_('Purchasable already created'))
 		validate_purchasble_items(purchasable)
 		lifecycleevent.created(purchasable)
-		
-		## add object to conenction
+
+		# add object to conenction
 		registry = _registry()
 		register_purchasable(purchasable, registry=registry)
-		
-		self.request.response.status_int =  201
+
+		self.request.response.status_int = 201
 		return purchasable
 
 def get_purchases_for_items(*purchasables):
@@ -112,28 +112,28 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
  						 	ModeledContentUploadRequestUtilsMixin):
 
 	content_predicate = IPurchasable.providedBy
-	
+
 	def __call__(self):
 		theObject = self.request.context
-		self._check_object_exists( theObject )
-		self._check_object_unmodified_since( theObject )
-		
-		## save old items
+		self._check_object_exists(theObject)
+		self._check_object_unmodified_since(theObject)
+
+		# save old items
 		old_items = sorted(theObject.Items)
-		
+
 		externalValue = self.readInput()
-		externalValue.pop(NTIID, None) # don't allow  updating ntiid
+		externalValue.pop(NTIID, None)  # don't allow  updating ntiid
 		self.updateContentObject(theObject, externalValue, notify=False)
-		
+
 		validate_purchasble_items(theObject)
-		
-		## check if items have been changed
+
+		# check if items have been changed
 		new_items = sorted(theObject.Items)
 		if old_items != new_items:
 			purchases = get_purchases_for_items(theObject.NTIID)
-			if purchases: ## there are purchases
+			if purchases:  # there are purchases
 				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items'))
-		
+
 		lifecycleevent.modified(theObject)
 		return theObject
 
@@ -143,22 +143,55 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 			 permission=nauth.ACT_NTI_ADMIN,
 			 renderer='rest')
 class DeletePurchasableView(AbstractAuthenticatedView,
-							ModeledContentEditRequestUtilsMixin,
- 						 	ModeledContentUploadRequestUtilsMixin):
+							ModeledContentEditRequestUtilsMixin):
 
-	content_predicate = IPurchasable.providedBy
-	
 	def __call__(self):
 		purchasable = self.request.context
-		self._check_object_exists( purchasable )
-		self._check_object_unmodified_since( purchasable )
-			
-		## check if items have been changed
+		self._check_object_exists(purchasable)
+		self._check_object_unmodified_since(purchasable)
+
+		# check if items have been changed
 		purchases = get_purchases_for_items(purchasable.NTIID)
-		if purchases: ## there are purchases
+		if purchases:  # there are purchases
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
-		
+
 		registry = _registry()
 		remove_purchasable(purchasable, registry=registry)
 
 		return hexc.HTTPNoContent()
+
+@view_config(route_name='objects.generic.traversal',
+			 context=IPurchasable,
+			 request_method='POST',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 name="disable",
+			 renderer='rest')
+class DisablePurchasableView(AbstractAuthenticatedView,
+							 ModeledContentEditRequestUtilsMixin):
+
+	def __call__(self):
+		theObject = self.request.context
+		self._check_object_exists(theObject)
+		self._check_object_unmodified_since(theObject)
+		if theObject.Public:
+			theObject.Public = False
+			lifecycleevent.modified(theObject)
+		return theObject
+
+@view_config(route_name='objects.generic.traversal',
+			 context=IPurchasable,
+			 request_method='POST',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 name="enable",
+			 renderer='rest')
+class EnablePurchasableView(AbstractAuthenticatedView,
+							ModeledContentEditRequestUtilsMixin):
+
+	def __call__(self):
+		theObject = self.request.context
+		self._check_object_exists(theObject)
+		self._check_object_unmodified_since(theObject)
+		if not theObject.Public:
+			theObject.Public = True
+			lifecycleevent.modified(theObject)
+		return theObject
