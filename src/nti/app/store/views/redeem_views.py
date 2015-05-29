@@ -75,11 +75,11 @@ def find_redeemable_purchase(code):
 
 @interface.implementer(IPriceable)
 class PurchaseItemProxy(ProxyBase):
-	
+
 	NTIID = property(
 					lambda s: s.__dict__.get('_v_ntiid'),
 					lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
-	
+
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
@@ -93,14 +93,14 @@ class PurchaseOrderProxy(ProxyBase):
 	Items = property(
 					lambda s: s.__dict__.get('_v_items'),
 					lambda s, v: s.__dict__.__setitem__('_v_items', v))
-	
+
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
 	def __init__(self, base, items=()):
 		ProxyBase.__init__(self, base)
 		self.Items = items
-	
+
 	@property
 	def NTIIDs(self):
 		result = tuple(x.NTIID for x in self.Items)
@@ -112,7 +112,7 @@ class PurchaseAttemptProxy(ProxyBase):
 	Order = property(
 					lambda s: s.__dict__.get('_v_order'),
 					lambda s, v: s.__dict__.__setitem__('_v_order', v))
-	
+
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
 
@@ -123,16 +123,16 @@ class PurchaseAttemptProxy(ProxyBase):
 	@property
 	def Items(self):
 		return self.Order.NTIIDs
-		
+
 def _proxy_purchase(purchase, *ntiids):
 	items = []
 	for idx, item in enumerate(purchase.Order.Items):
 		proxy = PurchaseItemProxy(item, ntiids[idx])
-		items.append(proxy)	
+		items.append(proxy)
 	order = PurchaseOrderProxy(purchase.Order, items)
 	result = PurchaseAttemptProxy(purchase, order)
 	return result
-	
+
 def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
 	if not IInvitationPurchaseAttempt.providedBy(purchase):
@@ -164,8 +164,8 @@ def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, req
 
 def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
-	if IInvitationPurchaseAttempt.providedBy(purchase): # legacy cases
-		return redeem_invitation_purchase(user, code, 
+	if IInvitationPurchaseAttempt.providedBy(purchase):  # legacy cases
+		return redeem_invitation_purchase(user, code,
 										  request=request,
 										  purchasable=item,
 										  vendor_updates=vendor_updates)
@@ -176,7 +176,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	if purchase.is_redeemed():
 		msg = _("Gift purchase already redeemed.")
 		raise hexc.HTTPUnprocessableEntity(msg)
-	
+
 	# set vendor updates before called notify
 	if vendor_updates is not None:
 		purchase.Context['AllowVendorUpdates'] = vendor_updates
@@ -188,7 +188,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	elif len(purchase.Items) != len(purchasables):
 		msg = _("Purchase contain missing purchasables.")
 		raise hexc.HTTPUnprocessableEntity(msg)
-	elif len(purchasables) == 1: ## check for bundle choice
+	elif len(purchasables) == 1:  # check for bundle choice
 		purchasable = purchasables.__iter__().next()
 		if IPurchasableChoiceBundle.providedBy(purchasable):
 			if not item:
@@ -197,12 +197,15 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			if item not in purchasable.Items:
 				msg = _("The redeemable item is not in this purchasable.")
 				raise hexc.HTTPUnprocessableEntity(msg)
-			## find the source object 
+			# find the source object
 			source = find_object_with_ntiid(item)
 			purchasable = IPurchasable(source)
-			## proxy the purchase so change purchase order to include
-			## the correct purchasable
+			# proxy the purchase so change purchase order to include
+			# the correct purchasable
 			purchase = _proxy_purchase(purchase, purchasable.NTIID)
+		elif item and item not in purchasable.Items:
+			msg = _("The redeemable item is not in this purchasable.")
+			raise hexc.HTTPUnprocessableEntity(msg)
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
 	return purchase
 
@@ -210,18 +213,18 @@ def _id(o, *args, **kwargs): return o
 
 def _transform_object(obj, user, request=None):
 	try:
-		transformer = component.queryMultiAdapter( (request, obj),
-												   IObjectTransformer )
+		transformer = component.queryMultiAdapter((request, obj),
+												   IObjectTransformer)
 		if transformer is None:
-			transformer = component.queryAdapter( obj,
+			transformer = component.queryAdapter(obj,
 												  IObjectTransformer,
 												  default=_id)
-		result = transformer( obj, user )
+		result = transformer(obj, user)
 		return result
 	except Exception:
 		logger.warn("Failed to transform incoming object", exc_info=True)
 		return obj
-		
+
 @view_config(name="redeem_purchase_code", **_post_view_defaults)
 class RedeemPurchaseCodeView(AbstractPostView):
 
@@ -240,7 +243,7 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			msg = _("Must specify a valid invitation code.")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		purchase = redeem_invitation_purchase(	self.remoteUser, 
+		purchase = redeem_invitation_purchase(self.remoteUser,
 												invitation_code,
 								  				purchasable=purchasable,
 								 				request=self.request)
@@ -265,13 +268,13 @@ class RedeemGiftView(AbstractPostView):
 
 		item = values.get('purchasable') or values.get('item') or values.get('ntiid')
 		try:
-			result = redeem_gift_purchase(self.remoteUser, 
+			result = redeem_gift_purchase(self.remoteUser,
 									 	  gift_code,
 									 	  item=item,
 									 	  request=self.request,
 										  vendor_updates=allow_vendor_updates)
 			result = _transform_object(result, self.remoteUser, self.request)
-			result = removeAllProxies(result) ## remove all proxies
+			result = removeAllProxies(result)  # remove all proxies
 		except hexc.HTTPNotFound:
 			self.request.response.status_int = 404
 			result = IRedemptionError(_('Gift/Invitation not found.'))
