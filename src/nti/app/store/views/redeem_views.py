@@ -58,6 +58,8 @@ from . import StorePathAdapter
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
+GENERIC_GIFT_ERROR_MESSAGE = _("Gift/Invitation not found.")
+
 _view_defaults = dict(route_name='objects.generic.traversal',
 					  renderer='rest',
 					  permission=nauth.ACT_READ,
@@ -183,10 +185,10 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 
 	purchasables = get_purchase_purchasables(purchase)
 	if not purchasables:
-		msg = _("No valid purchasables found.")
+		msg = _("There is nothing to redeem for gift.")
 		raise hexc.HTTPUnprocessableEntity(msg)
 	elif len(purchase.Items) != len(purchasables):
-		msg = _("Purchase contain missing purchasables.")
+		msg = _("Purchase contains missing purchasables.")
 		raise hexc.HTTPUnprocessableEntity(msg)
 	elif len(purchasables) == 1:  # check for bundle choice
 		purchasable = purchasables.__iter__().next()
@@ -195,7 +197,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 				msg = _("Must specify a redeemable item.")
 				raise hexc.HTTPUnprocessableEntity(msg)
 			if item not in purchasable.Items:
-				msg = _("The redeemable item is not in this purchasable.")
+				msg = GENERIC_GIFT_ERROR_MESSAGE
 				raise hexc.HTTPUnprocessableEntity(msg)
 			# find the source object
 			source = find_object_with_ntiid(item)
@@ -204,7 +206,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 			# the correct purchasable
 			purchase = _proxy_purchase(purchase, purchasable.NTIID)
 		elif item and item not in purchasable.Items:
-			msg = _("The redeemable item is not in this purchasable.")
+			msg = GENERIC_GIFT_ERROR_MESSAGE
 			raise hexc.HTTPUnprocessableEntity(msg)
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
 	return purchase
