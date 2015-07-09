@@ -40,7 +40,7 @@ def send_purchase_confirmation(	event, email,
 								subject=DEFAULT_EMAIL_SUBJECT,
 								template=DEFAULT_PURCHASE_TEMPLATE,
 								package=None,
-								add_args=None ):
+								add_args=None):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
@@ -59,17 +59,18 @@ def send_purchase_confirmation(	event, email,
 		informal_username = profile.realname or str(user)
 
 	# Provide functions the templates can call to format currency values
-	currency = component.getAdapter( event, IPathAdapter, name='currency' )
+	currency = component.getAdapter(event, IPathAdapter, name='currency')
 
 	discount = -(event.purchase.Pricing.TotalNonDiscountedPrice -
 				 event.purchase.Pricing.TotalPurchasePrice)
+
 	formatted_discount = component.getAdapter(purchase.Pricing, IPathAdapter,
 											  name='currency')
 	formatted_discount = formatted_discount.format_currency_object(discount,
 																   request=request)
 
 	charge_name = getattr(event.charge, 'Name', None)
-	
+
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
@@ -77,16 +78,16 @@ def send_purchase_confirmation(	event, email,
 			'format_currency_attribute': currency.format_currency_attribute,
 			'discount': discount,
 			'formatted_discount': formatted_discount,
-			'transaction_id': get_transaction_code(purchase), 
+			'transaction_id': get_transaction_code(purchase),
 			'informal_username': informal_username,
 			'billed_to': charge_name or profile.realname or informal_username,
 			'today': isodate.date_isoformat(datetime.datetime.now()) }
 
 	if add_args is not None:
-		args.update( add_args )
+		args.update(add_args)
 
 	mailer = queue_simple_html_text_email
-	mailer( template,
+	mailer(template,
 			subject=subject,
 			recipients=[email],
 			template_args=args,
@@ -101,7 +102,7 @@ def safe_send_purchase_confirmation(event, email,
 									add_args=None):
 	try:
 		send_purchase_confirmation(event, email, subject=subject,
-								   template=template, package=package, 
+								   template=template, package=package,
 								   add_args=add_args)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s",

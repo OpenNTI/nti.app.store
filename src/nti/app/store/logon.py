@@ -36,11 +36,11 @@ class _BaseStoreLinkProvider(object):
 					 'price_purchasable',
 					 'get_gift_purchase_attempt',
 					 'get_gift_pending_purchases',
-					 ## stripe links
+					  # stripe links
 					 'gift_stripe_payment',
 					 'gift_stripe_payment_preflight',
 					 'price_purchasable_with_stripe_coupon'):
-			elements = (STORE, '@@'+name)
+			elements = (STORE, '@@' + name)
 			link = Link(root, elements=elements, rel=name)
 			result[name] = link
 		return result

@@ -86,16 +86,16 @@ class _StoreCollection(object):
 		result = []
 		ds_folder = find_interface(self.__parent__, IDataserverFolder)
 		for rel in ('get_purchase_attempt', 'get_pending_purchases',
-					'get_purchase_history', 'get_purchasables', 
-					'redeem_purchase_code', 'redeem_gift', 
-					'get_gift_pending_purchases', 
+					'get_purchase_history', 'get_purchasables',
+					'redeem_purchase_code', 'redeem_gift',
+					'get_gift_pending_purchases',
 					'get_gift_purchase_attempt',
 					'price_purchasable',
-					 ## stripe links
+					 # stripe links
 					'gift_stripe_payment',
 					'gift_stripe_payment_preflight',
 					'price_purchasable_with_stripe_coupon'):
-			link = Link(STORE, rel=rel, elements=('@@'+rel,))
+			link = Link(STORE, rel=rel, elements=('@@' + rel,))
 			link.__name__ = link.target
 			link.__parent__ = ds_folder
 			interface.alsoProvides(link, ILocation)

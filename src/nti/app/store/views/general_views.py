@@ -168,13 +168,15 @@ def _sync_purchase(purchase, request):
 
 	gevent.spawn(process_sync)
 
+SYNC_TIME = 100
+
 def _should_sync(purchase, now=None):
 	now = now or time.time()
 	start_time = purchase.StartTime
-	## CS: 100 is the [magic] number of seconds elapsed since the purchase
-	## attempt was started. After this time, we try to get the purchase
-	## status by asking its payment processor
-	result = now - start_time >= 100 and not purchase.is_synced()
+	# CS: SYNC_TIME is the [magic] number of seconds elapsed since the purchase
+	# attempt was started. After this time, we try to get the purchase
+	# status by asking its payment processor
+	result = now - start_time >= SYNC_TIME and not purchase.is_synced()
 	return result
 
 class BaseGetPurchaseAttemptView(object):
@@ -193,15 +195,15 @@ class BaseGetPurchaseAttemptView(object):
 			purchase_id = purchase.id if purchase is not None else purchase_id
 		except ValueError:
 			pass
-	
+
 		purchase = get_purchase_attempt(purchase_id, username)
 		if purchase is None:
 			raise hexc.HTTPNotFound(detail=_('Purchase attempt not found'))
 		elif purchase.is_pending() and _should_sync(purchase):
 			_sync_purchase(purchase, self.request)
 
-		## CS: we return the purchase attempt inside a ITEMS collection
-		## due to legacy code
+		# CS: we return the purchase attempt inside a ITEMS collection
+		# due to legacy code
 		result = LocatedExternalDict()
 		result[ITEMS] = [purchase]
 		result[LAST_MODIFIED] = purchase.lastModified
@@ -340,7 +342,7 @@ class PricePurchasableView(AbstractPostView):
 			raise hexc.HTTPUnprocessableEntity(_('Invalid quantity'))
 		quantity = int(quantity)
 
-		pricing_func = partial(perform_pricing, 
+		pricing_func = partial(perform_pricing,
 					   		   quantity=quantity,
 					   		   purchasable=purchasable)
 		result = _call_pricing_func(pricing_func)
@@ -355,7 +357,7 @@ class PricePurchasableView(AbstractPostView):
 @view_config(name="price_order", **_noauth_post_defaults)
 class PriceOrderView(AbstractAuthenticatedView,
 					 ModeledContentUploadRequestUtilsMixin):
-	
+
 	content_predicate = IPurchaseOrder.providedBy
 
 	def readCreateUpdateContentObject(self, *args, **kwargs):
@@ -363,7 +365,7 @@ class PriceOrderView(AbstractAuthenticatedView,
 		result = find_factory_for(externalValue)()
 		update_from_external_object(result, externalValue)
 		return result
-		
+
 	def _do_call(self):
 		order = self.readCreateUpdateContentObject()
 		assert IPurchaseOrder.providedBy(order)

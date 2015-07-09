@@ -18,6 +18,7 @@ from datetime import datetime
 from functools import partial
 
 from zope import component
+
 from zope.event import notify
 
 import transaction
@@ -198,7 +199,7 @@ def _call_pricing_func(func):
 @view_config(name="price_stripe_order", **_noauth_post_view_defaults)
 class PriceStripeOrderView(AbstractAuthenticatedView,
 						   ModeledContentUploadRequestUtilsMixin):
-	
+
 	content_predicate = IStripePurchaseOrder.providedBy
 
 	def readCreateUpdateContentObject(self, *args, **kwargs):
@@ -206,18 +207,18 @@ class PriceStripeOrderView(AbstractAuthenticatedView,
 		result = find_factory_for(externalValue)()
 		update_from_external_object(result, externalValue)
 		return result
-		
+
 	def _do_call(self):
 		order = self.readCreateUpdateContentObject()
 		assert IStripePurchaseOrder.providedBy(order)
-		if order.Coupon: # replace item coupons
+		if order.Coupon:  # replace item coupons
 			replace_items_coupon(order, None)
 
 		result = _call_pricing_func(partial(price_order, order))
 		status = 422 if IPricingError.providedBy(result) else 200
 		self.request.response.status_int = status
 		return result
-	
+
 @view_config(name="price_purchasable_with_stripe_coupon", **_noauth_post_view_defaults)
 class PricePurchasableWithStripeCouponView(_PostStripeView):
 
@@ -238,9 +239,9 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 						None)
 		quantity = int(quantity)
 
-		pricing_func = partial(perform_pricing, 
+		pricing_func = partial(perform_pricing,
 					  		   purchasable_id=purchasable_id,
-					   		   quantity=quantity, 
+					   		   quantity=quantity,
 					   		   coupon=coupon)
 		result = _call_pricing_func(pricing_func)
 		status = 422 if IPricingError.providedBy(result) else 200
@@ -250,7 +251,7 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 	def __call__(self):
 		result = self.price_purchasable()
 		return result
-	
+
 def process_purchase(manager, purchase_id, username, token, expected_amount,
 					 stripe_key, request, site_names=()):
 	logger.info("Processing purchase %s", purchase_id)
@@ -283,7 +284,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 	KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
 
 	def readInput(self, value=None):
-		result = super(BasePaymentWithStripeView,self).readInput(value=value)
+		result = super(BasePaymentWithStripeView, self).readInput(value=value)
 		result = CaseInsensitiveDict(result or {})
 		return result
 
@@ -293,7 +294,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			vendor = to_external_object(purchasable.VendorInfo) \
 					 if purchasable.VendorInfo else None
 			context.update(vendor or {})
-			
+
 		# capture user context data
 		data = CaseInsensitiveDict(values.get('Context') or {})
 		for name, alias, klass in self.KEYS:
@@ -332,14 +333,14 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 							None)
 			if result is None:
 				result = stripe_key
-			elif result !=  stripe_key:
+			elif result != stripe_key:
 				raise_error(request,
 							hexc.HTTPUnprocessableEntity,
 							{	'message': _("Cannot mix purchasable providers."),
 								'field': 'purchasables' },
 							None)
 		return result
-	
+
 	def getPaymentRecord(self, request, values=None):
 		values = values or self.readInput()
 		result = CaseInsensitiveDict()
@@ -353,7 +354,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 							'field': 'purchasables' },
 						None)
 		elif isinstance(purchasables, six.string_types):
-			purchasables = list(set(purchasables.split())) 
+			purchasables = list(set(purchasables.split()))
 		result['Purchasables'] = purchasables
 
 		purchasables = self.validatePurchasables(request, values, purchasables)
@@ -420,7 +421,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 								'code': e.__class__.__name__},
 							exc_info[2])
 		return record
-	
+
 	def createPurchaseOrder(self, record):
 		items = [create_stripe_purchase_item(p) for p in record['Purchasables']]
 		result = create_stripe_purchase_order(tuple(items),
@@ -455,7 +456,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
 		# process purchase after commit
-		addAfterCommitHook(	token=token,
+		addAfterCommitHook(token=token,
 						   	request=request,
 							manager=manager,
 							username=username,
@@ -487,7 +488,7 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 							'value': purchasable_id },
 						None)
 		return purchasable
-	
+
 	@property
 	def username(self):
 		return self.remoteUser.username
@@ -519,7 +520,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 
 	def readInput(self, value=None):
 		values = super(GiftWithStripePreflightView, self).readInput(value=value)
-		values.pop('Quantity', None) # ignore quantity
+		values.pop('Quantity', None)  # ignore quantity
 		return values
 
 	def validatePurchasables(self, request, values, purchasables=()):
@@ -532,7 +533,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 							'field' : 'purchasables' },
 						None)
 		return result
-	
+
 	def getPaymentRecord(self, request, values):
 		record = super(GiftWithStripePreflightView, self).getPaymentRecord(request, values)
 		creator = values.get('from') or values.get('sender') or values.get('creator')
@@ -571,7 +572,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 								'code': e.__class__.__name__ },
 							exc_info[2])
 		record['Receiver'] = receiver
-		receiverName = record['To'] = record['ReceiverName'] =  \
+		receiverName = record['To'] = record['ReceiverName'] = \
 				values.get('to') or values.get('receiverName') or values.get('receiver')
 
 		immediate = values.get('immediate') or values.get('deliverNow')
@@ -588,7 +589,7 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 		else:
 			record['DeliveryDate'] = None
 		record['Immediate'] = bool(immediate)
-			
+
 		message = record['Message'] = values.get('message')
 		if (message or receiverName) and not receiver:
 			raise_error(request,
@@ -604,17 +605,17 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 
 	def createPurchaseAttempt(self, record):
 		pass
-	
+
 	def registerPurchaseAttempt(self, purchase_attempt, record):
 		pass
-	
+
 	def __call__(self):
 		values = self.readInput()
 		request = self.request
 		record = self.getPaymentRecord(request, values)
 		self.validateCoupon(request, record)
 		return record
-	
+
 @view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
 class GiftWithStripeView(GiftWithStripePreflightView):
 
@@ -659,7 +660,7 @@ def find_purchase(key):
 	except ValueError:
 		purchase = get_purchase_attempt(key)
 	return purchase
-	
+
 @view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
@@ -669,7 +670,7 @@ class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 				 values.get('transaction') or \
 				 values.get('purchaseId') or \
 				 values.get('purchase') or \
-                 values.get('code')
+				 values.get('code')
 		if not trx_id:
 			raise_error(self.request,
 						hexc.HTTPUnprocessableEntity,
@@ -698,7 +699,7 @@ class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
 def refund_purchase(purchase, amount, refund_application_fee, request, processor=STRIPE):
 	manager = component.getUtility(IPaymentProcessor, name=processor)
-	return manager.refund_purchase(	purchase, amount=amount,
+	return manager.refund_purchase(purchase, amount=amount,
 									refund_application_fee=refund_application_fee,
 									request=request)
 
@@ -711,7 +712,7 @@ class RefundPaymentWithStripeView(_PostStripeView):
 				 values.get('transaction') or \
 				 values.get('purchaseId') or \
 				 values.get('purchase') or \
-                 values.get('code')
+				 values.get('code')
 		if not trx_id:
 			raise_error(self.request,
 						hexc.HTTPUnprocessableEntity,
@@ -732,7 +733,7 @@ class RefundPaymentWithStripeView(_PostStripeView):
 						{	'message': _("Transaction was not successful."),
 							'field': 'transaction' },
 						None)
-			
+
 		amount = values.get('amount', None)
 		if amount is not None and not is_valid_amount(amount):
 			raise_error(self.request,

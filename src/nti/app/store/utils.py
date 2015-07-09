@@ -19,8 +19,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.common.maps import CaseInsensitiveDict
-from nti.common.string import TRUE_VALUES as true_values 
-from nti.common.string import FALSE_VALUES as false_values 
+from nti.common.string import TRUE_VALUES as true_values
+from nti.common.string import FALSE_VALUES as false_values
 
 class AbstractPostView(AbstractAuthenticatedView,
 					   ModeledContentUploadRequestUtilsMixin):
@@ -90,7 +90,7 @@ def parse_datetime(t, safe=False):
 			except Exception:
 				result = isodate.parse_date(t)
 			result = time.mktime(result.timetuple())
-		elif isinstance(t, (date,datetime)):
+		elif isinstance(t, (date, datetime)):
 			result = time.mktime(t.timetuple())
 		return result
 	except Exception as e:
