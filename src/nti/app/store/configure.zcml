@@ -38,6 +38,11 @@
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
 
+	<!-- Filters -->
+	<subscriber	factory=".filters._StoreContentObjectFilter"
+				provides="nti.appserver.interfaces.ICreatableObjectFilter"
+				for="nti.dataserver.interfaces.IUser" />
+
 	<include package=".views" />
 
 </configure>
