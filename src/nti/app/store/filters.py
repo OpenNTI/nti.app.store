@@ -13,6 +13,8 @@ from zope import interface
 
 from nti.appserver.interfaces import ICreatableObjectFilter
 
+from nti.store.utils import PURCHASABLE_ATTEMPT_MIME_TYPES
+
 @interface.implementer(ICreatableObjectFilter)
 class _StoreContentObjectFilter(object):
 
@@ -23,6 +25,8 @@ class _StoreContentObjectFilter(object):
 
 	def filter_creatable_objects(self, terms):
 		for name in list(terms):  # mutating
+			if name in PURCHASABLE_ATTEMPT_MIME_TYPES:
+				continue
 			if name.startswith(self.PREFIX):
 				terms.pop(name, None)
 		return terms
