@@ -13,20 +13,16 @@ from zope import interface
 
 from nti.appserver.interfaces import ICreatableObjectFilter
 
-from nti.store.utils import PURCHASABLE_ATTEMPT_MIME_TYPES
+from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
 @interface.implementer(ICreatableObjectFilter)
 class _StoreContentObjectFilter(object):
-
-	PREFIX = 'application/vnd.nextthought.store'
 
 	def __init__(self, context=None):
 		pass
 
 	def filter_creatable_objects(self, terms):
 		for name in list(terms):  # mutating
-			if name in PURCHASABLE_ATTEMPT_MIME_TYPES:
-				continue
-			if name.startswith(self.PREFIX):
+			if name in PURCHASE_ATTEMPT_MIME_TYPES:
 				terms.pop(name, None)
 		return terms
