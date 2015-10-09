@@ -246,9 +246,9 @@ class RedeemPurchaseCodeView(AbstractPostView):
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 		purchase = redeem_invitation_purchase(self.remoteUser,
-												invitation_code,
-								  				purchasable=purchasable,
-								 				request=self.request)
+											  invitation_code,
+								  			  purchasable=purchasable,
+								 			  request=self.request)
 		return purchase
 
 @view_config(name="redeem_gift", **_post_view_defaults)

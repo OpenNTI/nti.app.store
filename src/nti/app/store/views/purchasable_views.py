@@ -11,10 +11,10 @@ logger = __import__('logging').getLogger(__name__)
 
 from .. import MessageFactory as _
 
-import zope.intid
-
 from zope import component
 from zope import lifecycleevent
+
+from zope.intid import IIntIds
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -97,7 +97,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 
 def get_purchases_for_items(*purchasables):
 	catalog = get_catalog()
-	intids = component.getUtility(zope.intid.IIntIds)
+	intids = component.getUtility(IIntIds)
 	items_ids = catalog[IX_ITEMS].apply({'any_of': purchasables})
 	result = ResultSet(items_ids, intids, ignore_invalid=True)
 	return result

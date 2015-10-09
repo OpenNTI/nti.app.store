@@ -54,8 +54,8 @@ class _BaseStoreLinkProvider(object):
 class _StoreUnauthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 	pass
 
-@interface.implementer(IAuthenticatedUserLinkProvider)
 @component.adapter(IUser, IRequest)
+@interface.implementer(IAuthenticatedUserLinkProvider)
 class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 
 	def __init__(self, user, request):

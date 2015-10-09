@@ -87,7 +87,7 @@ def send_purchase_confirmation(	event, email,
 		args.update(add_args)
 
 	mailer = queue_simple_html_text_email
-	mailer(template,
+	mailer(	template,
 			subject=subject,
 			recipients=[email],
 			template_args=args,
