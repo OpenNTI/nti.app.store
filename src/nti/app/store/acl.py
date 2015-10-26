@@ -34,7 +34,7 @@ class PurchasableACLProvider(object):
 
 	@Lazy
 	def __acl__(self):
-		aces = [ ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, self) ]
+		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, self)]
 		if self.context.Public:
 			aces.append(ace_allowing(EVERYONE_USER_NAME, ACT_READ, self))
 		result = acl_from_aces(aces)

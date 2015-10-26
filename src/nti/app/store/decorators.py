@@ -153,10 +153,9 @@ class _PurchaseItemDecorator(object):
 	def decorateExternalObject(self, original, external):
 		purchasable = get_purchasable(original.NTIID)
 		if purchasable:
-			items = []
+			external[ITEMS] = items = []
 			for item in purchasable.Items:
 				item = find_object_with_ntiid(item)
 				if item is not None:
 					item = to_external_object(item)
 					items.append(item)
-			external[ITEMS] = items

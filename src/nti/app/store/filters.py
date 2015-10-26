@@ -22,7 +22,7 @@ class _StoreContentObjectFilter(object):
 		pass
 
 	def filter_creatable_objects(self, terms):
-		for name in list(terms):  # mutating
+		for name in list(terms): # mutating
 			if name in PURCHASE_ATTEMPT_MIME_TYPES:
 				terms.pop(name, None)
 		return terms
