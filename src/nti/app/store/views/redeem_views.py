@@ -24,8 +24,6 @@ from pyramid import httpexceptions as hexc
 
 from nti.dataserver import authorization as nauth
 
-from nti.externalization.interfaces import StandardExternalFields
-
 from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.store import get_purchase_by_code
@@ -54,9 +52,6 @@ from ..utils import AbstractPostView
 from ..utils import to_boolean
 
 from . import StorePathAdapter
-
-ITEMS = StandardExternalFields.ITEMS
-LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 GENERIC_GIFT_ERROR_MESSAGE = _("Gift/Invitation not found.")
 
@@ -93,8 +88,8 @@ class PurchaseItemProxy(ProxyBase):
 class PurchaseOrderProxy(ProxyBase):
 
 	Items = property(
-					lambda s: s.__dict__.get('_v_items'),
-					lambda s, v: s.__dict__.__setitem__('_v_items', v))
+				lambda s: s.__dict__.get('_v_items'),
+				lambda s, v: s.__dict__.__setitem__('_v_items', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
@@ -112,8 +107,8 @@ class PurchaseOrderProxy(ProxyBase):
 class PurchaseAttemptProxy(ProxyBase):
 
 	Order = property(
-					lambda s: s.__dict__.get('_v_order'),
-					lambda s, v: s.__dict__.__setitem__('_v_order', v))
+				lambda s: s.__dict__.get('_v_order'),
+				lambda s, v: s.__dict__.__setitem__('_v_order', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
