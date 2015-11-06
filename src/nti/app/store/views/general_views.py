@@ -110,6 +110,7 @@ class GetPendingPurchasesView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		result[ITEMS] = purchases
 		result[LAST_MODIFIED] = _last_modified(purchases)
+		result['Total'] = result['ItemCount'] = len(purchases)
 		return result
 
 @view_config(name="get_gift_pending_purchases", **_noauth_view_defaults)
@@ -127,6 +128,7 @@ class GetGiftPendingPurchasesView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		result[ITEMS] = purchases
 		result[LAST_MODIFIED] = _last_modified(purchases)
+		result['Total'] = result['ItemCount'] = len(purchases)
 		return result
 
 @view_config(name="get_purchase_history", **_view_defaults)
@@ -147,6 +149,7 @@ class GetPurchaseHistoryView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		result[ITEMS] = purchases
 		result[LAST_MODIFIED] = _last_modified(purchases)
+		result['Total'] = result['ItemCount'] = len(purchases)
 		return result
 
 def _sync_purchase(purchase, request):
@@ -208,6 +211,7 @@ class BaseGetPurchaseAttemptView(object):
 		result[ITEMS] = [purchase]
 		result[LAST_MODIFIED] = purchase.lastModified
 		interface.alsoProvides(result, IUncacheableInResponse)
+		result['Total'] = result['ItemCount'] = len(result[ITEMS])
 		return result
 
 @view_config(name="get_purchase_attempt", **_view_defaults)
@@ -266,7 +270,7 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 				purchasables.append(p)
 		result = LocatedExternalDict()
 		result[ITEMS] = purchasables
-		result[LAST_MODIFIED] = 0
+		result['Total'] = result['ItemCount'] = len(purchasables)
 		return result
 
 @view_config(route_name='objects.generic.traversal',
