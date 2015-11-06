@@ -20,6 +20,8 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.threadlocal import get_current_request
 
+from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
+
 from nti.dataserver.interfaces import IUser
 
 from nti.externalization.externalization import to_external_object
@@ -71,9 +73,15 @@ def send_purchase_confirmation(	event, email,
 
 	charge_name = getattr(event.charge, 'Name', None)
 
+	policy = component.getUtility(ISitePolicyUserEventListener)
+	support_email = getattr(policy, 'SUPPORT_EMAIL', '')
+	site_alias = getattr(policy, 'COM_ALIAS', '')
+
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
+			'support_email': support_email,
+			'site_alias': site_alias,
 			'format_currency': currency.format_currency_object,
 			'format_currency_attribute': currency.format_currency_attribute,
 			'discount': discount,
