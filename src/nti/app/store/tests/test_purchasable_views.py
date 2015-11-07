@@ -16,6 +16,7 @@ from hamcrest import has_property
 does_not = is_not
 
 import fudge
+
 from urllib import quote
 
 from nti.externalization.interfaces import StandardExternalFields

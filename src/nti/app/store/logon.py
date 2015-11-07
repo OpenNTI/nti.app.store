@@ -49,8 +49,8 @@ class _BaseStoreLinkProvider(object):
 		result = self.link_map().values()
 		return list(result)
 
-@interface.implementer(IUnauthenticatedUserLinkProvider)
 @component.adapter(IRequest)
+@interface.implementer(IUnauthenticatedUserLinkProvider)
 class _StoreUnauthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 	pass
 

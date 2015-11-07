@@ -16,8 +16,9 @@ from hamcrest import assert_that
 from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
-import stripe
 from urllib import quote
+
+import stripe
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -43,10 +44,9 @@ class TestStoreViews(ApplicationLayerTest):
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
 		assert_that(json_body, has_key('Items'))
-		assert_that(json_body, has_entry('Last Modified', 0))
 		items = json_body['Items']
 		assert_that(items, has_length(greater_than_or_equal_to(1)))
-		
+
 		ntiid = "tag:nextthought.com,2011-10:CMU-HTML-04630_main.04_630:_computer_science_for_practicing_engineers"
 		sck = None
 		found = False
@@ -58,7 +58,7 @@ class TestStoreViews(ApplicationLayerTest):
 
 		assert_that(found, is_(True))
 		assert_that(sck, has_entry('Alias', 'CMU'))
-		
+
 		url = '/dataserver2/store/@@get_purchasables?purchasables=%s' % quote(ntiid)
 		res = self.testapp.get(url, status=200)
 		json_body = res.json_body
@@ -70,7 +70,7 @@ class TestStoreViews(ApplicationLayerTest):
 		self.require_link_href_with_rel(item_body, 'get_stripe_connect_key')
 		self.require_link_href_with_rel(item_body, 'price_purchasable')
 		self.require_link_href_with_rel(item_body, 'price_purchasable_with_stripe_coupon')
-		
+
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	def test_get_purchase_history(self):
 		url = '/dataserver2/store/@@get_purchase_history'

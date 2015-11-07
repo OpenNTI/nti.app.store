@@ -20,6 +20,8 @@ from nti.dataserver.interfaces import EVERYONE_USER_NAME
 
 from nti.dataserver.authorization import ACT_READ
 from nti.dataserver.authorization import ROLE_ADMIN
+from nti.dataserver.authorization import ROLE_CONTENT_EDITOR
+
 from nti.dataserver.authorization_acl import ace_allowing
 from nti.dataserver.authorization_acl import acl_from_aces
 
@@ -34,7 +36,8 @@ class PurchasableACLProvider(object):
 
 	@Lazy
 	def __acl__(self):
-		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, self)]
+		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, self),
+				ace_allowing(ROLE_CONTENT_EDITOR, ALL_PERMISSIONS, self)]
 		if self.context.Public:
 			aces.append(ace_allowing(EVERYONE_USER_NAME, ACT_READ, self))
 		result = acl_from_aces(aces)
