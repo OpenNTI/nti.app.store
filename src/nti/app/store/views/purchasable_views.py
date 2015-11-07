@@ -23,9 +23,6 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
-from nti.contentlibrary.interfaces import IContentPackageLibrary
-from nti.contentlibrary.interfaces import IGlobalContentPackageLibrary
-
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import StandardExternalFields
@@ -45,14 +42,6 @@ from nti.zope_catalog.catalog import ResultSet
 from . import PurchasablesPathAdapter
 
 NTIID = StandardExternalFields.NTIID
-
-def _registry():
-	library = component.queryUtility(IContentPackageLibrary)
-	if IGlobalContentPackageLibrary.providedBy(library):
-		registry = component.getGlobalSiteManager()
-	else:
-		registry = component.getSiteManager()
-	return registry
 
 def validate_purchasble_items(purchasable):
 	for item in purchasable.Items:
@@ -89,9 +78,11 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		lifecycleevent.created(purchasable)
 
 		# add object to conenction
-		registry = _registry()
+		registry = component.getSiteManager()
 		register_purchasable(purchasable, registry=registry)
 
+		# root objects make
+		purchasable.__parent__ = registry
 		self.request.response.status_int = 201
 		return purchasable
 
@@ -155,8 +146,9 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 		if purchases:  # there are purchases
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
 
-		registry = _registry()
-		remove_purchasable(purchasable, registry=registry)
+		registry = component.getSiteManager()
+		remove_purchasable(purchasable, registry=registry) # raise removed event
+		purchasable.__parent__ = None
 
 		return hexc.HTTPNoContent()
 
