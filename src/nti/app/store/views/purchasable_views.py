@@ -80,9 +80,6 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		# add object to conenction
 		registry = component.getSiteManager()
 		register_purchasable(purchasable, registry=registry)
-
-		# root objects make
-		purchasable.__parent__ = registry
 		self.request.response.status_int = 201
 		return purchasable
 
@@ -147,9 +144,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
 
 		registry = component.getSiteManager()
-		remove_purchasable(purchasable, registry=registry) # raise removed event
-		purchasable.__parent__ = None
-
+		remove_purchasable(purchasable, registry=registry)  # raise removed event
 		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
