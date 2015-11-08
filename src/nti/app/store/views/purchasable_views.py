@@ -32,7 +32,7 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 from nti.store.interfaces import IPurchasable
 from nti.store.purchase_index import IX_ITEMS
 
-from nti.store import get_catalog
+from nti.store import get_purchase_catalog
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
 from nti.store.purchasable import get_purchasable
@@ -78,13 +78,12 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		lifecycleevent.created(purchasable)
 
 		# add object to conenction
-		registry = component.getSiteManager()
-		register_purchasable(purchasable, registry=registry)
+		register_purchasable(purchasable)
 		self.request.response.status_int = 201
 		return purchasable
 
 def get_purchases_for_items(*purchasables):
-	catalog = get_catalog()
+	catalog = get_purchase_catalog()
 	intids = component.getUtility(IIntIds)
 	items_ids = catalog[IX_ITEMS].apply({'any_of': purchasables})
 	result = ResultSet(items_ids, intids, ignore_invalid=True)
@@ -143,8 +142,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 		if purchases:  # there are purchases
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
 
-		registry = component.getSiteManager()
-		remove_purchasable(purchasable, registry=registry)  # raise removed event
+		remove_purchasable(purchasable)  # raise removed event
 		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
