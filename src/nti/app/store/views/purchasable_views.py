@@ -17,6 +17,7 @@ from zope import lifecycleevent
 from zope.intid import IIntIds
 
 from pyramid.view import view_config
+from pyramid.view import view_defaults
 from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
@@ -25,6 +26,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 
 from nti.dataserver import authorization as nauth
 
+from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.ntiids.ntiids import find_object_with_ntiid
@@ -33,14 +35,16 @@ from nti.store.interfaces import IPurchasable
 from nti.store.purchase_index import IX_ITEMS
 
 from nti.store import get_purchase_catalog
+from nti.store.store import get_purchasable
+from nti.store.store import get_purchasables
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
-from nti.store.purchasable import get_purchasable
 
 from nti.zope_catalog.catalog import ResultSet
 
 from . import PurchasablesPathAdapter
 
+ITEMS = StandardExternalFields.ITEMS
 NTIID = StandardExternalFields.NTIID
 
 def validate_purchasble_items(purchasable):
@@ -180,3 +184,18 @@ class EnablePurchasableView(AbstractAuthenticatedView,
 			theObject.Public = True
 			lifecycleevent.modified(theObject)
 		return theObject
+
+@view_config(name="collection")
+@view_config(name="AllPurchasables")
+@view_defaults(route_name='objects.generic.traversal',
+			 context=PurchasablesPathAdapter,
+			 request_method='GET',
+			 permission=nauth.ACT_NTI_ADMIN,
+			 renderer='rest')
+class AllPurchasablesView(AbstractAuthenticatedView):
+
+	def __call__(self):
+		result = LocatedExternalDict()
+		items = result[ITEMS] = get_purchasables()
+		result['ItemCount'] = result['Total'] = len(items)
+		return result

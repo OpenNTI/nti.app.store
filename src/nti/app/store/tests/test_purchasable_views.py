@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from hamcrest.library.object.haslength import has_length
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -90,6 +91,12 @@ class TestStoreViews(ApplicationLayerTest):
 
 		# try to post again
 		self.testapp.post_json(url, ext_obj, status=422)
+
+		url = '/dataserver2/store/purchasables/collection'
+		res = self.testapp.get(url, status=200)
+		assert_that(res.json_body, 
+					has_entries('Items', has_length(3),
+								'ItemCount', is_(3) ) )
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items',
