@@ -31,7 +31,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 
 from nti.app.renderers.interfaces import IUncacheableInResponse
 
-from nti.appserver.dataserver_pyramid_views import _GenericGetView as GenericGetView
+from nti.appserver.dataserver_pyramid_views import GenericGetView
 
 from nti.common.maps import CaseInsensitiveDict
 
