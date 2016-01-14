@@ -17,7 +17,6 @@ from zope import interface
 from zope.event import notify
 
 from zope.proxy import ProxyBase
-from zope.proxy import removeAllProxies
 
 from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
@@ -27,6 +26,8 @@ from nti.dataserver import authorization as nauth
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import AbstractPostView
 from nti.app.store.views import StorePathAdapter
+
+from nti.common.proxy import removeAllProxies
 
 from nti.ntiids.ntiids import find_object_with_ntiid
 
