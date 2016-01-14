@@ -24,6 +24,10 @@ from pyramid import httpexceptions as hexc
 
 from nti.dataserver import authorization as nauth
 
+from nti.app.store.utils import to_boolean
+from nti.app.store.utils import AbstractPostView
+from nti.app.store.views import StorePathAdapter
+
 from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.store import get_purchase_by_code
@@ -46,12 +50,6 @@ from nti.store.interfaces import IGiftPurchaseAttempt
 from nti.store.interfaces import IPurchasableChoiceBundle
 from nti.store.interfaces import IInvitationPurchaseAttempt
 from nti.store.interfaces import GiftPurchaseAttemptRedeemed
-
-from ..utils import AbstractPostView
-
-from ..utils import to_boolean
-
-from . import StorePathAdapter
 
 GENERIC_GIFT_ERROR_MESSAGE = _("Gift/Invitation not found.")
 
@@ -136,8 +134,11 @@ def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, req
 		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found.'))
 
 	if purchasable not in purchase.Items:
-		msg = _("The code is not for this purchasable.")
-		raise hexc.HTTPUnprocessableEntity(msg)
+		# Sometimes clients sent the the item being purchased.
+		purchasables = get_purchase_purchasables(purchase)
+		if len(purchasables) != 1 or purchasable not in purchasables[0].Items:
+			msg = _("The code is not for this purchasable.")
+			raise hexc.HTTPUnprocessableEntity(msg)
 
 	try:
 		invite = create_store_purchase_invitation(purchase, code)
@@ -206,16 +207,16 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
 	notify(GiftPurchaseAttemptRedeemed(purchase, user, code=code, request=request))
 	return purchase
 
-def _id(o, *args, **kwargs): return o
+def _id(o, *args, **kwargs): 
+	return o
 
 def _transform_object(obj, user, request=None):
 	try:
-		transformer = component.queryMultiAdapter((request, obj),
-												   IObjectTransformer)
+		transformer = component.queryMultiAdapter((request, obj), IObjectTransformer)
 		if transformer is None:
 			transformer = component.queryAdapter(obj,
-												  IObjectTransformer,
-												  default=_id)
+												 IObjectTransformer,
+												 default=_id)
 		result = transformer(obj, user)
 		return result
 	except Exception:
