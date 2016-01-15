@@ -16,7 +16,9 @@ from zope.container.contained import Contained
 
 from zope.location.interfaces import ILocation
 
-from pyramid.traversal import find_interface
+from nti.app.store import STORE
+
+from nti.app.store.interfaces import IStoreWorkspace
 
 from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
@@ -31,9 +33,7 @@ from nti.links.links import Link
 
 from nti.store.utils import ALL_STORE_MIME_TYPES
 
-from . import STORE
-
-from .interfaces import IStoreWorkspace
+from nti.traversal.traversal import find_interface
 
 @interface.implementer(IStoreWorkspace)
 class _StoreWorkspace(Contained):
@@ -75,6 +75,7 @@ def StoreWorkspace(user_service):
 class _StoreCollection(object):
 
 	name = STORE
+
 	__name__ = u''
 	__parent__ = None
 
@@ -84,10 +85,13 @@ class _StoreCollection(object):
 	@property
 	def links(self):
 		result = []
-		ds_folder = find_interface(self.__parent__, IDataserverFolder)
-		for rel in ('get_purchase_attempt', 'get_pending_purchases',
-					'get_purchase_history', 'get_purchasables',
-					'redeem_purchase_code', 'redeem_gift',
+		ds_folder = find_interface(self.__parent__, IDataserverFolder, strict=False)
+		for rel in ('get_purchase_attempt',
+					'get_pending_purchases',
+					'get_purchase_history', 
+					'get_purchasables',
+					'redeem_purchase_code',
+					'redeem_gift',
 					'get_gift_pending_purchases',
 					'get_gift_purchase_attempt',
 					'price_purchasable',

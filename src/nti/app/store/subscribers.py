@@ -9,8 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from nti.appserver import MessageFactory as _
-
 import isodate
 import datetime
 
@@ -19,6 +17,8 @@ from zope import component
 from zope.traversing.interfaces import IPathAdapter
 
 from pyramid.threadlocal import get_current_request
+
+from nti.appserver import MessageFactory as _
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
@@ -38,11 +38,12 @@ def queue_simple_html_text_email(*args, **kwargs):
 	result = mailer.queue_simple_html_text_email(*args, _level=6, **kwargs)
 	return result
 
-def send_purchase_confirmation(	event, email,
-								subject=DEFAULT_EMAIL_SUBJECT,
-								template=DEFAULT_PURCHASE_TEMPLATE,
-								package=None,
-								add_args=None):
+def send_purchase_confirmation(event, 
+							   email,
+							   subject=DEFAULT_EMAIL_SUBJECT,
+							   template=DEFAULT_PURCHASE_TEMPLATE,
+							   package=None,
+							   add_args=None):
 	# Can only do this in the context of a user actually
 	# doing something; we need the request for locale information
 	# as well as URL information.
@@ -80,8 +81,8 @@ def send_purchase_confirmation(	event, email,
 	args = {'profile': profile,
 			'context': event,
 			'user': user,
-			'support_email': support_email,
 			'site_alias': site_alias,
+			'support_email': support_email,
 			'format_currency': currency.format_currency_object,
 			'format_currency_attribute': currency.format_currency_attribute,
 			'discount': discount,
@@ -95,22 +96,26 @@ def send_purchase_confirmation(	event, email,
 		args.update(add_args)
 
 	mailer = queue_simple_html_text_email
-	mailer(	template,
-			subject=subject,
-			recipients=[email],
-			template_args=args,
-			request=request,
-			package=package,
-			text_template_extension='.mak')
+	mailer(template,
+		   subject=subject,
+		   recipients=[email],
+		   template_args=args,
+		   request=request,
+		   package=package,
+		   text_template_extension='.mak')
 
-def safe_send_purchase_confirmation(event, email,
+def safe_send_purchase_confirmation(event, 
+									email,
 									subject=DEFAULT_EMAIL_SUBJECT,
 									template=DEFAULT_PURCHASE_TEMPLATE,
 									package=None,
 									add_args=None):
 	try:
-		send_purchase_confirmation(event, email, subject=subject,
-								   template=template, package=package,
+		send_purchase_confirmation(event, 
+								   email=email,
+								   subject=subject,
+								   template=template, 
+								   package=package,
 								   add_args=add_args)
 	except Exception:
 		logger.exception("Error while sending purchase confirmation email to %s",
@@ -127,8 +132,11 @@ def store_purchase_attempt_successful(event,
 	purchase = event.object
 	email = purchase.Profile.email
 	if email:
-		safe_send_purchase_confirmation(event, email, subject=subject,
-										template=template, package=package,
+		safe_send_purchase_confirmation(event, 
+										email=email, 
+										subject=subject,
+										template=template,
+										package=package,
 										add_args=add_args)
 	else:
 		logger.warn("Not sending purchase email because no user email was found")
