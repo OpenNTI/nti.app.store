@@ -14,8 +14,13 @@ MessageFactory = zope.i18nmessageid.MessageFactory('nti.dataserver')
 
 from nti.site.runner import get_possible_site_names
 
+#: Store path
 STORE = 'store'
+
+#: Stripe path
 STRIPE = 'stripe'
+
+#: Purchasables path
 PURCHASABLES = 'purchasables'
 
 get_site_names = get_possible_site_names

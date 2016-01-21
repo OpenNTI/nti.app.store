@@ -118,8 +118,7 @@ def safe_send_purchase_confirmation(event,
 								   package=package,
 								   add_args=add_args)
 	except Exception:
-		logger.exception("Error while sending purchase confirmation email to %s",
-						 email)
+		logger.exception("Error while sending purchase confirmation email to %s", email)
 
 def store_purchase_attempt_successful(event,
 									  subject=DEFAULT_EMAIL_SUBJECT,

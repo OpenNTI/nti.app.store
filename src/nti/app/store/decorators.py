@@ -18,6 +18,8 @@ from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
+from nti.app.store import STORE
+
 from nti.externalization.singleton import SingletonDecorator
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.externalization import to_external_object
@@ -30,13 +32,11 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseItem
 
+from nti.store.payments.stripe.interfaces import IStripeConnectKey
+
 from nti.store.store import get_purchasable
 from nti.store.store import is_item_activated
 from nti.store.store import has_history_by_item
-
-from nti.store.payments.stripe.interfaces import IStripeConnectKey
-
-from . import STORE
 
 LINKS = StandardExternalFields.LINKS
 ITEMS = StandardExternalFields.ITEMS

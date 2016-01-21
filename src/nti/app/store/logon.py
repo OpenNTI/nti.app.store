@@ -14,14 +14,14 @@ from zope import interface
 
 from pyramid.interfaces import IRequest
 
+from nti.app.store import STORE
+
 from nti.appserver.interfaces import IAuthenticatedUserLinkProvider
 from nti.appserver.interfaces import IUnauthenticatedUserLinkProvider
 
 from nti.dataserver.interfaces import IUser
 
 from nti.links.links import Link
-
-from . import STORE
 
 class _BaseStoreLinkProvider(object):
 
