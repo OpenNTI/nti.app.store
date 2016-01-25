@@ -19,11 +19,11 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
 
-from nti.store.purchasable import get_purchasable
+from nti.app.store import STORE
+from nti.app.store import STRIPE
+from nti.app.store import PURCHASABLES
 
-from .. import STORE
-from .. import STRIPE
-from .. import PURCHASABLES
+from nti.store.purchasable import get_purchasable
 
 @interface.implementer(IPathAdapter)
 class StorePathAdapter(Contained):
