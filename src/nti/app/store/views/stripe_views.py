@@ -9,8 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from .. import MessageFactory as _
-
 import six
 import sys
 from datetime import date
@@ -23,29 +21,64 @@ from zope.event import notify
 
 import transaction
 
-from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
+
+from pyramid.view import view_config
+from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.error import raise_json_error as raise_error
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
-from nti.common.string import safestr
+from nti.app.store import MessageFactory as _
+from nti.app.store import get_possible_site_names
+
+from nti.app.store.utils import is_true
+from nti.app.store.utils import to_boolean
+from nti.app.store.utils import is_valid_amount
+from nti.app.store.utils import is_valid_pve_int
+from nti.app.store.utils import is_valid_boolean
+from nti.app.store.utils import AbstractPostView
+
+from nti.app.store.views import StorePathAdapter
+
 from nti.common.maps import CaseInsensitiveDict
+
+from nti.common.string import safestr
 
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
+
+from nti.externalization.externalization import to_external_object
 
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.externalization.internalization import find_factory_for
-from nti.externalization.externalization import to_external_object
 from nti.externalization.internalization import update_from_external_object
 
 from nti.store import PricingException
 from nti.store import InvalidPurchasable
+
+from nti.store.interfaces import IPricingError
+from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchasablePricer
+from nti.store.interfaces import IPurchasableChoiceBundle
+from nti.store.interfaces import PurchaseAttemptSuccessful
+
+from nti.store.payments.stripe import STRIPE
+from nti.store.payments.stripe import NoSuchStripeCoupon
+from nti.store.payments.stripe import InvalidStripeCoupon
+
+from nti.store.payments.stripe.interfaces import IStripeConnectKey
+from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
+
+from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
+from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
+
+from nti.store.payments.stripe.utils import replace_items_coupon
 
 from nti.store.store import get_purchasable
 from nti.store.store import get_purchase_attempt
@@ -57,49 +90,8 @@ from nti.store.store import get_gift_pending_purchases
 from nti.store.store import create_gift_purchase_attempt
 from nti.store.store import register_gift_purchase_attempt
 
-from nti.store.interfaces import IPricingError
-from nti.store.interfaces import IPaymentProcessor
-from nti.store.interfaces import IPurchasablePricer
-from nti.store.interfaces import IPurchasableChoiceBundle
-from nti.store.interfaces import PurchaseAttemptSuccessful
-
-from nti.store.payments.stripe import STRIPE
-from nti.store.payments.stripe import NoSuchStripeCoupon
-from nti.store.payments.stripe import InvalidStripeCoupon
-from nti.store.payments.stripe.utils import replace_items_coupon
-from nti.store.payments.stripe.interfaces import IStripeConnectKey
-from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
-from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
-from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
-from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
-
-from ..utils import is_true
-from ..utils import to_boolean
-from ..utils import is_valid_amount
-from ..utils import is_valid_pve_int
-from ..utils import is_valid_boolean
-from ..utils import AbstractPostView
-
-from .. import get_possible_site_names
-
-from . import StorePathAdapter
-
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
-
-_view_defaults = dict(route_name='objects.generic.traversal',
-					  renderer='rest',
-					  permission=nauth.ACT_READ,
-					  context=StorePathAdapter,
-					  request_method='GET')
-_post_view_defaults = _view_defaults.copy()
-_post_view_defaults['request_method'] = 'POST'
-
-_admin_view_defaults = _post_view_defaults.copy()
-_admin_view_defaults['permission'] = nauth.ACT_MODERATE
-
-_noauth_post_view_defaults = _post_view_defaults.copy()
-_noauth_post_view_defaults.pop('permission', None)
 
 class _BaseStripeView(AbstractAuthenticatedView):
 
@@ -111,19 +103,130 @@ class _BaseStripeView(AbstractAuthenticatedView):
 		result = component.queryUtility(IStripeConnectKey, keyname)
 		return result
 
-@view_config(name="get_stripe_connect_key", **_view_defaults)
+class _PostStripeView(_BaseStripeView, AbstractPostView):
+	pass
+
+@view_config(name="GetStripeConnectKey")
+@view_config(name="get_stripe_connect_key")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   permission=nauth.ACT_READ,
+			   context=StorePathAdapter,
+			   request_method='GET')
 class GetStripeConnectKeyView(_BaseStripeView):
 
 	def __call__(self):
 		result = self.get_stripe_connect_key()
 		if result is None:
-			raise hexc.HTTPNotFound(detail=_('Provider not found'))
+			raise hexc.HTTPNotFound(detail=_('Provider not found.'))
 		return result
 
-class _PostStripeView(_BaseStripeView, AbstractPostView):
-	pass
+# pricing no-auth/permission views
 
-@view_config(name="create_stripe_token", **_post_view_defaults)
+def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE):
+	pricer = component.getUtility(IPurchasablePricer, name=processor)
+	priceable = create_stripe_priceable(ntiid=purchasable_id,
+										quantity=quantity,
+										coupon=coupon)
+	result = pricer.price(priceable)
+	return result
+
+def price_order(order, processor=STRIPE):
+	pricer = component.getUtility(IPurchasablePricer, name=processor)
+	result = pricer.evaluate(order)
+	return result
+
+def _call_pricing_func(func):
+	try:
+		result = func()
+	except NoSuchStripeCoupon:
+		result = IPricingError(_("Invalid coupon."))
+	except InvalidStripeCoupon:
+		result = IPricingError(_("Invalid coupon."))
+	except InvalidPurchasable:
+		result = IPricingError(_("Invalid purchasable."))
+	except PricingException as e:
+		result = IPricingError(e)
+	except Exception:
+		raise
+	return result
+
+@view_config(name="PriceStripeOrder")
+@view_config(name="price_stripe_order")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   context=StorePathAdapter,
+			   request_method='POST')
+class PriceStripeOrderView(AbstractAuthenticatedView,
+						   ModeledContentUploadRequestUtilsMixin):
+
+	content_predicate = IStripePurchaseOrder.providedBy
+
+	def readCreateUpdateContentObject(self, *args, **kwargs):
+		externalValue = self.readInput()
+		result = find_factory_for(externalValue)()
+		update_from_external_object(result, externalValue)
+		return result
+
+	def _do_call(self):
+		order = self.readCreateUpdateContentObject()
+		assert IStripePurchaseOrder.providedBy(order)
+		if order.Coupon:  # replace item coupons
+			replace_items_coupon(order, None)
+
+		result = _call_pricing_func(partial(price_order, order))
+		status = 422 if IPricingError.providedBy(result) else 200
+		self.request.response.status_int = status
+		return result
+
+@view_config(name="PricePurchasableWithStripeCoupon")
+@view_config(name="price_purchasable_with_stripe_coupon")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   context=StorePathAdapter,
+			   request_method='POST')
+class PricePurchasableWithStripeCouponView(_PostStripeView):
+
+	def price_purchasable(self, values=None):
+		values = values or self.readInput()
+		coupon = values.get('code') or values.get('coupon') or values.get('couponCode')
+		purchasable_id = 	values.get('ntiid') \
+						 or values.get('purchasable') \
+						 or values.get('purchasableId') \
+						 or values.get('purchasable_Id') or u''
+
+		# check quantity
+		quantity = values.get('quantity', 1)
+		if not is_valid_pve_int(quantity):
+			raise_error(self.request,
+						hexc.HTTPUnprocessableEntity,
+						{	'message': _("Invalid quantity."),
+							'field': 'quantity' },
+						None)
+		quantity = int(quantity)
+
+		pricing_func = partial(perform_pricing,
+							   coupon=coupon,
+					   		   quantity=quantity,
+					   		   purchasable_id=purchasable_id)
+		result = _call_pricing_func(pricing_func)
+		status = 422 if IPricingError.providedBy(result) else 200
+		self.request.response.status_int = status
+		return result
+
+	def __call__(self):
+		result = self.price_purchasable()
+		return result
+
+# purchase views 
+
+@view_config(name="CreateStripeToken")
+@view_config(name="create_stripe_token")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   permission=nauth.ACT_READ,
+			   context=StorePathAdapter,
+			   request_method='POST')
 class CreateStripeTokenView(_PostStripeView):
 
 	def __call__(self):
@@ -134,7 +237,9 @@ class CreateStripeTokenView(_PostStripeView):
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
 		params = {'api_key':stripe_key.PrivateKey}
-		customer_id = values.get('customerID') or values.get('customer_id')
+		customer_id = 	 values.get('customer') \
+					  or values.get('customerID') \
+					  or values.get('customer_id')
 		if not customer_id:
 			required = (('cvc', 'cvc', ''),
 						('exp_year', 'expYear', 'exp_year'),
@@ -166,90 +271,7 @@ class CreateStripeTokenView(_PostStripeView):
 				params[k] = safestr(value)
 
 		token = manager.create_token(**params)
-		return LocatedExternalDict(Token=token.id)
-
-def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE):
-	pricer = component.getUtility(IPurchasablePricer, name=processor)
-	priceable = create_stripe_priceable(ntiid=purchasable_id,
-										quantity=quantity,
-										coupon=coupon)
-	result = pricer.price(priceable)
-	return result
-
-def price_order(order, processor=STRIPE):
-	pricer = component.getUtility(IPurchasablePricer, name=processor)
-	result = pricer.evaluate(order)
-	return result
-
-def _call_pricing_func(func):
-	try:
-		result = func()
-	except NoSuchStripeCoupon:
-		result = IPricingError(_("Invalid coupon"))
-	except InvalidStripeCoupon:
-		result = IPricingError(_("Invalid coupon"))
-	except InvalidPurchasable:
-		result = IPricingError(_("Invalid purchasable"))
-	except PricingException as e:
-		result = IPricingError(e)
-	except Exception:
-		raise
-	return result
-
-@view_config(name="price_stripe_order", **_noauth_post_view_defaults)
-class PriceStripeOrderView(AbstractAuthenticatedView,
-						   ModeledContentUploadRequestUtilsMixin):
-
-	content_predicate = IStripePurchaseOrder.providedBy
-
-	def readCreateUpdateContentObject(self, *args, **kwargs):
-		externalValue = self.readInput()
-		result = find_factory_for(externalValue)()
-		update_from_external_object(result, externalValue)
-		return result
-
-	def _do_call(self):
-		order = self.readCreateUpdateContentObject()
-		assert IStripePurchaseOrder.providedBy(order)
-		if order.Coupon:  # replace item coupons
-			replace_items_coupon(order, None)
-
-		result = _call_pricing_func(partial(price_order, order))
-		status = 422 if IPricingError.providedBy(result) else 200
-		self.request.response.status_int = status
-		return result
-
-@view_config(name="price_purchasable_with_stripe_coupon", **_noauth_post_view_defaults)
-class PricePurchasableWithStripeCouponView(_PostStripeView):
-
-	def price_purchasable(self, values=None):
-		values = values or self.readInput()
-		coupon = values.get('coupon') or values.get('couponCode')
-		purchasable_id = values.get('purchasable') or \
-						 values.get('purchasableId') or \
-						 values.get('purchasable_Id') or u''
-
-		# check quantity
-		quantity = values.get('quantity', 1)
-		if not is_valid_pve_int(quantity):
-			raise_error(self.request,
-						hexc.HTTPUnprocessableEntity,
-						{	'message': _("Invalid quantity."),
-							'field': 'quantity' },
-						None)
-		quantity = int(quantity)
-
-		pricing_func = partial(perform_pricing,
-					  		   purchasable_id=purchasable_id,
-					   		   quantity=quantity,
-					   		   coupon=coupon)
-		result = _call_pricing_func(pricing_func)
-		status = 422 if IPricingError.providedBy(result) else 200
-		self.request.response.status_int = status
-		return result
-
-	def __call__(self):
-		result = self.price_purchasable()
+		result = LocatedExternalDict(Token=token.id)
 		return result
 
 def process_purchase(manager, purchase_id, username, token, expected_amount,
@@ -456,7 +478,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
 		# process purchase after commit
-		addAfterCommitHook(token=token,
+		addAfterCommitHook( token=token,
 						   	request=request,
 							manager=manager,
 							username=username,
@@ -466,8 +488,11 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 							expected_amount=expected_amount)
 
 		# return
-		return LocatedExternalDict({ITEMS:[purchase_attempt],
-									LAST_MODIFIED:purchase_attempt.lastModified})
+		result = LocatedExternalDict(
+						{	ITEMS:[purchase_attempt],
+							LAST_MODIFIED:purchase_attempt.lastModified } )
+		return result
+
 	def __call__(self):
 		values = self.readInput()
 		record = self.getPaymentRecord(self.request, values)
@@ -475,7 +500,13 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
-@view_config(name="post_stripe_payment", **_post_view_defaults)
+@view_config(name="PostStripePayment")
+@view_config(name="post_stripe_payment")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   permission=nauth.ACT_READ,
+			   context=StorePathAdapter,
+			   request_method='POST')
 class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def validatePurchasable(self, request, purchasable_id):
@@ -509,13 +540,19 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStr
 			lastModified = max(map(lambda x: x.lastModified, purchases)) or 0
 			logger.warn("There are pending purchase(s) for item(s) %s",
 						list(purchase_attempt.Items))
-			return LocatedExternalDict({ITEMS: purchases,
-										LAST_MODIFIED: lastModified})
+			return LocatedExternalDict(
+						{	ITEMS: purchases,
+							LAST_MODIFIED: lastModified } )
 
 		result = self.processPurchase(purchase_attempt, record)
 		return result
 
-@view_config(name="gift_stripe_payment_preflight", **_noauth_post_view_defaults)
+@view_config(name="GiftStripePaymentPreflight")
+@view_config(name="gift_stripe_payment_preflight")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   context=StorePathAdapter,
+			   request_method='POST')
 class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStripeView):
 
 	def readInput(self, value=None):
@@ -616,7 +653,12 @@ class GiftWithStripePreflightView(AbstractAuthenticatedView, BasePaymentWithStri
 		self.validateCoupon(request, record)
 		return record
 
-@view_config(name="gift_stripe_payment", **_noauth_post_view_defaults)
+@view_config(name="GiftStripePayment")
+@view_config(name="gift_stripe_payment")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   context=StorePathAdapter,
+			   request_method='POST')
 class GiftWithStripeView(GiftWithStripePreflightView):
 
 	def createPurchaseAttempt(self, record):
@@ -661,16 +703,22 @@ def find_purchase(key):
 		purchase = get_purchase_attempt(key)
 	return purchase
 
-@view_config(name="generate_purchase_invoice_with_stripe", **_post_view_defaults)
+@view_config(name="GeneratePurchaseInvoiceWithStripe")
+@view_config(name="generate_purchase_invoice_with_stripe")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   permission=nauth.ACT_READ,
+			   context=StorePathAdapter,
+			   request_method='POST')
 class GeneratePurchaseInvoiceWitStripeView(_PostStripeView):
 
 	def __call__(self):
 		values = self.readInput()
-		trx_id = values.get('transactionId') or \
-				 values.get('transaction') or \
-				 values.get('purchaseId') or \
-				 values.get('purchase') or \
-				 values.get('code')
+		trx_id = 	values.get('code') \
+				or	values.get('purchase ') \
+				or	values.get('purchaseId') \
+				or	values.get('transaction') \
+				or	values.get('transactionId ')
 		if not trx_id:
 			raise_error(self.request,
 						hexc.HTTPUnprocessableEntity,
@@ -703,16 +751,22 @@ def refund_purchase(purchase, amount, refund_application_fee, request, processor
 									refund_application_fee=refund_application_fee,
 									request=request)
 
-@view_config(name="refund_payment_with_stripe", **_admin_view_defaults)
+@view_config(name="RefundPaymentWithStripe")
+@view_config(name="refund_payment_with_stripe")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   permission=nauth.ACT_NTI_ADMIN,
+			   context=StorePathAdapter,
+			   request_method='POST')
 class RefundPaymentWithStripeView(_PostStripeView):
 
 	def processInput(self):
 		values = self.readInput()
-		trx_id = values.get('transactionId') or \
-				 values.get('transaction') or \
-				 values.get('purchaseId') or \
-				 values.get('purchase') or \
-				 values.get('code')
+		trx_id = 	values.get('code') \
+				 or values.get('purchase ') \
+				 or values.get('purchaseId') \
+				 or values.get('transaction') \
+				 or values.get('transactionId')
 		if not trx_id:
 			raise_error(self.request,
 						hexc.HTTPUnprocessableEntity,
@@ -776,8 +830,3 @@ class RefundPaymentWithStripeView(_PostStripeView):
 		result = LocatedExternalDict({ITEMS:[purchase],
 									  LAST_MODIFIED:purchase.lastModified})
 		return result
-
-del _view_defaults
-del _post_view_defaults
-del _admin_view_defaults
-del _noauth_post_view_defaults

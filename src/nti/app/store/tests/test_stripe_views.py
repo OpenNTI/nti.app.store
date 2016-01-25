@@ -148,7 +148,7 @@ class TestStripeViews(ApplicationLayerTest):
 		res = self.testapp.post(url, body, status=422)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('Type', 'PricingError'))
-		assert_that(json_body, has_entry('Message', 'Invalid coupon'))
+		assert_that(json_body, has_entry('Message', 'Invalid coupon.'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
@@ -163,7 +163,7 @@ class TestStripeViews(ApplicationLayerTest):
 		res = self.testapp.post(url, body, status=422)
 		json_body = res.json_body
 		assert_that(json_body, has_entry('Type', 'PricingError'))
-		assert_that(json_body, has_entry('Message', 'Invalid coupon'))
+		assert_that(json_body, has_entry('Message', 'Invalid coupon.'))
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.stripe_views.perform_pricing')
