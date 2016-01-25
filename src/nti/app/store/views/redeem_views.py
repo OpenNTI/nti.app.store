@@ -9,8 +9,6 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from .. import MessageFactory as _
-
 from zope import component
 from zope import interface
 
@@ -18,28 +16,24 @@ from zope.event import notify
 
 from zope.proxy import ProxyBase
 
-from pyramid.view import view_config
 from pyramid import httpexceptions as hexc
 
-from nti.dataserver import authorization as nauth
+from pyramid.view import view_config
+
+from nti.app.store import MessageFactory as _
 
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import AbstractPostView
+
 from nti.app.store.views import StorePathAdapter
 
 from nti.common.proxy import removeAllProxies
 
+from nti.dataserver import authorization as nauth
+
 from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.store import get_purchase_by_code
-
-from nti.store.invitations import InvitationExpired
-from nti.store.invitations import InvitationAlreadyAccepted
-from nti.store.invitations import InvitationCapacityExceeded
-from nti.store.invitations import create_store_purchase_invitation
-
-from nti.store.store import get_purchase_attempt
-from nti.store.store import get_purchase_purchasables
 
 from nti.store.interfaces import IPriceable
 from nti.store.interfaces import IPurchasable
@@ -51,6 +45,14 @@ from nti.store.interfaces import IGiftPurchaseAttempt
 from nti.store.interfaces import IPurchasableChoiceBundle
 from nti.store.interfaces import IInvitationPurchaseAttempt
 from nti.store.interfaces import GiftPurchaseAttemptRedeemed
+
+from nti.store.invitations import InvitationExpired
+from nti.store.invitations import InvitationAlreadyAccepted
+from nti.store.invitations import InvitationCapacityExceeded
+from nti.store.invitations import create_store_purchase_invitation
+
+from nti.store.store import get_purchase_attempt
+from nti.store.store import get_purchase_purchasables
 
 GENERIC_GIFT_ERROR_MESSAGE = _("Gift/Invitation not found.")
 
@@ -73,8 +75,8 @@ def find_redeemable_purchase(code):
 class PurchaseItemProxy(ProxyBase):
 
 	NTIID = property(
-					lambda s: s.__dict__.get('_v_ntiid'),
-					lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
+				lambda s: s.__dict__.get('_v_ntiid'),
+				lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
@@ -129,7 +131,8 @@ def _proxy_purchase(purchase, *ntiids):
 	result = PurchaseAttemptProxy(purchase, order)
 	return result
 
-def redeem_invitation_purchase(user, code, purchasable, vendor_updates=None, request=None):
+def redeem_invitation_purchase(user, code, purchasable, 
+							   vendor_updates=None, request=None):
 	purchase = find_redeemable_purchase(code)
 	if not IInvitationPurchaseAttempt.providedBy(purchase):
 		raise hexc.HTTPNotFound(detail=_('Purchase attempt not found.'))
