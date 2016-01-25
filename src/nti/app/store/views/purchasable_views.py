@@ -9,20 +9,24 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
-from .. import MessageFactory as _
-
 from zope import component
 from zope import lifecycleevent
 
-from zope.intid import IIntIds
+from zope.intid.interfaces import IIntIds
+
+from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
 from pyramid.view import view_defaults
-from pyramid import httpexceptions as hexc
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+
 from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+
+from nti.app.store import MessageFactory as _
+
+from nti.app.store.views import PurchasablesPathAdapter
 
 from nti.dataserver import authorization as nauth
 
@@ -31,18 +35,18 @@ from nti.externalization.interfaces import StandardExternalFields
 
 from nti.ntiids.ntiids import find_object_with_ntiid
 
+from nti.store import get_purchase_catalog
+
 from nti.store.interfaces import IPurchasable
+
 from nti.store.purchase_index import IX_ITEMS
 
-from nti.store import get_purchase_catalog
 from nti.store.store import get_purchasable
 from nti.store.store import get_purchasables
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
 
 from nti.zope_catalog.catalog import ResultSet
-
-from . import PurchasablesPathAdapter
 
 ITEMS = StandardExternalFields.ITEMS
 NTIID = StandardExternalFields.NTIID
@@ -52,7 +56,7 @@ def validate_purchasble_items(purchasable):
 		obj = find_object_with_ntiid(item)
 		if obj is None:
 			logger.error("Cannot find item %s", item)
-			raise hexc.HTTPUnprocessableEntity(_('Cannot find purchasable item'))
+			raise hexc.HTTPUnprocessableEntity(_('Cannot find purchasable item.'))
 
 @view_config(route_name='objects.generic.traversal',
 			 context=PurchasablesPathAdapter,
@@ -77,7 +81,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 	def __call__(self):
 		purchasable = self._createObject()
 		if get_purchasable(purchasable.NTIID) != None:
-			raise hexc.HTTPUnprocessableEntity(_('Purchasable already created'))
+			raise hexc.HTTPUnprocessableEntity(_('Purchasable already created.'))
 		validate_purchasble_items(purchasable)
 		lifecycleevent.created(purchasable)
 
@@ -123,7 +127,7 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 		if old_items.difference(new_items):
 			purchases = get_purchases_for_items(theObject.NTIID)
 			if purchases:  # there are purchases
-				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items'))
+				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items.'))
 
 		lifecycleevent.modified(theObject)
 		return theObject
@@ -144,9 +148,10 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 		# check if items have been changed
 		purchases = get_purchases_for_items(purchasable.NTIID)
 		if purchases:  # there are purchases
-			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable'))
+			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable.'))
 
-		remove_purchasable(purchasable)  # raise removed event
+		registry = purchasable.__parent__  # parent site manager
+		remove_purchasable(purchasable, registry=registry)  # raise removed event
 		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
