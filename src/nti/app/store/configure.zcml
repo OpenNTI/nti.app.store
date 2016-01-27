@@ -12,7 +12,7 @@
 
 	<!-- ACLs -->
 	<adapter factory=".acl.PurchasableACLProvider" />
-	
+
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
@@ -27,7 +27,7 @@
 	<subscriber factory=".decorators._PurchaseItemDecorator"
 				for="nti.store.interfaces.IPurchaseItem"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
-				
+
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
@@ -37,6 +37,9 @@
 
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
+
+	<!-- Purchase -->
+	<subscriber handler=".subscribers._purchase_attempt_successful" />
 
 	<!-- Filters -->
 	<subscriber	factory=".filters._StoreContentObjectFilter"

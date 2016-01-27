@@ -20,6 +20,8 @@ from pyramid.threadlocal import get_current_request
 
 from nti.appserver import MessageFactory as _
 
+from nti.appserver.interfaces import IApplicationSettings
+
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
 from nti.dataserver.interfaces import IUser
@@ -27,6 +29,12 @@ from nti.dataserver.interfaces import IUser
 from nti.externalization.externalization import to_external_object
 
 from nti.mailer.interfaces import ITemplatedMailer
+
+from nti.store.interfaces import IPurchaseAttempt
+from nti.store.interfaces import IPurchasableCourse
+from nti.store.interfaces import IPurchaseAttemptSuccessful
+
+from nti.store.purchasable import get_purchasable
 
 from nti.store.store import get_transaction_code
 
@@ -38,7 +46,7 @@ def queue_simple_html_text_email(*args, **kwargs):
 	result = mailer.queue_simple_html_text_email(*args, _level=6, **kwargs)
 	return result
 
-def send_purchase_confirmation(event, 
+def send_purchase_confirmation(event,
 							   email,
 							   subject=DEFAULT_EMAIL_SUBJECT,
 							   template=DEFAULT_PURCHASE_TEMPLATE,
@@ -104,17 +112,17 @@ def send_purchase_confirmation(event,
 		   package=package,
 		   text_template_extension='.mak')
 
-def safe_send_purchase_confirmation(event, 
+def safe_send_purchase_confirmation(event,
 									email,
 									subject=DEFAULT_EMAIL_SUBJECT,
 									template=DEFAULT_PURCHASE_TEMPLATE,
 									package=None,
 									add_args=None):
 	try:
-		send_purchase_confirmation(event, 
+		send_purchase_confirmation(event,
 								   email=email,
 								   subject=subject,
-								   template=template, 
+								   template=template,
 								   package=package,
 								   add_args=add_args)
 	except Exception:
@@ -131,11 +139,24 @@ def store_purchase_attempt_successful(event,
 	purchase = event.object
 	email = purchase.Profile.email
 	if email:
-		safe_send_purchase_confirmation(event, 
-										email=email, 
+		safe_send_purchase_confirmation(event,
+										email=email,
 										subject=subject,
 										template=template,
 										package=package,
 										add_args=add_args)
 	else:
 		logger.warn("Not sending purchase email because no user email was found")
+
+@component.adapter(IPurchaseAttempt, IPurchaseAttemptSuccessful)
+def _purchase_attempt_successful(purchase, event):
+	items = purchase.Items
+	purchasable = get_purchasable(items[0]) if items else None
+	if purchasable is None or IPurchasableCourse.providedBy(purchasable):
+		return
+
+	store_purchase_attempt_successful(event)
+	settings = component.queryUtility(IApplicationSettings) or {}
+	email_line = settings.get('purchase_additional_confirmation_addresses') or ''
+	for email in email_line.split():
+		safe_send_purchase_confirmation(event, email)
