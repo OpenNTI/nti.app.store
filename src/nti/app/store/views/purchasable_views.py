@@ -99,6 +99,10 @@ def get_purchases_for_items(*purchasables):
 	result = ResultSet(items_ids, intids, ignore_invalid=True)
 	return result
 
+def count_purchases_for_items(*purchasables):
+	result = get_purchases_for_items(*purchasables)
+	return result.count()
+
 @view_config(route_name='objects.generic.traversal',
 			 context=IPurchasable,
 			 request_method='PUT',
@@ -127,7 +131,7 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 		# check if items have been changed
 		new_items = set(theObject.Items)
 		if old_items.difference(new_items):
-			purchases = get_purchases_for_items(theObject.NTIID)
+			purchases = count_purchases_for_items(theObject.NTIID)
 			if purchases:  # there are purchases
 				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items.'))
 
@@ -148,7 +152,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 		self._check_object_unmodified_since(purchasable)
 
 		# check if items have been changed
-		purchases = get_purchases_for_items(purchasable.NTIID)
+		purchases = count_purchases_for_items(purchasable.NTIID)
 		if purchases:  # there are purchases
 			raise hexc.HTTPUnprocessableEntity(_('Cannot delete purchasable.'))
 
