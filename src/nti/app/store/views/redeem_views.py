@@ -19,6 +19,7 @@ from zope.proxy import ProxyBase
 from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
+from pyramid.view import view_defaults
 
 from nti.app.store import MessageFactory as _
 
@@ -55,14 +56,6 @@ from nti.store.store import get_purchase_attempt
 from nti.store.store import get_purchase_purchasables
 
 GENERIC_GIFT_ERROR_MESSAGE = _("Gift/Invitation not found.")
-
-_view_defaults = dict(route_name='objects.generic.traversal',
-					  renderer='rest',
-					  permission=nauth.ACT_READ,
-					  context=StorePathAdapter,
-					  request_method='GET')
-_post_view_defaults = _view_defaults.copy()
-_post_view_defaults['request_method'] = 'POST'
 
 def find_redeemable_purchase(code):
 	try:
@@ -227,7 +220,13 @@ def _transform_object(obj, user, request=None):
 		logger.warn("Failed to transform incoming object", exc_info=True)
 		return obj
 
-@view_config(name="redeem_purchase_code", **_post_view_defaults)
+@view_config(name="RedeemPurchaseCode")
+@view_config(name="redeem_purchase_code")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   request_method='POST',
+			   context=StorePathAdapter,
+			   permission=nauth.ACT_READ)
 class RedeemPurchaseCodeView(AbstractPostView):
 
 	def __call__(self):
@@ -252,20 +251,26 @@ class RedeemPurchaseCodeView(AbstractPostView):
 								 			  request=self.request)
 		return purchase
 
-@view_config(name="redeem_gift", **_post_view_defaults)
+@view_config(name="RedeemGift")
+@view_config(name="redeem_gift")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   request_method='POST',
+			   context=StorePathAdapter,
+			   permission=nauth.ACT_READ)
 class RedeemGiftView(AbstractPostView):
 
 	def __call__(self):
 		values = self.readInput()
-		gift_code = values.get('code') or \
-					values.get('gift') or \
-					values.get('giftCode')
+		gift_code = 	values.get('code') \
+					or	values.get('gift') \
+					or 	values.get('giftCode')
 		if not gift_code:
 			msg = _("Must specify a valid gift code.")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		allow_vendor_updates = 	values.get('AllowVendorUpdates') or \
-								values.get('allow_vendor_updates')
+		allow_vendor_updates = 		values.get('AllowVendorUpdates') \
+								or	values.get('allow_vendor_updates')
 		if allow_vendor_updates is not None:
 			allow_vendor_updates = to_boolean(allow_vendor_updates)
 
@@ -288,8 +293,3 @@ class RedeemGiftView(AbstractPostView):
 			result = IRedemptionError(e)
 			self.request.response.status_int = 409
 		return result
-
-# object get views
-
-del _view_defaults
-del _post_view_defaults
