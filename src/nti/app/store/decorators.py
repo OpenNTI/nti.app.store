@@ -72,23 +72,24 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
 
 	def set_links(self, original, external, username=None):
 		links = external.setdefault(LINKS, [])
-
+		ds_store_path = self.ds_store_path
+		
 		if original.Amount:
-			ds_store_path = self.ds_store_path
-
 			# insert history link
 			if username and has_history_by_item(username, original.NTIID):
 				history_href = ds_store_path + '@@get_purchase_history'
 				quoted = urllib.quote(original.NTIID)
-				link = Link(history_href, rel="history", method='GET',
-							params={'purchasableID': quoted})
+				link = Link(history_href, 
+							rel="history", 
+							method='GET',
+							params={'ntiid': quoted})
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 
 			# insert price link
 			for name in ('price', 'price_purchasable'):
 				price_href = ds_store_path + '@@price_purchasable'
-				link = Link(price_href, rel=name, method='Post')
+				link = Link(price_href, rel=name, method='POST')
 				interface.alsoProvides(link, ILocation)
 				links.append(link)
 
