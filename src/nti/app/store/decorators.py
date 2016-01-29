@@ -19,11 +19,21 @@ from zope.container.interfaces import ILocation
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
 from nti.app.store import STORE
+from nti.app.store import PURCHASABLES
+
+from nti.appserver.pyramid_authorization import has_permission
+
+from nti.common.property import Lazy
+
+from nti.dataserver.authorization import ACT_CONTENT_EDIT
+
+from nti.externalization.interfaces import StandardExternalFields
+from nti.externalization.interfaces import IExternalObjectDecorator
+from nti.externalization.interfaces import IExternalMappingDecorator
+
+from nti.externalization.externalization import to_external_object
 
 from nti.externalization.singleton import SingletonDecorator
-from nti.externalization.interfaces import StandardExternalFields
-from nti.externalization.externalization import to_external_object
-from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.links.links import Link
 
@@ -38,8 +48,8 @@ from nti.store.store import get_purchasable
 from nti.store.store import is_item_activated
 from nti.store.store import has_history_by_item
 
-LINKS = StandardExternalFields.LINKS
 ITEMS = StandardExternalFields.ITEMS
+LINKS = StandardExternalFields.LINKS
 
 @interface.implementer(IExternalObjectDecorator)
 class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
@@ -143,6 +153,31 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 		if result is not None:
 			self.set_links(original, external)
 			external['StripeConnectKey'] = to_external_object(result)
+
+@component.adapter(IPurchasable)
+@interface.implementer(IExternalMappingDecorator)
+class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
+
+	@Lazy
+	def _acl_decoration(self):
+		result = getattr(self.request, 'acl_decoration', True)
+		return result
+
+	def _predicate(self, context, result):
+		return (	self._acl_decoration
+				and self._is_authenticated
+				and has_permission(ACT_CONTENT_EDIT, context, self.request))
+
+	def _do_decorate_external(self, context, result):
+		ntiid = urllib.quote(context.NTIID)
+		path = self.ds_store_path + '/' + PURCHASABLES + '/' + ntiid
+		rel = 'disable' if context.Public else 'enable'
+		_links = result.setdefault(LINKS, [])
+		link = Link(path + '@@' + rel, rel=rel, method='POST')
+		interface.alsoProvides(link, ILocation)
+		link.__name__ = ''
+		link.__parent__ = context
+		_links.append(link)
 
 @component.adapter(IPurchaseItem)
 @interface.implementer(IExternalObjectDecorator)

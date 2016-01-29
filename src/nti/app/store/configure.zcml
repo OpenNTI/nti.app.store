@@ -24,6 +24,11 @@
 				for="nti.store.interfaces.IPurchasable
 					 pyramid.interfaces.IRequest" />
 
+	<subscriber factory=".decorators._PurchasableEditionLinksDecorator"
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"
+				for="nti.store.interfaces.IPurchasable
+					 pyramid.interfaces.IRequest" />
+
 	<subscriber factory=".decorators._PurchaseItemDecorator"
 				for="nti.store.interfaces.IPurchaseItem"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>

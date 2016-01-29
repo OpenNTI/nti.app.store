@@ -61,7 +61,7 @@ def validate_purchasble_items(purchasable):
 @view_config(route_name='objects.generic.traversal',
 			 context=PurchasablesPathAdapter,
 			 request_method='POST',
-			 permission=nauth.ACT_NTI_ADMIN,
+			 permission=nauth.ACT_CONTENT_EDIT,
 			 renderer='rest')
 class CreatePurchasableView(AbstractAuthenticatedView,
  						 	ModeledContentUploadRequestUtilsMixin):
@@ -100,7 +100,7 @@ def get_purchases_for_items(*purchasables):
 @view_config(route_name='objects.generic.traversal',
 			 context=IPurchasable,
 			 request_method='PUT',
-			 permission=nauth.ACT_NTI_ADMIN,
+			 permission=nauth.ACT_CONTENT_EDIT,
 			 renderer='rest')
 class UpdatePurchasableView(AbstractAuthenticatedView,
 							ModeledContentEditRequestUtilsMixin,
@@ -135,7 +135,7 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 @view_config(route_name='objects.generic.traversal',
 			 context=IPurchasable,
 			 request_method='DELETE',
-			 permission=nauth.ACT_NTI_ADMIN,
+			 permission=nauth.ACT_CONTENT_EDIT,
 			 renderer='rest')
 class DeletePurchasableView(AbstractAuthenticatedView,
 							ModeledContentEditRequestUtilsMixin):
@@ -157,25 +157,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
 @view_config(route_name='objects.generic.traversal',
 			 context=IPurchasable,
 			 request_method='POST',
-			 permission=nauth.ACT_NTI_ADMIN,
-			 name="disable",
-			 renderer='rest')
-class DisablePurchasableView(AbstractAuthenticatedView,
-							 ModeledContentEditRequestUtilsMixin):
-
-	def __call__(self):
-		theObject = self.request.context
-		self._check_object_exists(theObject)
-		self._check_object_unmodified_since(theObject)
-		if theObject.Public:
-			theObject.Public = False
-			lifecycleevent.modified(theObject)
-		return theObject
-
-@view_config(route_name='objects.generic.traversal',
-			 context=IPurchasable,
-			 request_method='POST',
-			 permission=nauth.ACT_NTI_ADMIN,
+			 permission=nauth.ACT_CONTENT_EDIT,
 			 name="enable",
 			 renderer='rest')
 class EnablePurchasableView(AbstractAuthenticatedView,
@@ -190,12 +172,29 @@ class EnablePurchasableView(AbstractAuthenticatedView,
 			lifecycleevent.modified(theObject)
 		return theObject
 
+@view_config(route_name='objects.generic.traversal',
+			 context=IPurchasable,
+			 request_method='POST',
+			 permission=nauth.ACT_CONTENT_EDIT,
+			 name="disable",
+			 renderer='rest')
+class DisablePurchasableView(AbstractAuthenticatedView,
+							 ModeledContentEditRequestUtilsMixin):
+
+	def __call__(self):
+		theObject = self.request.context
+		self._check_object_exists(theObject)
+		self._check_object_unmodified_since(theObject)
+		if theObject.Public:
+			theObject.Public = False
+			lifecycleevent.modified(theObject)
+		return theObject
+
 @view_config(name="collection")
-@view_config(name="AllPurchasables")
 @view_defaults(route_name='objects.generic.traversal',
 			 context=PurchasablesPathAdapter,
 			 request_method='GET',
-			 permission=nauth.ACT_NTI_ADMIN,
+			 permission=nauth.ACT_CONTENT_EDIT,
 			 renderer='rest')
 class AllPurchasablesView(AbstractAuthenticatedView):
 
