@@ -33,6 +33,8 @@ from nti.dataserver import authorization as nauth
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.externalization.internalization import notifyModified
+
 from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store import get_purchase_catalog
@@ -129,7 +131,7 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 			if purchases:  # there are purchases
 				raise hexc.HTTPUnprocessableEntity(_('Cannot change purchasable items.'))
 
-		lifecycleevent.modified(theObject)
+		notifyModified(theObject, externalValue)
 		return theObject
 
 @view_config(route_name='objects.generic.traversal',
