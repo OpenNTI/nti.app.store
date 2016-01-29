@@ -232,15 +232,16 @@ class RedeemPurchaseCodeView(AbstractPostView):
 
 	def __call__(self):
 		values = self.readInput()
-		purchasable = 	values.get('purchasable') or \
-						values.get('purchasableId')
+		purchasable = 	 values.get('ntiid') \
+					  or values.get('purchasable') \
+					  or values.get('purchasableId')
 		if not purchasable:
 			msg = _("Must specify a valid purchasable id.")
 			raise hexc.HTTPUnprocessableEntity(msg)
 
-		invitation_code = values.get('invitationCode') or \
-						  values.get('invitation') or \
- 						  values.get('code')
+		invitation_code = 	 values.get('code') \
+						  or values.get('invitation') \
+						  or values.get('invitationCode')
 		if not invitation_code:
 			msg = _("Must specify a valid invitation code.")
 			raise hexc.HTTPUnprocessableEntity(msg)
