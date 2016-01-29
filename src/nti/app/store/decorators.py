@@ -164,21 +164,37 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 		result = getattr(self.request, 'acl_decoration', True)
 		return result
 
+	def _has_edit_link(self, result):
+		for lnk in result.get(LINKS) or ():
+			if getattr(lnk, 'rel', None) == 'edit':
+				return True
+		return False
+
 	def _predicate(self, context, result):
 		return (	self._acl_decoration
 				and self._is_authenticated
 				and has_permission(ACT_CONTENT_EDIT, context, self.request))
 
 	def _do_decorate_external(self, context, result):
+		_links = []
 		ntiid = urllib.quote(context.NTIID)
 		path = self.ds_store_path + '/' + PURCHASABLES + '/' + ntiid
+		
+		# enable / disable link
 		rel = 'disable' if context.Public else 'enable'
-		_links = result.setdefault(LINKS, [])
-		link = Link(path + '@@' + rel, rel=rel, method='POST')
-		interface.alsoProvides(link, ILocation)
-		link.__name__ = ''
-		link.__parent__ = context
+		link = Link(path + '/@@' + rel, rel=rel, method='POST')
 		_links.append(link)
+		
+		# edit link
+		if not self._has_edit_link(result):
+			link = Link(path, rel='edit', method='POST')
+			_links.append(link)
+		
+		for link in _links:
+			interface.alsoProvides(link, ILocation)
+			link.__name__ = ''
+			link.__parent__ = context
+			result.setdefault(LINKS, []).append(link)
 
 @component.adapter(IPurchaseItem)
 @interface.implementer(IExternalObjectDecorator)
