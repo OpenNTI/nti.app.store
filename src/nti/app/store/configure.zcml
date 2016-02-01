@@ -13,6 +13,9 @@
 	<!-- ACLs -->
 	<adapter factory=".acl.PurchasableACLProvider" />
 
+	<!-- Adapters -->
+	<adapter factory=".adapters._PurchasableFileConstraints" />
+	
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
