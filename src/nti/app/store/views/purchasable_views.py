@@ -14,12 +14,17 @@ from zope import lifecycleevent
 
 from zope.intid.interfaces import IIntIds
 
+from plone.namedfile.file import getImageInfo
+
 from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
+from nti.app.base.abstract_views import get_all_sources
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+
+from nti.app.contentfile import validate_sources
 
 from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
@@ -34,6 +39,9 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.externalization.internalization import notifyModified
+
+from nti.namedfile.file import NamedBlobFile
+from nti.namedfile.file import NamedBlobImage
 
 from nti.ntiids.ntiids import find_object_with_ntiid
 
@@ -60,6 +68,25 @@ def validate_purchasble_items(purchasable):
 			logger.error("Cannot find item %s", item)
 			raise hexc.HTTPUnprocessableEntity(_('Cannot find purchasable item.'))
 
+def get_namedfile(source, name='icon.dat'):
+	contentType = getattr(source, 'contentType', None)
+	if contentType:
+		factory = NamedBlobFile
+	else:
+		contentType, _, _ = getImageInfo(source)
+		source.seek(0)  # reset
+		factory = NamedBlobImage if contentType else NamedBlobFile
+	contentType = contentType or u'application/octet-stream'
+	filename = getattr(source, 'filename', None) or getattr(source, 'name', name)
+	result = factory(filename=filename, data=source.read(), contentType=contentType)
+	return result
+
+def handle_multipart(contentObject, sources, provided=IPurchasable):
+	for name, source in sources.items():
+		if name in provided:
+			namedfile = get_namedfile(source)
+			setattr(contentObject, name, namedfile)
+
 @view_config(route_name='objects.generic.traversal',
 			 context=PurchasablesPathAdapter,
 			 request_method='POST',
@@ -78,6 +105,11 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 										  		  datatype=datatype,
 										  		  externalValue=externalValue)
 		self.updateContentObject(result, externalValue, notify=False)
+		# check for multi-part data
+		sources = get_all_sources(self.request)
+		if sources:
+			validate_sources(result, sources)
+			handle_multipart(result, sources)
 		return result
 
 	def __call__(self):
