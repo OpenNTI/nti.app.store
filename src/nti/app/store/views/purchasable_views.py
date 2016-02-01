@@ -9,6 +9,8 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import time
+
 from zope import component
 from zope import lifecycleevent
 
@@ -33,6 +35,12 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.views import PurchasablesPathAdapter
 
+from nti.common.random import generate_random_hex_string
+
+from nti.common.time import time_to_64bit_int
+
+from nti.coremetadata.interfaces import SYSTEM_USER_ID
+
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -43,7 +51,12 @@ from nti.externalization.internalization import notifyModified
 from nti.namedfile.file import NamedBlobFile
 from nti.namedfile.file import NamedBlobImage
 
+from nti.ntiids.ntiids import make_ntiid
+from nti.ntiids.ntiids import make_specific_safe
 from nti.ntiids.ntiids import find_object_with_ntiid
+
+from nti.store import PURCHASABLE
+from nti.store import PURCHASABLE_NTIID_TYPES
 
 from nti.store import get_purchase_catalog
 
@@ -97,8 +110,25 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 
 	content_predicate = IPurchasable.providedBy
 
+	def _make_tiid(self, nttype=PURCHASABLE, creator=SYSTEM_USER_ID):
+		current_time = time_to_64bit_int(time.time())
+		creator = getattr(creator, 'username', creator)
+		extra = generate_random_hex_string(6)
+		specific_base = '%s.%s.%s' % (creator, current_time, extra)
+		specific = make_specific_safe(specific_base)
+		ntiid = make_ntiid(nttype=nttype,
+					   	   provider='NTI',
+						   specific=specific)
+		return ntiid
+
 	def _createObject(self):
 		externalValue = self.readInput()
+		if not externalValue.get(NTIID):
+			nttype = externalValue.pop('Type', PURCHASABLE)
+			if nttype not in PURCHASABLE_NTIID_TYPES:
+				raise hexc.HTTPUnprocessableEntity(_('Invalid purchasable type.'))
+			ntiid = self._make_tiid(nttype, self.remoteUser)
+			externalValue[NTIID] = ntiid
 		datatype = self.findContentType(externalValue)
 		result = self.createAndCheckContentObject(owner=None,
 										  		  creator=None,
