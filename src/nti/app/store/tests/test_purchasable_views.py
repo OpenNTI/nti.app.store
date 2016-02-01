@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, unicode_literals, absolute_import, division
-from hamcrest.library.object.haslength import has_length
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -11,6 +10,7 @@ __docformat__ = "restructuredtext en"
 from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
+from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_entries
 from hamcrest import has_property
@@ -100,10 +100,10 @@ class TestStoreViews(ApplicationLayerTest):
 
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items',
-				 'nti.app.store.views.purchasable_views.get_purchases_for_items')
+				 'nti.app.store.views.purchasable_views.count_purchases_for_items')
 	def test_update_purchasable(self, mock_vp, mock_gpi):
 		mock_vp.is_callable().with_args().returns(None)
-		mock_gpi.is_callable().with_args().returns(None)
+		mock_gpi.is_callable().with_args().returns(0)
 		
 		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'
 		
@@ -120,16 +120,16 @@ class TestStoreViews(ApplicationLayerTest):
 		res = self.testapp.put_json(url, ext_obj, status=200)
 		assert_that(res.json_body, has_entries('Items', is_(ext_obj[ITEMS])))
 				
-		mock_gpi.is_callable().with_args().returns([1,2,3])
+		mock_gpi.is_callable().with_args().returns(3)
 		ext_obj[ITEMS] =  [u'tag:nextthought.com,2011-10:CMU-HTML-Bleach']
 		self.testapp.put_json(url, ext_obj, status=422)
 	
 	@WithSharedApplicationMockDS(users=True, testapp=True)
 	@fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items',
-				 'nti.app.store.views.purchasable_views.get_purchases_for_items')
+				 'nti.app.store.views.purchasable_views.count_purchases_for_items')
 	def test_delete_purchasable(self, mock_vp, mock_gpi):
 		mock_vp.is_callable().with_args().returns(None)
-		mock_gpi.is_callable().with_args().returns([1,2,3])
+		mock_gpi.is_callable().with_args().returns(3)
 		
 		ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-dare_devil'
 		
@@ -147,7 +147,7 @@ class TestStoreViews(ApplicationLayerTest):
 		url = '/dataserver2/store/purchasables/%s' % quote(ntiid)
 		self.testapp.delete(url, status=422)
 		
-		mock_gpi.is_callable().with_args().returns(None)
+		mock_gpi.is_callable().with_args().returns(0)
 		self.testapp.delete(url, status=204)
 		
 		with mock_dataserver.mock_db_trans(self.ds):
