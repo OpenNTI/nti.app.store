@@ -55,9 +55,6 @@ from nti.ntiids.ntiids import make_ntiid
 from nti.ntiids.ntiids import make_specific_safe
 from nti.ntiids.ntiids import find_object_with_ntiid
 
-from nti.store import PURCHASABLE
-from nti.store import PURCHASABLE_NTIID_TYPES
-
 from nti.store import get_purchase_catalog
 
 from nti.store.interfaces import IPurchasable
@@ -69,10 +66,13 @@ from nti.store.store import get_purchasables
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
 
+from nti.store.utils import get_ntiid_type
+
 from nti.zope_catalog.catalog import ResultSet
 
 ITEMS = StandardExternalFields.ITEMS
 NTIID = StandardExternalFields.NTIID
+MIMETYPE = StandardExternalFields.MIMETYPE
 
 def validate_purchasble_items(purchasable):
 	for item in purchasable.Items:
@@ -110,7 +110,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 
 	content_predicate = IPurchasable.providedBy
 
-	def _make_tiid(self, nttype=PURCHASABLE, creator=SYSTEM_USER_ID):
+	def _make_tiid(self, nttype, creator=SYSTEM_USER_ID):
 		current_time = time_to_64bit_int(time.time())
 		creator = getattr(creator, 'username', creator)
 		extra = generate_random_hex_string(6)
@@ -124,9 +124,9 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 	def _createObject(self):
 		externalValue = self.readInput()
 		if not externalValue.get(NTIID):
-			nttype = externalValue.pop('Type', PURCHASABLE)
-			if nttype not in PURCHASABLE_NTIID_TYPES:
-				raise hexc.HTTPUnprocessableEntity(_('Invalid purchasable type.'))
+			nttype = get_ntiid_type(externalValue.get(MIMETYPE))
+			if not nttype:
+				raise hexc.HTTPUnprocessableEntity(_('Invalid purchasable MimeType.'))
 			ntiid = self._make_tiid(nttype, self.remoteUser)
 			externalValue[NTIID] = ntiid
 		datatype = self.findContentType(externalValue)
