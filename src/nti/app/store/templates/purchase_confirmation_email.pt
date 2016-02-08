@@ -55,7 +55,7 @@
 		<div metal:use-macro="macro:header">
         </div>
 
-		<h1 style="margin-bottom: 4px; margin-top: 50px;">Customer Receipt</h1>
+		<h1 style="margin-bottom: 4px; margin-top: 50px;">Purchase Receipt</h1>
 		<table style="width: 100%;  border-top-style: solid; border-top-width: 1px;">
 			<tr style="font-weight: normal; font-size: 10pt; color: #b8b8b8; text-align: left">
 				<th>Billed To:</th><th>Date Purchased:</th><th>Transaction ID:</th>
@@ -79,25 +79,33 @@
 
 		<h1 style="margin-bottom: 4px; margin-top: 50px;">Payment Details</h1>
 		<table id="payment_details" style="width: 100%; border-top-style: solid; border-top-width: 1px; border-collapse: collapse ">
-			<tr style="border-top-style: solid; border-top-width: 1px;" tal:repeat="item context/purchase/Order/Items">
-				<td style="text-align:left; font-size: 10pt;">
-					<span style="font-weight: bold; color: #494949;" tal:content="item/purchasable/Title">The Professional Risk Managers' Handbook</span>
-					<span style="color: #b8b8b8" tal:condition="item/purchasable/License">&nbsp;(${item/purchasable/License})</span>
-					<div tal:condition="python:item.Quantity > 1">
-						ACTIVATION KEY: ${options/transaction_id}
-					</div>
-				</td>
-				<td style="text-align:right; color: #757474">
-					<span tal:condition="python:item.Quantity > 1">
-						<span style="color: #b8b8b8">QTY: </span>
-						${item/Quantity}
-						&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-					</span>
-					<span tal:content="item/purchasable/currency:ATTR_W_CURRENCY_Amount">
-						US$19.50
-					</span>
-				</td>
-			</tr>
+			<tal:block tal:repeat="item context/purchase/Order/Items">
+				<tr style="border-top-style: solid; border-top-width: 1px;">
+					<td style="text-align:left; font-size: 10pt;">
+						<span style="font-weight: bold; color: #494949;" tal:content="item/purchasable/Title">The Professional Risk Managers' Handbook</span>
+						<span style="font-weight: bold; color: #494949;" tal:condition="exists:ptions/purchase_item_suffix"
+								tal:content="options/purchase_item_suffix"></span>
+						<span style="color: #b8b8b8" tal:condition="item/purchasable/License">&nbsp;(${item/purchasable/License})</span>
+						<div tal:condition="python:item.Quantity > 1">
+							ACTIVATION KEY: ${options/transaction_id}
+						</div>
+					</td>
+					<td style="text-align:right; color: #757474">
+						<span tal:condition="python:item.Quantity > 1">
+							<span style="color: #b8b8b8">QTY: </span>
+							${item/Quantity}
+							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						</span>
+						<span tal:content="item/purchasable/currency:ATTR_W_CURRENCY_Amount">
+							US$19.50
+						</span>
+					</td>
+				</tr>
+				<tr tal:condition="exists:options/redeem_by_clause" >
+					<td style="text-align:left; font-size: 8pt; color: #757474; font-weight:100; margin-left: 60px; margin-top: 0px;"
+						tal:content="options/redeem_by_clause">Redeem by 10.24.2011</td>
+				</tr>
+			</tal:block>
 			<tr style="border-top-style: solid; border-top-width: 1px;">
 				<td style="text-align:left; font-size: 10pt; color: #757474; font-weight:100">SUBTOTAL</td>
 				<td style="text-align:right; color: #757474" tal:content="context/purchase/Pricing/currency:ATTR_W_CURRENCY_TotalNonDiscountedPrice">US$69.50</td>

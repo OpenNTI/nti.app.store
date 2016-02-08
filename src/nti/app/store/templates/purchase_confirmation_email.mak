@@ -13,6 +13,9 @@ ${item.Quantity}x ${item.purchasable.Title} - ${format_currency_attribute(item.p
 %if item.purchasable.License:
 	(${item.purchasable.License})
 %endif
+% if redeem_by_clause:
+	${redeem_by_clause}.
+% endif
 %if item.Quantity > 1:
 	Activation Key: ${transaction_id}
 %endif
