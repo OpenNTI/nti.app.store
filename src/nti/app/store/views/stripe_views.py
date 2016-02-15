@@ -313,9 +313,10 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 	def parseContext(self, values, purchasables=()):
 		context = dict()
 		for purchasable in purchasables:
-			vendor = to_external_object(purchasable.VendorInfo) \
-					 if purchasable.VendorInfo else None
-			context.update(vendor or {})
+			context['Purchasable'] = purchasable.NTIID # pick last
+			if purchasable.VendorInfo:
+				vendor = to_external_object(purchasable.VendorInfo)
+				context.update(vendor)
 
 		# capture user context data
 		data = CaseInsensitiveDict(values.get('Context') or {})
@@ -366,9 +367,9 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 	def getPaymentRecord(self, request, values=None):
 		values = values or self.readInput()
 		result = CaseInsensitiveDict()
-		purchasables = 	values.get('purchasableId') or \
-						values.get('purchasable') or \
-						values.get('purchasables')
+		purchasables = 		values.get('purchasable') \
+						or	values.get('purchasables') \
+						or	values.get('purchasableId')
 		if not purchasables:
 			raise_error(request,
 						hexc.HTTPUnprocessableEntity,
