@@ -138,7 +138,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 		# check for multi-part data
 		sources = get_all_sources(self.request)
 		if sources:
-			validate_sources(result, sources)
+			validate_sources(self.remoteUser, result, sources)
 			handle_multipart(result, sources)
 		return result
 
