@@ -181,7 +181,7 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 		path = self.ds_store_path + '/' + PURCHASABLES + '/' + ntiid
 		
 		# enable / disable link
-		rel = 'disable' if context.Public else 'enable'
+		rel = 'disable' if context.isPublic() else 'enable'
 		link = Link(path + '/@@' + rel, rel=rel, method='POST')
 		_links.append(link)
 		

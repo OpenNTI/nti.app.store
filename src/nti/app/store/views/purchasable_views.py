@@ -235,7 +235,7 @@ class EnablePurchasableView(AbstractAuthenticatedView,
 		theObject = self.request.context
 		self._check_object_exists(theObject)
 		self._check_object_unmodified_since(theObject)
-		if not theObject.Public:
+		if not theObject.isPublic():
 			theObject.Public = True
 			lifecycleevent.modified(theObject)
 		return theObject
@@ -253,7 +253,7 @@ class DisablePurchasableView(AbstractAuthenticatedView,
 		theObject = self.request.context
 		self._check_object_exists(theObject)
 		self._check_object_unmodified_since(theObject)
-		if theObject.Public:
+		if theObject.isPublic():
 			theObject.Public = False
 			lifecycleevent.modified(theObject)
 		return theObject

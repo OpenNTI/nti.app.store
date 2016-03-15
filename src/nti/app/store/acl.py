@@ -38,7 +38,7 @@ class PurchasableACLProvider(object):
 	def __acl__(self):
 		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, type(self)),
 				ace_allowing(ROLE_CONTENT_ADMIN, ALL_PERMISSIONS, type(self))]
-		if self.context.Public:
+		if self.context.isPublic():
 			aces.append(ace_allowing(EVERYONE_USER_NAME, ACT_READ, type(self)))
 		result = acl_from_aces(aces)
 		return result
