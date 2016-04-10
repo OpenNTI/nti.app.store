@@ -38,6 +38,8 @@ from nti.app.store.utils import is_valid_pve_int
 
 from nti.app.store.views import StorePathAdapter
 
+from nti.common import integer_strings
+
 from nti.common.maps import CaseInsensitiveDict
 
 from nti.dataserver import authorization as nauth
@@ -48,7 +50,6 @@ from nti.dataserver.metadata_index import CATALOG_NAME as METADATA_CATALOG_NAME
 
 from nti.dataserver.users import User
 
-from nti.externalization import integer_strings
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.store.interfaces import PA_STATE_SUCCESS
