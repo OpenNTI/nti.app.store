@@ -24,16 +24,16 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
-class TestUserService(ApplicationLayerTest):
+class TestWorkspaces(ApplicationLayerTest):
 
 	@mock_dataserver.WithMockDSTrans
 	def test_external(self):
-		user = User.create_user( dataserver=self.ds, username='sjohnson@nextthought.com' )
-		service = UserService( user )
-		ext_object = toExternalObject( service )
+		user = User.create_user(dataserver=self.ds, username='sjohnson@nextthought.com')
+		service = UserService(user)
+		ext_object = toExternalObject(service)
 
-		assert_that( ext_object['Items'], has_item(has_entry( 'Title', 'store' )) )
+		assert_that(ext_object['Items'], has_item(has_entry('Title', 'store')))
 		store_wss = [x for x in ext_object['Items'] if x['Title'] == 'store']
-		assert_that( store_wss, has_length( 1 ))
+		assert_that(store_wss, has_length(1))
 		store_wss, = store_wss
-		assert_that(store_wss['Items'], has_item( has_entry( 'Links', has_length(12))))
+		assert_that(store_wss['Items'], has_item(has_entry('Links', has_length(12))))
