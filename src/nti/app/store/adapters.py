@@ -10,11 +10,15 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 from zope import component
+from zope import interface
 
 from nti.namedfile.constraints import FileConstraints
+
+from nti.namedfile.interfaces import IFileConstraints
 
 from nti.store.interfaces import IPurchasable
 
 @component.adapter(IPurchasable)
+@interface.implementer(IFileConstraints)
 class _PurchasableFileConstraints(FileConstraints):
 	max_file_size = 10485760  # 10 MB

@@ -14,7 +14,9 @@
 	<adapter factory=".acl.PurchasableACLProvider" />
 
 	<!-- Adapters -->
-	<adapter factory=".adapters._PurchasableFileConstraints" />
+	<adapter factory=".adapters._PurchasableFileConstraints" 
+			 for="nti.store.interfaces.IPurchasable" 
+			 provides="nti.namedfile.interface.IFileConstraints" />
 	
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
