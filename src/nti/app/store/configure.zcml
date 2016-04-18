@@ -16,7 +16,7 @@
 	<!-- Adapters -->
 	<adapter factory=".adapters._PurchasableFileConstraints" 
 			 for="nti.store.interfaces.IPurchasable" 
-			 provides="nti.namedfile.interface.IFileConstraints" />
+			 provides="nti.namedfile.interfaces.IFileConstraints" />
 	
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
