@@ -11,7 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import component
 
-from nti.namedfile.file import FileConstraints
+from nti.namedfile.constraints import FileConstraints
 
 from nti.store.interfaces import IPurchasable
 
