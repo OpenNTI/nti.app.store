@@ -5,6 +5,7 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from nti.dataserver.interfaces import IUser
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -250,6 +251,17 @@ class RedeemPurchaseCodeView(AbstractPostView):
 								  			  purchasable=purchasable,
 								 			  request=self.request)
 		return purchase
+
+
+@view_config(name="RedeemPurchaseCode")
+@view_config(name="redeem_purchase_code")
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   request_method='POST',
+			   context=IUser,
+			   permission=nauth.ACT_READ)
+class UserRedeemPurchaseCodeView(RedeemPurchaseCodeView):
+	pass
 
 @view_config(name="RedeemGift")
 @view_config(name="redeem_gift")

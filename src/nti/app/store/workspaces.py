@@ -126,13 +126,11 @@ class _RedeemPurchaseCodeInvitationsLinkProvider(object):
 		self.user = user
 
 	def links(self, workspace):
-		ds_folder = find_interface(workspace, IDataserverFolder, strict=False)
-		if ds_folder is not None:
-			link = Link(STORE, 
-						rel="redeem_purchase_code", 
-						elements=('@@redeem_purchase_code',))
-			link.__name__ = 'redeem_purchase_code'
-			link.__parent__ = ds_folder
-			interface.alsoProvides(link, ILocation)
-			return (link,)
-		return ()
+		link = Link(workspace.__parent__, # IUser 
+					method="POST",
+					rel="redeem_purchase_code", 
+					elements=('@@redeem_purchase_code',))
+		link.__name__ = 'redeem_purchase_code'
+		link.__parent__ = workspace.__parent__
+		interface.alsoProvides(link, ILocation)
+		return (link,)
