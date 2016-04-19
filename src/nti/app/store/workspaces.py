@@ -16,6 +16,8 @@ from zope.container.contained import Contained
 
 from zope.location.interfaces import ILocation
 
+from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
+
 from nti.app.store import STORE
 
 from nti.app.store.interfaces import IStoreWorkspace
@@ -27,6 +29,7 @@ from nti.appserver.workspaces.interfaces import IContainerCollection
 from nti.common.property import Lazy
 from nti.common.property import alias
 
+from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 
 from nti.links.links import Link
@@ -114,3 +117,22 @@ class _StoreCollection(object):
 	def accepts(self):
 		mime_types = ALL_STORE_MIME_TYPES
 		return mime_types
+
+@component.adapter(IUser)
+@interface.implementer(IUserInvitationsLinkProvider)
+class _RedeemPurchaseCodeInvitationsLinkProvider(object):
+		
+	def __init__(self, user=None):
+		self.user = user
+
+	def links(self, workspace):
+		ds_folder = find_interface(workspace, IDataserverFolder, strict=False)
+		if ds_folder is not None:
+			link = Link(STORE, 
+						rel="redeem_purchase_code", 
+						elements=('@@redeem_purchase_code',))
+			link.__name__ = 'redeem_purchase_code'
+			link.__parent__ = ds_folder
+			interface.alsoProvides(link, ILocation)
+			return (link,)
+		return ()

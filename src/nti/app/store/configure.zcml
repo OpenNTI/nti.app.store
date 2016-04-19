@@ -48,6 +48,9 @@
 	<subscriber factory=".logon._StoreUnauthenticatedUserLinkProvider"
 				provides="nti.appserver.interfaces.IUnauthenticatedUserLinkProvider" />
 
+	<subscriber	factory=".workspaces._RedeemPurchaseCodeInvitationsLinkProvider"
+				provides="nti.app.invitations.interfaces.IUserInvitationsLinkProvider"/>
+
 	<!-- Purchase -->
 	<subscriber handler=".subscribers._purchase_attempt_successful" />
 
