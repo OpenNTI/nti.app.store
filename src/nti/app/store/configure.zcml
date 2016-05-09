@@ -14,10 +14,10 @@
 	<adapter factory=".acl.PurchasableACLProvider" />
 
 	<!-- Adapters -->
-	<adapter factory=".adapters._PurchasableFileConstraints" 
-			 for="nti.store.interfaces.IPurchasable" 
+	<adapter factory=".adapters._PurchasableFileConstraints"
+			 for="nti.store.interfaces.IPurchasable"
 			 provides="nti.namedfile.interfaces.IFileConstraints" />
-	
+
 	<!-- Decorators -->
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
@@ -58,6 +58,10 @@
 	<subscriber	factory=".filters._StoreContentObjectFilter"
 				provides="nti.appserver.interfaces.ICreatableObjectFilter"
 				for="nti.dataserver.interfaces.IUser" />
+
+	<!-- Utilities -->
+	<utility factory=".subscribers.SitePurchaseMetadataProvider"
+			 provides="nti.store.interfaces.IStorePurchaseMetadataProvider" />
 
 	<include package=".views" />
 

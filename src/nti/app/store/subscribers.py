@@ -13,6 +13,7 @@ import isodate
 import datetime
 
 from zope import component
+from zope import interface
 
 from zope.traversing.interfaces import IPathAdapter
 
@@ -30,9 +31,12 @@ from nti.externalization.externalization import to_external_object
 
 from nti.mailer.interfaces import ITemplatedMailer
 
+from nti.site.site import getSite
+
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchasableCourse
 from nti.store.interfaces import IPurchaseAttemptSuccessful
+from nti.store.interfaces import IStorePurchaseMetadataProvider
 
 from nti.store.purchasable import get_purchasable
 
@@ -160,3 +164,19 @@ def _purchase_attempt_successful(purchase, event):
 	email_line = settings.get('purchase_additional_confirmation_addresses') or ''
 	for email in email_line.split():
 		safe_send_purchase_confirmation(event, email)
+
+@interface.implementer(IStorePurchaseMetadataProvider)
+class SitePurchaseMetadataProvider(object):
+	"""
+	Augment the purchase metadata with site information.
+	"""
+
+	def update_metadata(self, data):
+		data = data if data else {}
+		site = getSite()
+		data['Site'] = site.__name__
+		policy = component.getUtility(ISitePolicyUserEventListener)
+		site_display = getattr(policy, 'BRAND', '') \
+					or getattr(policy, 'COM_ALIAS', '')
+		data['SiteName'] = site_display
+		return data

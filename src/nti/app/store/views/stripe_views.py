@@ -218,7 +218,7 @@ class PricePurchasableWithStripeCouponView(_PostStripeView):
 		result = self.price_purchasable()
 		return result
 
-# purchase views 
+# purchase views
 
 @view_config(name="CreateStripeToken")
 @view_config(name="create_stripe_token")
