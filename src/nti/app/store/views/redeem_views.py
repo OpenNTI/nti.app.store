@@ -5,7 +5,6 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
-from nti.dataserver.interfaces import IUser
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -32,6 +31,12 @@ from nti.app.store.views import StorePathAdapter
 from nti.common.proxy import removeAllProxies
 
 from nti.dataserver import authorization as nauth
+
+from nti.dataserver.interfaces import IUser
+
+from nti.invitations.interfaces import IInvitationsContainer
+
+from nti.invitations.utils import accept_invitation
 
 from nti.ntiids.ntiids import find_object_with_ntiid
 
@@ -68,9 +73,8 @@ def find_redeemable_purchase(code):
 @interface.implementer(IPriceable)
 class PurchaseItemProxy(ProxyBase):
 
-	NTIID = property(
-				lambda s: s.__dict__.get('_v_ntiid'),
-				lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
+	NTIID = property(lambda s: s.__dict__.get('_v_ntiid'),
+					 lambda s, v: s.__dict__.__setitem__('_v_ntiid', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
@@ -82,9 +86,8 @@ class PurchaseItemProxy(ProxyBase):
 @interface.implementer(IPurchaseOrder)
 class PurchaseOrderProxy(ProxyBase):
 
-	Items = property(
-				lambda s: s.__dict__.get('_v_items'),
-				lambda s, v: s.__dict__.__setitem__('_v_items', v))
+	Items = property(lambda s: s.__dict__.get('_v_items'),
+					 lambda s, v: s.__dict__.__setitem__('_v_items', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
@@ -101,9 +104,8 @@ class PurchaseOrderProxy(ProxyBase):
 @interface.implementer(IPurchaseAttempt)
 class PurchaseAttemptProxy(ProxyBase):
 
-	Order = property(
-				lambda s: s.__dict__.get('_v_order'),
-				lambda s, v: s.__dict__.__setitem__('_v_order', v))
+	Order = property(lambda s: s.__dict__.get('_v_order'),
+					 lambda s, v: s.__dict__.__setitem__('_v_order', v))
 
 	def __new__(cls, base, *args, **kwargs):
 		return ProxyBase.__new__(cls, base)
@@ -139,11 +141,18 @@ def redeem_invitation_purchase(user, code, purchasable,
 			raise hexc.HTTPUnprocessableEntity(msg)
 
 	try:
-		invite = create_store_purchase_invitation(purchase, code)
-		invite.accept(user.username)
-		# returned redeemed purchase attempt
-		purchase_id = purchase.linked_purchase_id(user)
+		# create and register the store invitation
+		invite = create_store_purchase_invitation(purchase, receiver=user.username)
+		invitations = component.getUtility(IInvitationsContainer)
+		invitations.add(invite)
+		
+		# process acceptance
+		accept_invitation(user, invite)
+
+		# return redeemed purchase attempt
+		purchase_id = purchase.get_linked_purchase_id(user)
 		purchase = get_purchase_attempt(purchase_id)
+
 		# set vendor updates
 		if vendor_updates is not None:
 			purchase.Context['AllowVendorUpdates'] = vendor_updates
@@ -251,7 +260,6 @@ class RedeemPurchaseCodeView(AbstractPostView):
 								  			  purchasable=purchasable,
 								 			  request=self.request)
 		return purchase
-
 
 @view_config(name="RedeemPurchaseCode")
 @view_config(name="redeem_purchase_code")
