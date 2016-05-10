@@ -142,7 +142,7 @@ def redeem_invitation_purchase(user, code, purchasable,
 
 	try:
 		# create and register the store invitation
-		invite = create_store_purchase_invitation(purchase, receiver=user.username)
+		invite = create_store_purchase_invitation(purchase, receiver=user)
 		invitations = component.getUtility(IInvitationsContainer)
 		invitations.add(invite)
 		
