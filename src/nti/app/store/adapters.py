@@ -21,4 +21,5 @@ from nti.store.interfaces import IPurchasable
 @component.adapter(IPurchasable)
 @interface.implementer(IFileConstraints)
 class _PurchasableFileConstraints(FileConstraints):
+	max_files = 1
 	max_file_size = 10485760  # 10 MB
