@@ -34,7 +34,6 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.store import MessageFactory as _
 from nti.app.store import get_possible_site_names
 
-from nti.app.store.utils import is_true
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_amount
 from nti.app.store.utils import is_valid_pve_int
@@ -45,7 +44,8 @@ from nti.app.store.views import StorePathAdapter
 
 from nti.common.maps import CaseInsensitiveDict
 
-from nti.common.string import safestr
+from nti.common.string import is_true
+from nti.common.string import to_unicode
 
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
@@ -254,7 +254,7 @@ class CreateStripeTokenView(_PostStripeView):
 								{	'message': _("Invalid value."),
 									'field': param },
 								None)
-				params[key] = safestr(value)
+				params[key] = to_unicode(value)
 		else:
 			params['customer_id'] = customer_id
 
@@ -268,7 +268,7 @@ class CreateStripeTokenView(_PostStripeView):
 		for k, p, a in optional:
 			value = values.get(p) or values.get(a)
 			if value:
-				params[k] = safestr(value)
+				params[k] = to_unicode(value)
 
 		token = manager.create_token(**params)
 		result = LocatedExternalDict(Token=token.id)
