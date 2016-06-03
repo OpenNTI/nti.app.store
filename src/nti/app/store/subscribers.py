@@ -176,6 +176,10 @@ class SitePurchaseMetadataProvider(object):
 		site = getSite()
 		data['Site'] = site.__name__
 		policy = component.getUtility(ISitePolicyUserEventListener)
-		site_display = getattr(policy, 'BRAND', '') or getattr(policy, 'COM_ALIAS', '')
+		site_display = getattr(policy, 'BRAND', '')
+		site_alias = getattr(policy, 'COM_ALIAS', '')
+		# We are inhereting the NT brand, try to use alias.
+		if site_display == 'NextThought' and site_alias:
+			site_display = site_alias
 		data['SiteName'] = site_display
 		return data
