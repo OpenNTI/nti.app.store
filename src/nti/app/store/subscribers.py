@@ -176,7 +176,6 @@ class SitePurchaseMetadataProvider(object):
 		site = getSite()
 		data['Site'] = site.__name__
 		policy = component.getUtility(ISitePolicyUserEventListener)
-		site_display = getattr(policy, 'BRAND', '') \
-					or getattr(policy, 'COM_ALIAS', '')
+		site_display = getattr(policy, 'BRAND', '') or getattr(policy, 'COM_ALIAS', '')
 		data['SiteName'] = site_display
 		return data
