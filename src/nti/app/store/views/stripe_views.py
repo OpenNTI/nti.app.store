@@ -302,7 +302,9 @@ def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
 class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 
 	processor = STRIPE
-
+	
+	KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
+	
 	def readInput(self, value=None):
 		result = super(BasePaymentWithStripeView, self).readInput(value=value)
 		result = CaseInsensitiveDict(result or {})
@@ -315,8 +317,14 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			if purchasable.VendorInfo:
 				vendor = to_external_object(purchasable.VendorInfo)
 				context.update(vendor)
-		# remove extra key
-		context.pop('AllowVendorUpdates', None)
+
+		# capture user context data
+		data = CaseInsensitiveDict(values.get('Context') or {})
+		for name, alias, klass in self.KEYS:
+			value = data.get(name)
+			value = data.get(alias) if value is None else value
+			if value is not None:
+				context[name] = klass(value)
 		return context
 
 	def validatePurchasable(self, request, purchasable_id):
