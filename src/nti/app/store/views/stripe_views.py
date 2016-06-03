@@ -317,6 +317,7 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
 			if purchasable.VendorInfo:
 				vendor = to_external_object(purchasable.VendorInfo)
 				context.update(vendor)
+		context.pop('AllowVendorUpdates', None) # remove extra key
 
 		# capture user context data
 		data = CaseInsensitiveDict(values.get('Context') or {})
