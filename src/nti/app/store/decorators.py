@@ -29,7 +29,6 @@ from nti.dataserver.authorization import ACT_CONTENT_EDIT
 
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.interfaces import IExternalObjectDecorator
-from nti.externalization.interfaces import IExternalMappingDecorator
 
 from nti.externalization.externalization import to_external_object
 
@@ -156,7 +155,7 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 			external['StripeConnectKey'] = to_external_object(result)
 
 @component.adapter(IPurchasable)
-@interface.implementer(IExternalMappingDecorator)
+@interface.implementer(IExternalObjectDecorator)
 class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 
 	@Lazy
