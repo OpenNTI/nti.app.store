@@ -50,8 +50,6 @@ from nti.dataserver.metadata_index import CATALOG_NAME as METADATA_CATALOG_NAME
 
 from nti.dataserver.users import User
 
-from nti.externalization.interfaces import StandardExternalFields
-
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
@@ -80,8 +78,6 @@ from nti.store.purchasable import get_purchasable
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
 from nti.zodb import is_broken
-
-ITEMS = StandardExternalFields.ITEMS
 
 def _tx_string(s):
 	if s is not None and isinstance(s, unicode):

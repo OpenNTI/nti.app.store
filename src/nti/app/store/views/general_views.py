@@ -78,6 +78,8 @@ from nti.store.store import get_purchase_attempt
 from nti.store.store import get_gift_pending_purchases
 
 ITEMS = StandardExternalFields.ITEMS
+TOTAL = StandardExternalFields.TOTAL
+ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 # get views
@@ -125,7 +127,7 @@ class GetGiftPendingPurchasesView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		result[ITEMS] = purchases
 		result[LAST_MODIFIED] = _last_modified(purchases)
-		result['Total'] = result['ItemCount'] = len(purchases)
+		result[TOTAL] = result[ITEM_COUNT] = len(purchases)
 		return result
 
 @view_config(name="GetPurchaseHistory")
@@ -153,7 +155,7 @@ class GetPurchaseHistoryView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		result[ITEMS] = purchases
 		result[LAST_MODIFIED] = _last_modified(purchases)
-		result['Total'] = result['ItemCount'] = len(purchases)
+		result[TOTAL] = result[ITEM_COUNT] = len(purchases)
 		return result
 
 def _sync_purchase(purchase, request):
@@ -216,7 +218,7 @@ class BaseGetPurchaseAttemptView(object):
 		result[ITEMS] = [purchase]
 		result[LAST_MODIFIED] = purchase.lastModified
 		interface.alsoProvides(result, IUncacheableInResponse)
-		result['Total'] = result['ItemCount'] = len(result[ITEMS])
+		result[TOTAL] = result[ITEM_COUNT] = len(result[ITEMS])
 		return result
 
 @view_config(name="GetPurchaseAttempt")
@@ -293,7 +295,7 @@ class GetPurchasablesView(AbstractAuthenticatedView):
 				purchasables.append(p)
 		result = LocatedExternalDict()
 		result[ITEMS] = purchasables
-		result['Total'] = result['ItemCount'] = len(purchasables)
+		result[TOTAL] = result[ITEM_COUNT] = len(purchasables)
 		return result
 
 @view_config(route_name='objects.generic.traversal',
