@@ -28,11 +28,11 @@ from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import StorePathAdapter
 
-from nti.common.proxy import removeAllProxies
-
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
+
+from nti.externalization.proxy import removeAllProxies
 
 from nti.invitations.interfaces import IInvitationsContainer
 
