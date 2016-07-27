@@ -37,8 +37,6 @@ from nti.app.store.views import PurchasablesPathAdapter
 
 from nti.common.random import generate_random_hex_string
 
-from nti.common.time import time_to_64bit_int
-
 from nti.coremetadata.interfaces import SYSTEM_USER_ID
 
 from nti.dataserver import authorization as nauth
@@ -67,6 +65,8 @@ from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
 
 from nti.store.utils import get_ntiid_type
+
+from nti.zodb.containers import time_to_64bit_int
 
 from nti.zope_catalog.catalog import ResultSet
 
