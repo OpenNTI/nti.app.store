@@ -23,8 +23,6 @@ from nti.app.store import PURCHASABLES
 
 from nti.appserver.pyramid_authorization import has_permission
 
-from nti.common.property import Lazy
-
 from nti.dataserver.authorization import ACT_CONTENT_EDIT
 
 from nti.externalization.interfaces import StandardExternalFields
@@ -37,6 +35,8 @@ from nti.externalization.singleton import SingletonDecorator
 from nti.links.links import Link
 
 from nti.ntiids.ntiids import find_object_with_ntiid
+
+from nti.property.property import Lazy
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseItem

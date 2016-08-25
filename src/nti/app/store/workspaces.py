@@ -26,13 +26,13 @@ from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
 from nti.appserver.workspaces.interfaces import IContainerCollection
 
-from nti.common.property import Lazy
-from nti.common.property import alias
-
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 
 from nti.links.links import Link
+
+from nti.property.property import Lazy
+from nti.property.property import alias
 
 from nti.store.utils import ALL_STORE_MIME_TYPES
 
