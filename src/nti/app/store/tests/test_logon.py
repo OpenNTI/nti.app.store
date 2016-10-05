@@ -10,8 +10,11 @@ __docformat__ = "restructuredtext en"
 from nti.app.testing.application_webtest import ApplicationLayerTest
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
+import unittest
+
 class TestLogon(ApplicationLayerTest):
 
+	@unittest.skip("This tries to contact OU LDAP server, it's not a unit test")
 	@WithSharedApplicationMockDS(testapp=True, users=None)
 	def test_link_for_user(self):
 		testapp = self.testapp

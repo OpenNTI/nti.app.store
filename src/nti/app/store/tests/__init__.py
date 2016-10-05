@@ -18,7 +18,6 @@ from nti.app.testing.application_webtest import AppCreatingLayerHelper
 
 class ApplicationStoreTestLayer(ZopeComponentLayer,
 								PyramidLayerMixin,
-								GCLayerMixin,
 								ConfiguringLayerMixin,
 								DSInjectorMixin):
 	features = ('forums',)
