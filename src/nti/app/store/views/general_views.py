@@ -104,7 +104,7 @@ class GetPendingPurchasesView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		purchases = result[ITEMS] = get_pending_purchases(username)
 		result[LAST_MODIFIED] = _last_modified(purchases)
-		result['Total'] = result['ItemCount'] = len(purchases)
+		result[TOTAL] = result[ITEM_COUNT] = len(purchases)
 		return result
 
 @view_config(name="GetGiftPendingPurchases")
