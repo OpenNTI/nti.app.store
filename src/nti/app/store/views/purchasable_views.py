@@ -158,8 +158,7 @@ def get_purchases_for_items(*purchasables):
 	catalog = get_purchase_catalog()
 	intids = component.getUtility(IIntIds)
 	items_ids = catalog[IX_ITEMS].apply({'any_of': purchasables})
-	result = ResultSet(items_ids, intids, ignore_invalid=True)
-	return result
+	return ResultSet(items_ids, intids, True)
 
 def count_purchases_for_items(*purchasables):
 	result = get_purchases_for_items(*purchasables)
