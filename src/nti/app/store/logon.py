@@ -23,41 +23,45 @@ from nti.dataserver.interfaces import IUser
 
 from nti.links.links import Link
 
+
 class _BaseStoreLinkProvider(object):
 
-	def __init__(self, request):
-		self.request = request
+    def __init__(self, request):
+        self.request = request
 
-	def link_map(self):
-		result = {}
-		root = self.request.route_path('objects.generic.traversal', traverse=())
-		root = root[:-1] if root.endswith('/') else root
-		for name in ('get_purchasables',
-					 'price_purchasable',
-					 'get_gift_purchase_attempt',
-					 'get_gift_pending_purchases',
-					  # stripe links
-					 'gift_stripe_payment',
-					 'gift_stripe_payment_preflight',
-					 'price_purchasable_with_stripe_coupon'):
-			elements = (STORE, '@@' + name)
-			link = Link(root, elements=elements, rel=name)
-			result[name] = link
-		return result
+    def link_map(self):
+        result = {}
+        root = self.request.route_path('objects.generic.traversal',
+									   traverse=())
+        root = root[:-1] if root.endswith('/') else root
+        for name in ('get_purchasables',
+                     'price_purchasable',
+                     'get_gift_purchase_attempt',
+                     'get_gift_pending_purchases',
+                      # stripe links
+                     'gift_stripe_payment',
+                     'gift_stripe_payment_preflight',
+                     'price_purchasable_with_stripe_coupon'):
+            elements = (STORE, '@@' + name)
+            link = Link(root, elements=elements, rel=name)
+            result[name] = link
+        return result
 
-	def get_links(self):
-		result = self.link_map().values()
-		return list(result)
+    def get_links(self):
+        result = self.link_map().values()
+        return list(result)
+
 
 @component.adapter(IRequest)
 @interface.implementer(IUnauthenticatedUserLinkProvider)
 class _StoreUnauthenticatedUserLinkProvider(_BaseStoreLinkProvider):
-	pass
+    pass
+
 
 @component.adapter(IUser, IRequest)
 @interface.implementer(IAuthenticatedUserLinkProvider)
 class _StoreAuthenticatedUserLinkProvider(_BaseStoreLinkProvider):
 
-	def __init__(self, user, request):
-		super(_StoreAuthenticatedUserLinkProvider, self).__init__(request)
-		self.user = user
+    def __init__(self, user, request):
+        super(_StoreAuthenticatedUserLinkProvider, self).__init__(request)
+        self.user = user

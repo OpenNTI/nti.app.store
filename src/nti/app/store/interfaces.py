@@ -11,7 +11,8 @@ logger = __import__('logging').getLogger(__name__)
 
 from nti.appserver.workspaces.interfaces import IWorkspace
 
+
 class IStoreWorkspace(IWorkspace):
-	"""
-	A workspace containing data for store.
-	"""
+    """
+    A workspace containing data for store.
+    """

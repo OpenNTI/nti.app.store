@@ -38,99 +38,105 @@ from nti.store.utils import ALL_STORE_MIME_TYPES
 
 from nti.traversal.traversal import find_interface
 
+
 @interface.implementer(IStoreWorkspace)
 class _StoreWorkspace(Contained):
 
-	__name__ = STORE
-	name = alias('__name__', __name__)
+    __name__ = STORE
+    name = alias('__name__', __name__)
 
-	links = ()
+    links = ()
 
-	def __init__(self, user_service):
-		self.context = user_service
-		self.user = user_service.user
+    def __init__(self, user_service):
+        self.context = user_service
+        self.user = user_service.user
 
-	def __getitem__(self, key):
-		"""
-		Make us traversable to collections.
-		"""
-		for i in self.collections:
-			if i.__name__ == key:
-				return i
-		raise KeyError(key)
+    def __getitem__(self, key):
+        """
+        Make us traversable to collections.
+        """
+        for i in self.collections:
+            if i.__name__ == key:
+                return i
+        raise KeyError(key)
 
-	def __len__(self):
-		return len(self.collections)
+    def __len__(self):
+        return len(self.collections)
 
-	@Lazy
-	def collections(self):
-		return (_StoreCollection(self),)
+    @Lazy
+    def collections(self):
+        return (_StoreCollection(self),)
+
 
 @interface.implementer(IStoreWorkspace)
 @component.adapter(IUserService)
 def StoreWorkspace(user_service):
-	workspace = _StoreWorkspace(user_service)
-	workspace.__parent__ = workspace.user
-	return workspace
+    workspace = _StoreWorkspace(user_service)
+    workspace.__parent__ = workspace.user
+    return workspace
+
 
 @interface.implementer(IContainerCollection)
 @component.adapter(IUserWorkspace)
 class _StoreCollection(object):
 
-	name = STORE
+    name = STORE
 
-	__name__ = u''
-	__parent__ = None
+    __name__ = u''
+    __parent__ = None
 
-	def __init__(self, user_workspace):
-		self.__parent__ = user_workspace
+    def __init__(self, user_workspace):
+        self.__parent__ = user_workspace
 
-	@property
-	def links(self):
-		result = []
-		ds_folder = find_interface(self.__parent__, IDataserverFolder, strict=False)
-		for rel in ('get_purchase_attempt',
-					'get_pending_purchases',
-					'get_purchase_history', 
-					'get_purchasables',
-					'redeem_purchase_code',
-					'redeem_gift',
-					'get_gift_pending_purchases',
-					'get_gift_purchase_attempt',
-					'price_purchasable',
-					 # stripe links
-					'gift_stripe_payment',
-					'gift_stripe_payment_preflight',
-					'price_purchasable_with_stripe_coupon'):
-			link = Link(STORE, rel=rel, elements=('@@' + rel,))
-			link.__name__ = link.target
-			link.__parent__ = ds_folder
-			interface.alsoProvides(link, ILocation)
-			result.append(link)
-		return result
+    @property
+    def links(self):
+        result = []
+        ds_folder = find_interface(self.__parent__,
+								   IDataserverFolder, 
+								   strict=False)
+        for rel in ('get_purchase_attempt',
+                    'get_pending_purchases',
+                    'get_purchase_history',
+                    'get_purchasables',
+                    'redeem_purchase_code',
+                    'redeem_gift',
+                    'get_gift_pending_purchases',
+                    'get_gift_purchase_attempt',
+                    'price_purchasable',
+                    # stripe links
+                    'gift_stripe_payment',
+                    'gift_stripe_payment_preflight',
+                    'price_purchasable_with_stripe_coupon'):
+            link = Link(STORE, rel=rel, elements=('@@' + rel,))
+            link.__name__ = link.target
+            link.__parent__ = ds_folder
+            interface.alsoProvides(link, ILocation)
+            result.append(link)
+        return result
 
-	@property
-	def container(self):
-		return ()
+    @property
+    def container(self):
+        return ()
 
-	@property
-	def accepts(self):
-		mime_types = ALL_STORE_MIME_TYPES
-		return mime_types
+    @property
+    def accepts(self):
+        mime_types = ALL_STORE_MIME_TYPES
+        return mime_types
+
 
 @component.adapter(IUser)
 @interface.implementer(IUserInvitationsLinkProvider)
 class _RedeemPurchaseCodeInvitationsLinkProvider(object):
-		
-	def __init__(self, user=None):
-		self.user = user
 
-	def links(self, workspace):
-		link = Link(workspace.__parent__, # IUser 
-					method="POST",
-					rel="redeem_purchase_code", 
-					elements=('@@redeem_purchase_code',))
-		link.__name__ = 'redeem_purchase_code'
-		link.__parent__ = workspace.__parent__
-		interface.alsoProvides(link, ILocation)
-		return (link,)
+    def __init__(self, user=None):
+        self.user = user
+
+    def links(self, workspace):
+        link = Link(workspace.__parent__,  # IUser
+                    method="POST",
+                    rel="redeem_purchase_code",
+                    elements=('@@redeem_purchase_code',))
+        link.__name__ = 'redeem_purchase_code'
+        link.__parent__ = workspace.__parent__
+        interface.alsoProvides(link, ILocation)
+        return (link,)
