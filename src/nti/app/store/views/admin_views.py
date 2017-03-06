@@ -14,6 +14,8 @@ import isodate
 from io import BytesIO
 from datetime import datetime
 
+from requests.structures import CaseInsensitiveDict
+
 from zope import component
 
 from zope.event import notify
@@ -37,8 +39,6 @@ from nti.app.store.utils import AbstractPostView
 from nti.app.store.utils import is_valid_pve_int
 
 from nti.app.store.views import StorePathAdapter
-
-from nti.common.maps import CaseInsensitiveDict
 
 from nti.dataserver import authorization as nauth
 

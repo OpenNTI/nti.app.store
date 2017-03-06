@@ -14,6 +14,8 @@ import gevent
 from urllib import unquote
 from functools import partial
 
+from requests.structures import CaseInsensitiveDict
+
 from zope import component
 from zope import interface
 
@@ -41,8 +43,6 @@ from nti.app.store.utils import AbstractPostView
 from nti.app.store.views import StorePathAdapter
 
 from nti.appserver.dataserver_pyramid_views import GenericGetView
-
-from nti.common.maps import CaseInsensitiveDict
 
 from nti.dataserver import authorization as nauth
 

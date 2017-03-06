@@ -15,6 +15,8 @@ from datetime import date
 from datetime import datetime
 from functools import partial
 
+from requests.structures import CaseInsensitiveDict
+
 from zope import component
 
 from zope.event import notify
@@ -41,8 +43,6 @@ from nti.app.store.utils import is_valid_boolean
 from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import StorePathAdapter
-
-from nti.common.maps import CaseInsensitiveDict
 
 from nti.common.string import is_true
 from nti.common.string import to_unicode

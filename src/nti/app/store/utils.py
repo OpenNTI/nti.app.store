@@ -14,14 +14,14 @@ import time
 from datetime import date
 from datetime import datetime
 
+from requests.structures import CaseInsensitiveDict
+
 from zope.interface.common.idatetime import IDate
 from zope.interface.common.idatetime import IDateTime
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
-
-from nti.common.maps import CaseInsensitiveDict
 
 from nti.common.string import TRUE_VALUES as true_values
 from nti.common.string import FALSE_VALUES as false_values
