@@ -44,8 +44,9 @@ from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import StorePathAdapter
 
+from nti.base._compat import unicode_
+
 from nti.common.string import is_true
-from nti.common.string import to_unicode
 
 from nti.dataserver import authorization as nauth
 from nti.dataserver.users.interfaces import checkEmailAddress
@@ -254,7 +255,7 @@ class CreateStripeTokenView(_PostStripeView):
 								{	'message': _("Invalid value."),
 									'field': param },
 								None)
-				params[key] = to_unicode(value)
+				params[key] = unicode_(value)
 		else:
 			params['customer_id'] = customer_id
 
@@ -268,7 +269,7 @@ class CreateStripeTokenView(_PostStripeView):
 		for k, p, a in optional:
 			value = values.get(p) or values.get(a)
 			if value:
-				params[k] = to_unicode(value)
+				params[k] = unicode_(value)
 
 		token = manager.create_token(**params)
 		result = LocatedExternalDict(Token=token.id)
