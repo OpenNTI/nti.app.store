@@ -23,8 +23,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
-from nti.common.string import TRUE_VALUES as true_values
-from nti.common.string import FALSE_VALUES as false_values
+from nti.common.string import is_true
+from nti.common.string import is_false
 
 
 class AbstractPostView(AbstractAuthenticatedView,
@@ -66,8 +66,7 @@ def is_valid_boolean(value):
     if isinstance(value, bool):
         return True
     elif isinstance(value, six.string_types):
-        v = value.lower()
-        return v in true_values or v in false_values
+        return is_true(value) or is_false(value)
     else:
         return False
 
@@ -76,9 +75,9 @@ def to_boolean(value):
     if isinstance(value, bool):
         return value
     v = value.lower() if isinstance(value, six.string_types) else value
-    if v in true_values:
+    if is_true(v):
         return True
-    elif v in false_values:
+    elif is_false(v):
         return False
     else:
         return None

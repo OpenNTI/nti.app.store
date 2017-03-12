@@ -13,7 +13,7 @@ from urllib import unquote
 
 from zope import interface
 
-from zope.container.contained import Contained
+from zope.location.interfaces import IContained
 
 from zope.traversing.interfaces import IPathAdapter
 
@@ -26,8 +26,8 @@ from nti.app.store import PURCHASABLES
 from nti.store.purchasable import get_purchasable
 
 
-@interface.implementer(IPathAdapter)
-class StorePathAdapter(Contained):
+@interface.implementer(IPathAdapter, IContained)
+class StorePathAdapter(object):
 
     __name__ = STORE
 
@@ -42,8 +42,8 @@ class StorePathAdapter(Contained):
         raise KeyError(key)
 
 
-@interface.implementer(IPathAdapter)
-class PurchasablesPathAdapter(Contained):
+@interface.implementer(IPathAdapter, IContained)
+class PurchasablesPathAdapter(object):
 
     def __init__(self, parent, request):
         self.request = request
@@ -61,8 +61,8 @@ class PurchasablesPathAdapter(Contained):
         raise KeyError(ntiid)
 
 
-@interface.implementer(IPathAdapter)
-class StripePathAdapter(Contained):
+@interface.implementer(IPathAdapter, IContained)
+class StripePathAdapter(object):
 
     def __init__(self, parent, request):
         self.request = request
