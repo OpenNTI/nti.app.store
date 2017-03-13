@@ -23,5 +23,3 @@ STRIPE = 'stripe'
 
 #: Purchasables path
 PURCHASABLES = 'purchasables'
-
-get_site_names = get_possible_site_names

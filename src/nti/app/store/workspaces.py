@@ -120,8 +120,7 @@ class _StoreCollection(object):
 
     @property
     def accepts(self):
-        mime_types = ALL_STORE_MIME_TYPES
-        return mime_types
+        return ALL_STORE_MIME_TYPES
 
 
 @component.adapter(IUser)
