@@ -56,7 +56,7 @@
 
 	<!-- Filters -->
 	<subscriber	factory=".filters._StoreContentObjectFilter"
-				provides="nti.appserver.interfaces.ICreatableObjectFilter"
+				provides="nti.dataserver.interfaces.ICreatableObjectFilter"
 				for="nti.dataserver.interfaces.IUser" />
 
 	<!-- Utilities -->

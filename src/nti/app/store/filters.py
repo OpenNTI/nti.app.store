@@ -11,7 +11,7 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import interface
 
-from nti.appserver.interfaces import ICreatableObjectFilter
+from nti.dataserver.interfaces import ICreatableObjectFilter
 
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
