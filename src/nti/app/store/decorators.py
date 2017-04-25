@@ -14,6 +14,8 @@ import urllib
 from zope import component
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+
 from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
@@ -35,8 +37,6 @@ from nti.externalization.singleton import SingletonDecorator
 from nti.links.links import Link
 
 from nti.ntiids.ntiids import find_object_with_ntiid
-
-from nti.property.property import Lazy
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseItem
