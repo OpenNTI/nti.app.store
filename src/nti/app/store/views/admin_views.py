@@ -346,7 +346,7 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
         return result
 
     def create_purchase_attempt(self, item, quantity=None, expirationTime=None,
-                                processor=PAYMENT_PROCESSORS[0]):
+                                processor=None):
         state = PA_STATE_SUCCESS
         p_item = create_purchase_item(item, 1)
         p_order = create_purchase_order(p_item, quantity=quantity)
@@ -360,9 +360,9 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
     def __call__(self):
         values = self.readInput()
         purchasable_id = values.get('item') \
-                     or values.get('ntiid') \
-                     or values.get('purchasable') \
-                     or values.get('purchasableId')
+                      or values.get('ntiid') \
+                      or values.get('purchasable') \
+                      or values.get('purchasableId')
         if not purchasable_id:
             msg = _("Must specify a valid purchasable.")
             raise hexc.HTTPUnprocessableEntity(msg)
@@ -391,12 +391,15 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 
         user = self.remoteUser
         hist = IPurchaseHistory(user)
+        processor = values.get('processor') or PAYMENT_PROCESSORS[0]
         purchase = self.create_purchase_attempt(purchasable_id, 
                                                 quantity=quantity,
+                                                processor=processor,
                                                 expirationTime=expirationTime)
         hist.add_purchase(purchase)
 
         logger.info("Invitation purchase %s created for user %s. " +
                     "Redemption(s) %s. Expiration %s",
-                    get_invitation_code(purchase), user, quantity, expiration)
+                    get_invitation_code(purchase), 
+                    user, quantity, expiration)
         return purchase
