@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -122,16 +122,16 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
             links = external.setdefault(LINKS, [])
 
             href = ds_store_path + '@@price_purchasable_with_stripe_coupon'
-            link = Link(href, 
-                        rel="price_purchasable_with_stripe_coupon", 
+            link = Link(href,
+                        rel="price_purchasable_with_stripe_coupon",
                         method='POST')
             interface.alsoProvides(link, ILocation)
             links.append(link)
 
             quoted = urllib.quote(original.Provider)
             href = ds_store_path + '@@get_stripe_connect_key'
-            link = Link(href, 
-                        rel="get_stripe_connect_key", 
+            link = Link(href,
+                        rel="get_stripe_connect_key",
                         method='GET',
                         params={'provider': quoted})
             interface.alsoProvides(link, ILocation)
@@ -178,9 +178,9 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
         return False
 
     def _predicate(self, context, result):
-        return (     self._acl_decoration
-                 and self._is_authenticated
-                 and has_permission(ACT_CONTENT_EDIT, context, self.request))
+        return (    self._acl_decoration
+                and self._is_authenticated
+                and has_permission(ACT_CONTENT_EDIT, context, self.request))
 
     def _do_decorate_external(self, context, result):
         _links = []
