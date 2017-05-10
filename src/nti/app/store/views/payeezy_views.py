@@ -37,6 +37,8 @@ from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
 
 from nti.app.store.views.view_mixin import price_order
 
+from nti.base._compat import text_
+
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -119,6 +121,67 @@ class PricePurchasableView(GeneralPricePurchasableView):
     pass
 
 
+# token views
+
+
+@view_config(name="CreateToken")
+@view_config(name="create_token")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=PayeezyPathAdapter,
+               request_method='POST')
+class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
+
+    def __call__(self):
+        values = self.readInput()
+        # street=None, city=None, state=None, zip_code=None, country=None
+        payeezy_key = self.get_connect_key(values)
+        if payeezy_key is None:
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid provider key."),
+                            'field': 'provider'
+                        },
+                        None)
+        manager = component.getUtility(IPaymentProcessor, name=self.processor)
+
+        params = {'api_key': payeezy_key.Provider}
+        required = (('card_cvv', 'card_cvv', 'cvv'),
+                    ('card_type', 'card_type', 'type'),
+                    ('card_expiry', 'card_expiry', 'expiry'),
+                    ('card_number', 'card_number', 'number'),
+                    ('cardholder_name', 'cardholder_name', 'name'))
+
+        for key, param, alias in required:
+            value = values.get(param) or values.get(alias)
+            if not value:
+                raise_error(self.request,
+                            hexc.HTTPUnprocessableEntity,
+                            {
+                                'message': _(u"Invalid value."),
+                                'field': param
+                            },
+                            None)
+            params[key] = text_(value)
+
+        # optional
+        optional = (('city', 'city', 'city'),
+                    ('zip', 'zip', 'address_zip'),
+                    ('state',  'state', 'address_state'),
+                    ('street', 'street', 'address_street'),
+                    ('country', 'country', 'address_country'))
+        for k, p, a in optional:
+            value = values.get(p) or values.get(a)
+            if value:
+                params[k] = text_(value)
+
+        token = manager.create_token(**params)
+        result = LocatedExternalDict(Token=token.id)
+        return result
+
+
 # refund
 
 
@@ -136,7 +199,7 @@ def refund_purchase(purchase, amount, request=None):
                permission=nauth.ACT_NTI_ADMIN,
                context=PayeezyPathAdapter,
                request_method='POST')
-class RefundPaymentView(AbstractPostView, 
+class RefundPaymentView(AbstractPostView,
                         BasePayeezyViewMixin,
                         RefundPaymentViewMixin):
 
