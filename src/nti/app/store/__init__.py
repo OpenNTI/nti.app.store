@@ -21,5 +21,8 @@ STORE = u'store'
 #: Stripe path
 STRIPE = u'stripe'
 
+#: Payeezy path
+PAYEEZY = u'payeezy'
+
 #: Purchasables path
 PURCHASABLES = u'purchasables'

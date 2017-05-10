@@ -25,6 +25,7 @@ from pyramid import httpexceptions as hexc
 
 from nti.app.store import STORE
 from nti.app.store import STRIPE
+from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 
 from nti.dataserver.interfaces import IDataserver
@@ -34,22 +35,6 @@ from nti.site.site import get_site_for_site_names
 from nti.site.transient import TrivialSite
 
 from nti.store.purchasable import get_purchasable
-
-
-@interface.implementer(IPathAdapter, IContained)
-class StorePathAdapter(object):
-
-    __name__ = STORE
-
-    def __init__(self, context, request):
-        self.context = context
-        self.request = request
-        self.__parent__ = context
-
-    def __getitem__(self, key):
-        if key == PURCHASABLES:
-            return PurchasablesPathAdapter(self, self.request)
-        raise KeyError(key)
 
 
 @interface.implementer(IPathAdapter, IContained)
@@ -78,6 +63,35 @@ class StripePathAdapter(object):
         self.request = request
         self.__parent__ = parent
         self.__name__ = STRIPE
+
+
+@interface.implementer(IPathAdapter, IContained)
+class PayeezyPathAdapter(object):
+
+    def __init__(self, parent, request):
+        self.request = request
+        self.__parent__ = parent
+        self.__name__ = PAYEEZY
+
+
+@interface.implementer(IPathAdapter, IContained)
+class StorePathAdapter(object):
+
+    __name__ = STORE
+
+    def __init__(self, context, request):
+        self.context = context
+        self.request = request
+        self.__parent__ = context
+
+    def __getitem__(self, key):
+        if key == PURCHASABLES:
+            return PurchasablesPathAdapter(self, self.request)
+        elif key == STRIPE:
+            return StripePathAdapter(self, self.request)
+        elif key == PAYEEZY:
+            return PayeezyPathAdapter(self, self.request)
+        raise KeyError(key)
 
 
 def dataserver_folder():
