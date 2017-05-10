@@ -66,7 +66,7 @@ ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 
-class BaseProcessorViewMixin(AbstractAuthenticatedView):
+class BaseProcessorViewMixin(object):
 
     processor = None
     key_interface = None
@@ -100,8 +100,7 @@ def price_order(order, processor):
     return result
 
 
-class PriceOrderViewMixin(AbstractAuthenticatedView,
-                          ModeledContentUploadRequestUtilsMixin):
+class PriceOrderViewMixin(ModeledContentUploadRequestUtilsMixin):
 
     content_predicate = IPurchaseOrder.providedBy
 
@@ -437,7 +436,7 @@ def find_purchase(key):
     return purchase
 
 
-class GeneratePurchaseInvoiceViewMixin(PostProcessorViewMixin):
+class GeneratePurchaseInvoiceViewMixin(object):
 
     def __call__(self):
         values = self.readInput()
@@ -481,7 +480,7 @@ class GeneratePurchaseInvoiceViewMixin(PostProcessorViewMixin):
         return hexc.HTTPNoContent()
 
 
-class RefundPaymentViewMixin(PostProcessorViewMixin):
+class RefundPaymentViewMixin(object):
 
     def processInput(self, values=None):
         values = values or self.readInput()

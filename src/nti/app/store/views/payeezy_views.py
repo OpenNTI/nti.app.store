@@ -18,9 +18,13 @@ from pyramid import httpexceptions as hexc
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
+
+from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import PayeezyPathAdapter
 
@@ -52,7 +56,7 @@ ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 
-class BasePayeezyView(BaseProcessorViewMixin):
+class BasePayeezyViewMixin(BaseProcessorViewMixin):
     processor = PAYEEZY
     key_interface = IPayeezyConnectKey
 
@@ -67,8 +71,9 @@ class BasePayeezyView(BaseProcessorViewMixin):
                permission=nauth.ACT_READ,
                context=PayeezyPathAdapter,
                request_method='GET')
-class GetConnectKeyView(GetProcesorConnectKeyViewMixin,
-                        BasePayeezyView):
+class GetConnectKeyView(AbstractAuthenticatedView,
+                        GetProcesorConnectKeyViewMixin,
+                        BasePayeezyViewMixin):
     pass
 
 
@@ -81,7 +86,9 @@ class GetConnectKeyView(GetProcesorConnectKeyViewMixin,
                renderer='rest',
                context=PayeezyPathAdapter,
                request_method='POST')
-class PriceOrderView(PriceOrderViewMixin, BasePayeezyView):
+class PriceOrderView(AbstractAuthenticatedView,
+                     BasePayeezyViewMixin,
+                     PriceOrderViewMixin):
 
     def _do_pricing(self, order):
         try:
@@ -129,7 +136,9 @@ def refund_purchase(purchase, amount, request=None):
                permission=nauth.ACT_NTI_ADMIN,
                context=PayeezyPathAdapter,
                request_method='POST')
-class RefundPaymentView(RefundPaymentViewMixin, BasePayeezyView):
+class RefundPaymentView(AbstractPostView, 
+                        BasePayeezyViewMixin,
+                        RefundPaymentViewMixin):
 
     def __call__(self):
         request = self.request
