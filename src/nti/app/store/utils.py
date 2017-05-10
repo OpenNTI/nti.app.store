@@ -31,10 +31,8 @@ class AbstractPostView(AbstractAuthenticatedView,
                        ModeledContentUploadRequestUtilsMixin):
 
     def readInput(self, value=None):
-        result = CaseInsensitiveDict()
-        if self.request.body:
-            values = super(AbstractPostView, self).readInput(value=value)
-            result.update(values)
+        result = super(AbstractPostView, self).readInput(value=value)
+        result = CaseInsensitiveDict(result)
         return result
 
 
