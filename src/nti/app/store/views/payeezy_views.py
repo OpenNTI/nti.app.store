@@ -28,7 +28,6 @@ from nti.app.store.views.view_mixin import BaseProcessorViewMixin
 from nti.app.store.views.view_mixin import RefundPaymentViewMixin
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
 
-
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -56,7 +55,7 @@ class BasePayeezyView(BaseProcessorViewMixin):
                permission=nauth.ACT_READ,
                context=PayeezyPathAdapter,
                request_method='GET')
-class GetPayeezyConnectKeyView(GetProcesorConnectKeyViewMixin, BasePayeezyView):
+class GetConnectKeyView(GetProcesorConnectKeyViewMixin, BasePayeezyView):
     pass
 
 
@@ -70,14 +69,14 @@ def refund_purchase(purchase, amount, request=None):
                                    request=request)
 
 
-@view_config(name="RefundPaymentWithPayeezy")
-@view_config(name="refund_payment_with_stripe")
+@view_config(name="RefundPayment")
+@view_config(name="refund_payment")
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                permission=nauth.ACT_NTI_ADMIN,
                context=PayeezyPathAdapter,
                request_method='POST')
-class RefundPaymentWithPayeezyView(RefundPaymentViewMixin, BasePayeezyView):
+class RefundPaymentView(RefundPaymentViewMixin, BasePayeezyView):
 
     def __call__(self):
         request = self.request
