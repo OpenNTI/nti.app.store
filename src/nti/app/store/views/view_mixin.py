@@ -38,6 +38,8 @@ from nti.common.string import is_true
 
 from nti.dataserver.users.interfaces import checkEmailAddress
 
+from nti.externalization.externalization import to_external_object
+
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
@@ -115,10 +117,30 @@ class PriceOrderViewMixin(AbstractAuthenticatedView,
 
 class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
 
+    processor = None
+    KEYS = (('AllowVendorUpdates', 'allow_vendor_updates', bool),)
+
     def readInput(self, value=None):
         result = super(BasePaymentViewMixin, self).readInput(value=value)
         result = CaseInsensitiveDict(result)
         return result
+
+    def parseContext(self, values, purchasables=()):
+        context = dict()
+        for purchasable in purchasables:
+            context['Purchasable'] = purchasable.NTIID  # pick last
+            if purchasable.VendorInfo:
+                vendor = to_external_object(purchasable.VendorInfo)
+                context.update(vendor)
+
+        # capture user context data
+        data = CaseInsensitiveDict(values.get('Context') or {})
+        for name, alias, klass in self.KEYS:
+            value = data.get(name)
+            value = data.get(alias) if value is None else value
+            if value is not None:
+                context[name] = klass(value)
+        return context
 
     def validatePurchasable(self, request, purchasable_id):
         purchasable = get_purchasable(purchasable_id)
@@ -127,15 +149,6 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid purchasable."),
-                            'field': u'purchasables',
-                            'value': purchasable_id
-                        },
-                        None)
-        if IPurchasableChoiceBundle.providedBy(purchasable):
-            raise_error(request,
-                        hexc.HTTPUnprocessableEntity,
-                        {
-                            'message': _(u"Cannot purchase a bundle item."),
                             'field': u'purchasables',
                             'value': purchasable_id
                         },
@@ -162,8 +175,13 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         None)
         elif isinstance(purchasables, six.string_types):
             purchasables = list(set(purchasables.split()))
-        result['Purchasables'] = purchasables
 
+        result['Purchasables'] = purchasables
+        purchasables = self.validatePurchasables(request, values, purchasables)
+        
+        context = self.parseContext(values, purchasables)
+        result['Context'] = context
+        
         token = values.get('token', None)
         if not token:
             raise_error(request,
@@ -249,6 +267,8 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
 
 
 class GiftPreflightViewMixin(AbstractAuthenticatedView, BasePaymentViewMixin):
+
+    processor = None
 
     def readInput(self, value=None):
         values = super(GiftPreflightViewMixin, self).readInput(value)
@@ -364,7 +384,6 @@ class GiftPreflightViewMixin(AbstractAuthenticatedView, BasePaymentViewMixin):
         values = self.readInput()
         request = self.request
         record = self.getPaymentRecord(request, values)
-        self.validateCoupon(request, record)
         return record
 
 
