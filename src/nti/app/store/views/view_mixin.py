@@ -106,7 +106,7 @@ class PriceOrderView(AbstractAuthenticatedView,
     def readCreateUpdateContentObject(self, *args, **kwargs):
         externalValue = self.readInput()
         result = find_factory_for(externalValue)()
-        update_from_external_object(result, externalValue)
+        update_from_external_object(result, externalValue, notify=False)
         return result
 
 
