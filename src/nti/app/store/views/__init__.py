@@ -4,14 +4,18 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
 from urllib import unquote
 
+from zope import component
 from zope import interface
+
+from zope.component.hooks import getSite
+from zope.component.hooks import site as current_site
 
 from zope.location.interfaces import IContained
 
@@ -22,6 +26,12 @@ from pyramid import httpexceptions as hexc
 from nti.app.store import STORE
 from nti.app.store import STRIPE
 from nti.app.store import PURCHASABLES
+
+from nti.dataserver.interfaces import IDataserver
+
+from nti.site.site import get_site_for_site_names
+
+from nti.site.transient import TrivialSite
 
 from nti.store.purchasable import get_purchasable
 
@@ -68,3 +78,22 @@ class StripePathAdapter(object):
         self.request = request
         self.__parent__ = parent
         self.__name__ = STRIPE
+
+
+def dataserver_folder():
+    dataserver = component.getUtility(IDataserver)
+    return dataserver.root_folder['dataserver2']
+
+
+def get_job_site(job_site_name=None):
+    old_site = getSite()
+    if job_site_name is None:
+        job_site = old_site
+    else:
+        ds_folder = dataserver_folder()
+        with current_site(ds_folder):
+            job_site = get_site_for_site_names((job_site_name,))
+
+        if job_site is None or isinstance(job_site, TrivialSite):
+            raise ValueError('No site found for (%s)' % job_site_name)
+    return job_site

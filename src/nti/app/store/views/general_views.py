@@ -19,6 +19,9 @@ from requests.structures import CaseInsensitiveDict
 from zope import component
 from zope import interface
 
+from zope.component.hooks import getSite
+from zope.component.hooks import site as current_site
+
 from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
@@ -34,13 +37,13 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.renderers.interfaces import IUncacheableInResponse
 
 from nti.app.store import MessageFactory as _
-from nti.app.store import get_possible_site_names
 
 from nti.app.store.utils import parse_datetime
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import StorePathAdapter
+from nti.app.store.views import get_job_site
 
 from nti.appserver.dataserver_pyramid_views import GenericGetView
 
@@ -167,20 +170,23 @@ class GetPurchaseHistoryView(AbstractAuthenticatedView):
 def _sync_purchase(purchase, request):
     purchase_id = purchase.id
     creator = purchase.creator
+    processor = purchase.Processor
     username = getattr(creator, 'username', creator)
-    site_names = get_possible_site_names(request)
+
+    site = getSite()
+    site_name = site.__name__ if site is not None else None
 
     def sync_purchase():
-        manager = component.getUtility(IPaymentProcessor, 
-                                       name=purchase.Processor)
+        manager = component.getUtility(IPaymentProcessor, name=processor)
         manager.sync_purchase(purchase_id=purchase_id,
                               username=username,
                               request=request)
 
     def process_sync():
-        transaction_runner = component.getUtility(IDataserverTransactionRunner)
-        transaction_runner = partial(transaction_runner, site_names=site_names)
-        transaction_runner(sync_purchase)
+        site = get_job_site(site_name)
+        with current_site(site):
+            runner = component.getUtility(IDataserverTransactionRunner)
+            runner(sync_purchase)
 
     gevent.spawn(process_sync)
 
@@ -272,7 +278,7 @@ class GetGiftPurchaseAttemptView(AbstractView, BaseGetPurchaseAttemptView):
                 or values.get('sender') \
                 or values.get('creator') \
                 or values.get('username')
-   
+
         result = self._do_get(purchase_id, username)
         return result
 
@@ -321,8 +327,9 @@ class PurchasableGetView(GenericGetView):
 
     def __call__(self):
         result = GenericGetView.__call__(self)
+        remote_user = get_remote_user(self.request)
         if      result is not None \
-            and not check_purchasable_access(result, get_remote_user(self.request)):
+            and not check_purchasable_access(result, remote_user):
             raise hexc.HTTPForbidden()
         return result
 
