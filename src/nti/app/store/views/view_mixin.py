@@ -22,8 +22,6 @@ from zope.event import notify
 
 from pyramid import httpexceptions as hexc
 
-from nti.app.base.abstract_views import AbstractAuthenticatedView
-
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
@@ -269,7 +267,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
         return result
 
 
-class GiftPreflightViewMixin(AbstractAuthenticatedView, BasePaymentViewMixin):
+class GiftPreflightViewMixin(BasePaymentViewMixin):
 
     processor = None
 
