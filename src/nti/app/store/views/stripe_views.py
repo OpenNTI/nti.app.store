@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -176,7 +176,7 @@ class PricePurchasableWithStripeCouponView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Invalid quantity."),
-                            'field': 'quantity'
+                            'field': u'quantity'
                         },
                         None)
         quantity = int(quantity)
@@ -295,7 +295,7 @@ def validate_coupon(request, coupon, processor=STRIPE):
                             hexc.HTTPUnprocessableEntity,
                             {    
                                 'message': _(u"Invalid coupon."),
-                                'field': 'coupon'
+                                'field': u'coupon'
                              },
                             None)
         except StandardError as e:
@@ -304,7 +304,7 @@ def validate_coupon(request, coupon, processor=STRIPE):
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Invalid coupon."),
-                            'field': 'coupon',
+                            'field': u'coupon',
                             'code': e.__class__.__name__
                         },
                         exc_info[2])
@@ -321,7 +321,7 @@ def validate_stripe_key(request, purchasables=()):
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Invalid purchasable provider."),
-                            'field': 'purchasables',
+                            'field': u'purchasables',
                             'value': provider
                         },
                         None)
@@ -332,7 +332,7 @@ def validate_stripe_key(request, purchasables=()):
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Cannot mix purchasable providers."),
-                            'field': 'purchasables'
+                            'field': u'purchasables'
                         },
                         None)
     if result is None:
@@ -340,7 +340,7 @@ def validate_stripe_key(request, purchasables=()):
                     hexc.HTTPUnprocessableEntity,
                     {    
                         'message': _(u"Could not find a purchasable provider."),
-                        'field': 'purchasables'
+                        'field': u'purchasables'
                     },
                     None)
     return result
@@ -419,7 +419,7 @@ class ProcessPaymentWithStripeView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Cannot purchase a bundle item."),
-                            'field': 'purchasables',
+                            'field': u'purchasables',
                             'value': purchasable_id
                         },
                         None)
@@ -445,7 +445,7 @@ class GiftWithStripePreflightView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"Can only purchase one bundle item at a time."),
-                            'field': 'purchasables'
+                            'field': u'purchasables'
                         },
                         None)
         return result
@@ -573,7 +573,7 @@ class RefundPaymentWithStripeView(AbstractPostView,
                             hexc.HTTPUnprocessableEntity,
                             {    
                                 'message': _(u"Please provide a valid application fee."),
-                                'field': 'refundApplicationFee'
+                                'field': u'refundApplicationFee'
                             },
                             None)
             refund_application_fee = to_boolean(refund_application_fee)
