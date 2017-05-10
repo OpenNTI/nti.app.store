@@ -24,9 +24,9 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.views import PayeezyPathAdapter
 
-from nti.app.store.views.view_mixin import BaseProcessorView
-from nti.app.store.views.view_mixin import RefundPaymentView
-from nti.app.store.views.view_mixin import GetProcesorConnectKeyView
+from nti.app.store.views.view_mixin import BaseProcessorViewMixin
+from nti.app.store.views.view_mixin import RefundPaymentViewMixin
+from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
 
 
 from nti.dataserver import authorization as nauth
@@ -44,7 +44,7 @@ ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 
-class BasePayeezyView(BaseProcessorView):
+class BasePayeezyView(BaseProcessorViewMixin):
     processor = PAYEEZY
     key_interface = IPayeezyConnectKey   
 
@@ -56,7 +56,7 @@ class BasePayeezyView(BaseProcessorView):
                permission=nauth.ACT_READ,
                context=PayeezyPathAdapter,
                request_method='GET')
-class GetPayeezyConnectKeyView(GetProcesorConnectKeyView, BasePayeezyView):
+class GetPayeezyConnectKeyView(GetProcesorConnectKeyViewMixin, BasePayeezyView):
     pass
 
 
@@ -77,7 +77,7 @@ def refund_purchase(purchase, amount, request=None):
                permission=nauth.ACT_NTI_ADMIN,
                context=PayeezyPathAdapter,
                request_method='POST')
-class RefundPaymentWithPayeezyView(RefundPaymentView, BasePayeezyView):
+class RefundPaymentWithPayeezyView(RefundPaymentViewMixin, BasePayeezyView):
 
     def __call__(self):
         request = self.request

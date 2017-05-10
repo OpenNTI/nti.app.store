@@ -41,11 +41,13 @@ from nti.app.store.utils import is_valid_boolean
 
 from nti.app.store.views import StorePathAdapter
 
-from nti.app.store.views.view_mixin import BaseProcessorView
-from nti.app.store.views.view_mixin import PostProcessorView
-from nti.app.store.views.view_mixin import RefundPaymentView
-from nti.app.store.views.view_mixin import GetProcesorConnectKeyView
-from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceView
+from nti.app.store.views.view_mixin import BaseProcessorViewMixin
+from nti.app.store.views.view_mixin import PostProcessorViewMixin
+from nti.app.store.views.view_mixin import RefundPaymentViewMixin
+from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
+from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
+
+from nti.app.store.views.view_mixin import price_order
 
 from nti.base._compat import unicode_
 
@@ -95,12 +97,12 @@ ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 
-class BaseStripeView(BaseProcessorView):
+class BaseStripeView(BaseProcessorViewMixin):
     processor = STRIPE
     key_interface = IStripeConnectKey   
 
 
-class PostStripeView(BaseStripeView, PostProcessorView):
+class PostStripeView(BaseStripeView, PostProcessorViewMixin):
     pass
 
 
@@ -111,7 +113,7 @@ class PostStripeView(BaseStripeView, PostProcessorView):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='GET')
-class GetStripeConnectKeyView(GetProcesorConnectKeyView, BaseStripeView):
+class GetStripeConnectKeyView(GetProcesorConnectKeyViewMixin, BaseStripeView):
     pass
 
 
@@ -124,12 +126,6 @@ def perform_pricing(purchasable_id, quantity=None, coupon=None, processor=STRIPE
                                         quantity=quantity,
                                         coupon=coupon)
     result = pricer.price(priceable)
-    return result
-
-
-def price_order(order, processor=STRIPE):
-    pricer = component.getUtility(IPurchasablePricer, name=processor)
-    result = pricer.evaluate(order)
     return result
 
 
@@ -769,7 +765,7 @@ class GiftWithStripeView(GiftWithStripePreflightView):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class GeneratePurchaseInvoiceWitStripeView(GeneratePurchaseInvoiceView,
+class GeneratePurchaseInvoiceWitStripeView(GeneratePurchaseInvoiceViewMixin,
                                            BaseStripeView):
     pass
 
@@ -792,7 +788,7 @@ def refund_purchase(purchase, amount, refund_application_fee=None, request=None)
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class RefundPaymentWithStripeView(RefundPaymentView, BaseStripeView):
+class RefundPaymentWithStripeView(RefundPaymentViewMixin, BaseStripeView):
     
     def processInput(self, values=None):
         values = self.readInput()

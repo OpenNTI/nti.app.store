@@ -64,23 +64,23 @@ ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 
-class BaseProcessorView(AbstractAuthenticatedView):
+class BaseProcessorViewMixin(AbstractAuthenticatedView):
 
     processor = None
     key_interface = None
 
     def get_connect_key(self, params=None):
-        params = CaseInsensitiveDict(params if params else self.request.params)
-        keyname = params.get('provider')
+        params if params else self.request.params
+        keyname = CaseInsensitiveDict(params).get('provider')
         result = component.queryUtility(self.key_interface, keyname)
         return result
 
 
-class PostProcessorView(BaseProcessorView, AbstractPostView):
+class PostProcessorViewMixin(BaseProcessorViewMixin, AbstractPostView):
     pass
 
 
-class GetProcesorConnectKeyView(BaseProcessorView):
+class GetProcesorConnectKeyViewMixin(BaseProcessorViewMixin):
 
     def __call__(self):
         result = self.get_connect_key()
@@ -98,8 +98,8 @@ def price_order(order, processor):
     return result
 
 
-class PriceOrderView(AbstractAuthenticatedView,
-                     ModeledContentUploadRequestUtilsMixin):
+class PriceOrderViewMixin(AbstractAuthenticatedView,
+                          ModeledContentUploadRequestUtilsMixin):
 
     content_predicate = IPurchaseOrder.providedBy
 
@@ -113,10 +113,10 @@ class PriceOrderView(AbstractAuthenticatedView,
 # purchase views
 
 
-class BasePaymentView(ModeledContentUploadRequestUtilsMixin):
+class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
 
     def readInput(self, value=None):
-        result = super(BasePaymentView, self).readInput(value=value)
+        result = super(BasePaymentViewMixin, self).readInput(value=value)
         result = CaseInsensitiveDict(result)
         return result
 
@@ -248,15 +248,15 @@ class BasePaymentView(ModeledContentUploadRequestUtilsMixin):
         return result
 
 
-class GiftPreflightView(AbstractAuthenticatedView, BasePaymentView):
+class GiftPreflightViewMixin(AbstractAuthenticatedView, BasePaymentViewMixin):
 
     def readInput(self, value=None):
-        values = super(GiftPreflightView, self).readInput(value)
+        values = super(GiftPreflightViewMixin, self).readInput(value)
         values.pop('Quantity', None)  # ignore quantity
         return values
 
     def validatePurchasables(self, request, values, purchasables=()):
-        result = super(GiftPreflightView, self).validatePurchasables(request, values, purchasables)
+        result = super(GiftPreflightViewMixin, self).validatePurchasables(request, values, purchasables)
         count = sum(1 for x in result if IPurchasableChoiceBundle.providedBy(x))
         if count and len(result) > 1:
             raise_error(request,
@@ -269,7 +269,7 @@ class GiftPreflightView(AbstractAuthenticatedView, BasePaymentView):
         return result
 
     def getPaymentRecord(self, request, values):
-        record = super(GiftPreflightView, self).getPaymentRecord(request, values)
+        record = super(GiftPreflightViewMixin, self).getPaymentRecord(request, values)
         creator = values.get('from') \
                or values.get('sender') \
                or values.get('creator')
@@ -368,7 +368,7 @@ class GiftPreflightView(AbstractAuthenticatedView, BasePaymentView):
         return record
 
 
-class GiftProcessorView(GiftPreflightView):
+class GiftProcessorViewMixin(GiftPreflightViewMixin):
 
     def createPurchaseAttempt(self, record):
         order = self.createPurchaseOrder(record)
@@ -414,7 +414,7 @@ def find_purchase(key):
     return purchase
 
 
-class GeneratePurchaseInvoiceView(PostProcessorView):
+class GeneratePurchaseInvoiceViewMixin(PostProcessorViewMixin):
 
     def __call__(self):
         values = self.readInput()
@@ -458,7 +458,7 @@ class GeneratePurchaseInvoiceView(PostProcessorView):
         return hexc.HTTPNoContent()
 
 
-class RefundPaymentView(PostProcessorView):
+class RefundPaymentViewMixin(PostProcessorViewMixin):
 
     def processInput(self, values=None):
         values = values or self.readInput()
