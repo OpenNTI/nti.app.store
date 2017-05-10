@@ -41,6 +41,7 @@ from nti.app.store.utils import is_valid_boolean
 
 from nti.app.store.views import StorePathAdapter
 
+from nti.app.store.views.view_mixin import PriceOrderViewMixin
 from nti.app.store.views.view_mixin import BaseProcessorViewMixin
 from nti.app.store.views.view_mixin import PostProcessorViewMixin
 from nti.app.store.views.view_mixin import RefundPaymentViewMixin
@@ -49,7 +50,7 @@ from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
 
 from nti.app.store.views.view_mixin import price_order
 
-from nti.base._compat import unicode_
+from nti.base._compat import text_
 
 from nti.common.string import is_true
 
@@ -60,9 +61,6 @@ from nti.externalization.externalization import to_external_object
 
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
-
-from nti.externalization.internalization import find_factory_for
-from nti.externalization.internalization import update_from_external_object
 
 from nti.store import PricingException
 from nti.store import InvalidPurchasable
@@ -100,10 +98,6 @@ LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 class BaseStripeView(BaseProcessorViewMixin):
     processor = STRIPE
     key_interface = IStripeConnectKey   
-
-
-class PostStripeView(BaseStripeView, PostProcessorViewMixin):
-    pass
 
 
 @view_config(name="GetStripeConnectKey")
@@ -151,23 +145,16 @@ def _call_pricing_func(func):
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class PriceStripeOrderView(AbstractAuthenticatedView,
-                           ModeledContentUploadRequestUtilsMixin):
+class PriceStripeOrderView(PriceOrderViewMixin, BaseStripeView):
 
     content_predicate = IStripePurchaseOrder.providedBy
-
-    def readCreateUpdateContentObject(self, *args, **kwargs):
-        externalValue = self.readInput()
-        result = find_factory_for(externalValue)()
-        update_from_external_object(result, externalValue)
-        return result
 
     def _do_call(self):
         order = self.readCreateUpdateContentObject()
         assert IStripePurchaseOrder.providedBy(order)
         if order.Coupon: # replace item coupons
             replace_items_coupon(order, None)
-        result = _call_pricing_func(partial(price_order, order))
+        result = _call_pricing_func(partial(price_order, order, self.processor))
         status = 422 if IPricingError.providedBy(result) else 200
         self.request.response.status_int = status
         return result
@@ -179,7 +166,8 @@ class PriceStripeOrderView(AbstractAuthenticatedView,
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class PricePurchasableWithStripeCouponView(PostStripeView):
+class PricePurchasableWithStripeCouponView(PostProcessorViewMixin, 
+                                           BaseStripeView):
 
     def price_purchasable(self, values=None):
         values = values or self.readInput()
@@ -227,7 +215,7 @@ class PricePurchasableWithStripeCouponView(PostStripeView):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class CreateStripeTokenView(PostStripeView):
+class CreateStripeTokenView(PostProcessorViewMixin, BaseStripeView):
 
     def __call__(self):
         values = self.readInput()
@@ -257,7 +245,7 @@ class CreateStripeTokenView(PostStripeView):
                                     'field': param
                                 },
                                 None)
-                params[key] = unicode_(value)
+                params[key] = text_(value)
         else:
             params['customer_id'] = customer_id
 
@@ -271,7 +259,7 @@ class CreateStripeTokenView(PostStripeView):
         for k, p, a in optional:
             value = values.get(p) or values.get(a)
             if value:
-                params[k] = unicode_(value)
+                params[k] = text_(value)
 
         token = manager.create_token(**params)
         result = LocatedExternalDict(Token=token.id)
@@ -538,7 +526,8 @@ class BasePaymentWithStripeView(ModeledContentUploadRequestUtilsMixin):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class ProcessPaymentWithStripeView(AbstractAuthenticatedView, BasePaymentWithStripeView):
+class ProcessPaymentWithStripeView(AbstractAuthenticatedView, 
+                                   BasePaymentWithStripeView):
 
     def validatePurchasable(self, request, purchasable_id):
         purchasable = super(ProcessPaymentWithStripeView, self).validatePurchasable(request, purchasable_id)
