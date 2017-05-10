@@ -460,8 +460,8 @@ class GeneratePurchaseInvoiceView(PostProcessorView):
 
 class RefundPaymentView(PostProcessorView):
 
-    def processInput(self):
-        values = self.readInput()
+    def processInput(self, values=None):
+        values = values or self.readInput()
         trx_id = values.get('code') \
               or values.get('purchase ') \
               or values.get('purchaseId') \
