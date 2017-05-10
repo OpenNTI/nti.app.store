@@ -178,8 +178,7 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
                 params[k] = text_(value)
 
         token = manager.create_token(**params)
-        result = LocatedExternalDict(Token=token.id)
-        return result
+        return token
 
 
 # refund
