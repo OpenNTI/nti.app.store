@@ -25,7 +25,6 @@ from nti.app.store import MessageFactory as _
 from nti.app.store.views import PayeezyPathAdapter
 
 from nti.app.store.views.view_mixin import BaseProcessorView
-from nti.app.store.views.view_mixin import PostProcessorView
 from nti.app.store.views.view_mixin import RefundPaymentView
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyView
 
@@ -48,10 +47,6 @@ LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 class BasePayeezyView(BaseProcessorView):
     processor = PAYEEZY
     key_interface = IPayeezyConnectKey   
-
-
-class PostPayeezyView(PostProcessorView, BasePayeezyView):
-    pass
 
 
 @view_config(name="GetConnectKey")
