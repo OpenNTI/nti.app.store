@@ -93,7 +93,7 @@ def get_job_site(job_site_name=None):
         ds_folder = dataserver_folder()
         with current_site(ds_folder):
             job_site = get_site_for_site_names((job_site_name,))
-
+        # validate site
         if job_site is None or isinstance(job_site, TrivialSite):
             raise ValueError('No site found for (%s)' % job_site_name)
     return job_site
