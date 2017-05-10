@@ -30,7 +30,6 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.utils import is_valid_amount
 from nti.app.store.utils import is_valid_pve_int
-from nti.app.store.utils import AbstractPostView
 
 from nti.common.string import is_true
 
@@ -74,10 +73,6 @@ class BaseProcessorViewMixin(object):
         keyname = CaseInsensitiveDict(params).get('provider')
         result = component.queryUtility(self.key_interface, keyname)
         return result
-
-
-class PostProcessorViewMixin(BaseProcessorViewMixin, AbstractPostView):
-    pass
 
 
 class GetProcesorConnectKeyViewMixin(BaseProcessorViewMixin):

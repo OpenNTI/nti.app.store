@@ -39,7 +39,6 @@ from nti.app.store.views.view_mixin import PriceOrderViewMixin
 from nti.app.store.views.view_mixin import BasePaymentViewMixin
 from nti.app.store.views.view_mixin import BaseProcessorViewMixin
 from nti.app.store.views.view_mixin import GiftPreflightViewMixin
-from nti.app.store.views.view_mixin import PostProcessorViewMixin
 from nti.app.store.views.view_mixin import RefundPaymentViewMixin
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
 from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
@@ -206,7 +205,7 @@ class PricePurchasableWithStripeCouponView(AbstractPostView,
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class CreateStripeTokenView(PostProcessorViewMixin, BaseStripeViewMixin):
+class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
 
     def __call__(self):
         values = self.readInput()
