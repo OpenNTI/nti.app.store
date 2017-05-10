@@ -410,7 +410,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class ProcessPaymentWithStripeView(AbstractAuthenticatedView, 
+class ProcessPaymentWithStripeView(AbstractPostView, 
                                    BasePaymentWithStripeView):
 
     def validatePurchasable(self, request, purchasable_id):
@@ -433,7 +433,8 @@ class ProcessPaymentWithStripeView(AbstractAuthenticatedView,
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class GiftWithStripePreflightView(GiftPreflightViewMixin):
+class GiftWithStripePreflightView(AbstractPostView,
+                                  GiftPreflightViewMixin):
 
     processor = STRIPE
 
