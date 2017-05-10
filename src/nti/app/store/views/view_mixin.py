@@ -465,7 +465,7 @@ class GeneratePurchaseInvoiceViewMixin(object):
                             'field': u'transaction'
                         },
                         None)
-        manager = component.getUtility(IPaymentProcessor, name=self.processor)
+        manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
         payment_charge = manager.get_payment_charge(purchase)
 
         notify(PurchaseAttemptSuccessful(purchase,

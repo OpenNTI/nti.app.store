@@ -19,8 +19,6 @@ from requests.structures import CaseInsensitiveDict
 
 from zope import component
 
-from zope.event import notify
-
 from zope.catalog.interfaces import ICatalog
 
 from zope.intid.interfaces import IIntIds
@@ -41,6 +39,8 @@ from nti.app.store.utils import is_valid_pve_int
 
 from nti.app.store.views import StorePathAdapter
 
+from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
+
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.metadata_index import IX_CREATOR
@@ -49,21 +49,16 @@ from nti.dataserver.metadata_index import CATALOG_NAME as METADATA_CATALOG_NAME
 
 from nti.dataserver.users import User
 
-from nti.externalization import integer_strings
-
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
-from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
-from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.store.store import get_gift_code
 from nti.store.store import get_gift_registry
 from nti.store.store import get_invitation_code
-from nti.store.store import get_purchase_by_code
 from nti.store.store import get_purchase_attempt
 from nti.store.store import delete_purchase_history
 from nti.store.store import remove_purchase_attempt
@@ -293,38 +288,9 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class GeneratePurchaseInvoiceWitStripeView(_BasePostStoreView):
-
-    def _get_purchase(self, key):
-        try:
-            integer_strings.from_external_string(key)
-            purchase = get_purchase_by_code(key)
-        except ValueError:
-            purchase = get_purchase_attempt(key)
-        return purchase
-
-    def __call__(self):
-        values = self.readInput()
-        transaction = values.get('code') \
-                   or values.get('purchase')  \
-                   or values.get('purchaseId') \
-                   or values.get('transaction')
-        if not transaction:
-            msg = _("Must specified a valid transaction or purchase code.")
-            raise hexc.HTTPUnprocessableEntity(msg)
-
-        purchase = self._get_purchase(transaction)
-        if purchase is None:
-            raise hexc.HTTPUnprocessableEntity(_('Transaction not found.'))
-        elif not purchase.has_succeeded():
-            raise hexc.HTTPUnprocessableEntity(_('Purchase was not successful.'))
-
-        manager = component.getUtility(IPaymentProcessor, 
-                                       name=purchase.Processor)
-        payment_charge = manager.get_payment_charge(purchase)
-
-        notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
-        return hexc.HTTPNoContent()
+class GeneratePurchaseInvoiceWitStripeView(AbstractPostView,
+                                           GeneratePurchaseInvoiceViewMixin):
+    pass
 
 
 @view_config(name="CreateInvitationPurchase")
