@@ -19,8 +19,6 @@ from requests.structures import CaseInsensitiveDict
 
 from zope import component
 
-from zope.event import notify
-
 import transaction
 
 from pyramid import httpexceptions as hexc
@@ -47,6 +45,7 @@ from nti.app.store.views.view_mixin import BaseProcessorView
 from nti.app.store.views.view_mixin import PostProcessorView
 from nti.app.store.views.view_mixin import RefundPaymentView
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyView
+from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceView
 
 from nti.base._compat import unicode_
 
@@ -70,7 +69,6 @@ from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import IPurchasableChoiceBundle
-from nti.store.interfaces import PurchaseAttemptSuccessful
 
 from nti.store.payments.stripe import STRIPE
 from nti.store.payments.stripe import NoSuchStripeCoupon
@@ -86,8 +84,6 @@ from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_ord
 from nti.store.payments.stripe.utils import replace_items_coupon
 
 from nti.store.store import get_purchasable
-from nti.store.store import get_purchase_attempt
-from nti.store.store import get_purchase_by_code
 from nti.store.store import get_pending_purchases
 from nti.store.store import create_purchase_attempt
 from nti.store.store import register_purchase_attempt
@@ -763,12 +759,7 @@ class GiftWithStripeView(GiftWithStripePreflightView):
         return result
 
 
-def find_purchase(key):
-    try:
-        purchase = get_purchase_by_code(key)
-    except ValueError:
-        purchase = get_purchase_attempt(key)
-    return purchase
+# invoice
 
 
 @view_config(name="GeneratePurchaseInvoiceWithStripe")
@@ -778,46 +769,12 @@ def find_purchase(key):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class GeneratePurchaseInvoiceWitStripeView(PostStripeView):
+class GeneratePurchaseInvoiceWitStripeView(GeneratePurchaseInvoiceView,
+                                           BaseStripeView):
+    pass
 
-    def __call__(self):
-        values = self.readInput()
-        trx_id = values.get('code') \
-              or values.get('purchase ') \
-              or values.get('purchaseId') \
-              or values.get('transaction') \
-              or values.get('transactionId ')
-        if not trx_id:
-            raise_error(self.request,
-                        hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u"Please provide a transaction id."),
-                            'field': 'transaction'
-                        },
-                        None)
 
-        purchase = find_purchase(trx_id)
-        if purchase is None:
-            raise_error(self.request,
-                        hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u"Transaction not found."),
-                            'field': 'transaction'
-                        },
-                        None)
-        elif not purchase.has_succeeded():
-            raise_error(self.request,
-                        hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u"Transaction was not successful."),
-                            'field': 'transaction'
-                        },
-                        None)
-        manager = component.getUtility(IPaymentProcessor, name=self.processor)
-        payment_charge = manager.get_payment_charge(purchase)
-
-        notify(PurchaseAttemptSuccessful(purchase, payment_charge, request=self.request))
-        return hexc.HTTPNoContent()
+# refund
 
 
 def refund_purchase(purchase, amount, refund_application_fee=None, request=None):
