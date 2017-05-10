@@ -159,6 +159,10 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
         result = [self.validatePurchasable(request, p) for p in purchasables]
         return result
 
+    def resolvePurchasables(self, purchasables=()):
+        result = [get_purchasable(p) for p in purchasables or ()]
+        return result
+
     def getPaymentRecord(self, request, values=None):
         values = values or self.readInput()
         result = CaseInsensitiveDict()
