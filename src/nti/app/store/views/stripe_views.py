@@ -362,7 +362,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
         result['StripeKey'] = stripe_key
         # validate coupon
         coupon = values.get('coupon', None)
-        coupon = validate_coupon(request, coupon, stripe_key)
+        coupon = validate_coupon(request, coupon, stripe_key.PrivateKey)
         result['Coupon'] = coupon
         return result
 
@@ -461,7 +461,7 @@ class GiftWithStripePreflightView(AbstractPostView,
         record['StripeKey'] = stripe_key
         # validate coupon
         coupon = values.get('coupon', None)
-        coupon = validate_coupon(request, coupon, stripe_key)
+        coupon = validate_coupon(request, coupon, stripe_key.PrivateKey)
         record['Coupon'] = coupon
         return record
 
