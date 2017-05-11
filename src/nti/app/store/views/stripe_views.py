@@ -289,11 +289,11 @@ def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
     transaction.get().addAfterCommitHook(hook)
 
 
-def validate_coupon(request, coupon, processor=STRIPE):
+def validate_coupon(request, coupon, api_key):
     if coupon:
-        manager = component.getUtility(IPaymentProcessor, name=processor)
+        manager = component.getUtility(IPaymentProcessor, name=STRIPE)
         try:
-            if not manager.validate_coupon(coupon):
+            if not manager.validate_coupon(coupon, api_key):
                 raise_error(request,
                             hexc.HTTPUnprocessableEntity,
                             {    
@@ -362,7 +362,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
         result['StripeKey'] = stripe_key
         # validate coupon
         coupon = values.get('coupon', None)
-        coupon = validate_coupon(request, coupon, STRIPE)
+        coupon = validate_coupon(request, coupon, stripe_key)
         result['Coupon'] = coupon
         return result
 
@@ -461,7 +461,7 @@ class GiftWithStripePreflightView(AbstractPostView,
         record['StripeKey'] = stripe_key
         # validate coupon
         coupon = values.get('coupon', None)
-        coupon = validate_coupon(request, coupon, STRIPE)
+        coupon = validate_coupon(request, coupon, stripe_key)
         record['Coupon'] = coupon
         return record
 
