@@ -98,6 +98,9 @@ class PriceOrderViewMixin(ModeledContentUploadRequestUtilsMixin):
 
     content_predicate = IPurchaseOrder.providedBy
 
+    def _do_pricing(self, order):
+        raise NotImplementedError()
+
     def readCreateUpdateContentObject(self, *args, **kwargs):
         externalValue = self.readInput()
         result = find_factory_for(externalValue)()

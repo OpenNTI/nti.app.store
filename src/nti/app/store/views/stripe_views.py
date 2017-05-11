@@ -130,15 +130,18 @@ class PriceStripeOrderView(AbstractAuthenticatedView,
 
     content_predicate = IStripePurchaseOrder.providedBy
 
+    def _do_pricing(self, order):
+        result = _call_pricing_func(partial(price_order, order, self.processor))
+        status = 422 if IPricingError.providedBy(result) else 200
+        self.request.response.status_int = status
+        return result
+
     def _do_call(self):
         order = self.readCreateUpdateContentObject()
         assert IStripePurchaseOrder.providedBy(order)
         if order.Coupon: # replace item coupons
             replace_items_coupon(order, None)
-        result = _call_pricing_func(partial(price_order, order, self.processor))
-        status = 422 if IPricingError.providedBy(result) else 200
-        self.request.response.status_int = status
-        return result
+        return self._do_pricing(order)
 
 
 def perform_pricing(purchasable_id, quantity=None, coupon=None):

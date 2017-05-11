@@ -28,14 +28,12 @@ from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import PayeezyPathAdapter
 
+from nti.app.store.views.general_views import PriceOrderView as GeneralPriceOrderView 
 from nti.app.store.views.general_views import PricePurchasableView as GeneralPricePurchasableView
 
-from nti.app.store.views.view_mixin import PriceOrderViewMixin
 from nti.app.store.views.view_mixin import BaseProcessorViewMixin
 from nti.app.store.views.view_mixin import RefundPaymentViewMixin
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
-
-from nti.app.store.views.view_mixin import price_order
 
 from nti.base._compat import text_
 
@@ -44,10 +42,6 @@ from nti.dataserver import authorization as nauth
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.store import PricingException
-from nti.store import InvalidPurchasable
-
-from nti.store.interfaces import IPricingError
 from nti.store.interfaces import IPaymentProcessor
 
 from nti.store.payments.payeezy import PAYEEZY
@@ -88,27 +82,8 @@ class GetConnectKeyView(AbstractAuthenticatedView,
                renderer='rest',
                context=PayeezyPathAdapter,
                request_method='POST')
-class PriceOrderView(AbstractAuthenticatedView,
-                     BasePayeezyViewMixin,
-                     PriceOrderViewMixin):
-
-    def _do_pricing(self, order):
-        try:
-            result = price_order(order, self.processor)
-        except InvalidPurchasable:
-            result = IPricingError(_(u"Invalid purchasable."))
-        except PricingException as e:
-            result = IPricingError(e)
-        except Exception:
-            raise
-        return result
-
-    def _do_call(self):
-        order = self.readCreateUpdateContentObject()
-        result = self._do_pricing(order)
-        status = 422 if IPricingError.providedBy(result) else 200
-        self.request.response.status_int = status
-        return result
+class PriceOrderView(GeneralPriceOrderView):
+    processor = PAYEEZY
 
 
 @view_config(name="PricePurchasable")
@@ -118,7 +93,7 @@ class PriceOrderView(AbstractAuthenticatedView,
                context=PayeezyPathAdapter,
                request_method='POST')
 class PricePurchasableView(GeneralPricePurchasableView):
-    pass
+    processor = PAYEEZY
 
 
 # token views

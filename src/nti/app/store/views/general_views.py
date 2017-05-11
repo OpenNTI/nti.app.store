@@ -32,7 +32,7 @@ from nti.app.authentication import get_remote_user
 from nti.app.base.abstract_views import AbstractView
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
-from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.renderers.interfaces import IUncacheableInResponse
 
@@ -42,8 +42,11 @@ from nti.app.store.utils import parse_datetime
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import AbstractPostView
 
-from nti.app.store.views import StorePathAdapter
 from nti.app.store.views import get_job_site
+from nti.app.store.views import StorePathAdapter
+
+from nti.app.store.views.view_mixin import price_order
+from nti.app.store.views.view_mixin import PriceOrderViewMixin
 
 from nti.appserver.dataserver_pyramid_views import GenericGetView
 
@@ -54,16 +57,12 @@ from nti.dataserver.interfaces import IDataserverTransactionRunner
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.externalization.internalization import find_factory_for
-from nti.externalization.internalization import update_from_external_object
-
 from nti.store import InvalidPurchasable
 
 from nti.store import PricingException
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPricingError
-from nti.store.interfaces import IPurchaseOrder
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
@@ -360,19 +359,6 @@ class PurchaseAttemptGetView(GenericGetView):
 # post views
 
 
-def perform_pricing(purchasable, quantity):
-    pricer = component.getUtility(IPurchasablePricer)
-    priceable = create_priceable(ntiid=purchasable, quantity=quantity)
-    result = pricer.price(priceable)
-    return result
-
-
-def price_order(order):
-    pricer = component.getUtility(IPurchasablePricer)
-    result = pricer.evaluate(order)
-    return result
-
-
 def _call_pricing_func(func):
     try:
         result = func()
@@ -382,6 +368,13 @@ def _call_pricing_func(func):
         result = IPricingError(e)
     except Exception:
         raise
+    return result
+
+
+def perform_pricing(purchasable, quantity):
+    pricer = component.getUtility(IPurchasablePricer)
+    priceable = create_priceable(ntiid=purchasable, quantity=quantity)
+    result = pricer.price(priceable)
     return result
 
 
@@ -398,12 +391,26 @@ class PricePurchasableView(AbstractPostView):
         purchasable = values.get('ntiid') \
                    or values.get('purchasable') \
                    or values.get('purchasableId') \
-                   or values.get('purchasable_id') or u''
+                   or values.get('purchasable_id')
 
+        if not purchasable:
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid purchasable ntiid."),
+                            'field': 'purchasable'
+                        },
+                        None)
         # check quantity
         quantity = values.get('quantity', 1)
         if not is_valid_pve_int(quantity):
-            raise hexc.HTTPUnprocessableEntity(_('Invalid quantity'))
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid quantity."),
+                            'field': 'quantity'
+                        },
+                        None)
         quantity = int(quantity)
 
         pricing_func = partial(perform_pricing,
@@ -425,21 +432,17 @@ class PricePurchasableView(AbstractPostView):
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class PriceOrderView(AbstractAuthenticatedView,
-                     ModeledContentUploadRequestUtilsMixin):
+class PriceOrderView(AbstractAuthenticatedView, PriceOrderViewMixin):
 
-    content_predicate = IPurchaseOrder.providedBy
-
-    def readCreateUpdateContentObject(self, *args, **kwargs):
-        externalValue = self.readInput()
-        result = find_factory_for(externalValue)()
-        update_from_external_object(result, externalValue)
+    procesor = ''
+    
+    def _do_pricing(self, order):
+        result = _call_pricing_func(partial(price_order, order, self.procesor))
+        status = 422 if IPricingError.providedBy(result) else 200
+        self.request.response.status_int = status
         return result
 
     def _do_call(self):
         order = self.readCreateUpdateContentObject()
-        assert IPurchaseOrder.providedBy(order)
-        result = _call_pricing_func(partial(price_order, order))
-        status = 422 if IPricingError.providedBy(result) else 200
-        self.request.response.status_int = status
-        return result
+        assert self.content_predicate.providedBy(order)
+        return self._do_pricing(order)
