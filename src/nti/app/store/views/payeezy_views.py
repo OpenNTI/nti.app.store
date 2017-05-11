@@ -145,7 +145,7 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
         optional = (('city', 'city', 'city'),
                     ('zip', 'zip', 'address_zip'),
                     ('state',  'state', 'address_state'),
-                    ('street', 'street', 'address_street'),
+                    ('street', 'street', 'address_line1'),
                     ('country', 'country', 'address_country'))
         for k, p, a in optional:
             value = values.get(p) or values.get(a)
