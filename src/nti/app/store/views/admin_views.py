@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -19,8 +19,6 @@ from requests.structures import CaseInsensitiveDict
 
 from zope import component
 
-from zope.catalog.interfaces import ICatalog
-
 from zope.intid.interfaces import IIntIds
 
 from pyramid import httpexceptions as hexc
@@ -29,6 +27,8 @@ from pyramid.view import view_config
 from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
+
+from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
 
@@ -43,12 +43,6 @@ from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
 
 from nti.dataserver import authorization as nauth
 
-from nti.dataserver.metadata_index import IX_CREATOR
-from nti.dataserver.metadata_index import IX_MIMETYPE
-from nti.dataserver.metadata_index import CATALOG_NAME as METADATA_CATALOG_NAME
-
-from nti.dataserver.users import User
-
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
@@ -59,12 +53,13 @@ from nti.store.interfaces import IPurchasablePricer
 from nti.store.store import get_gift_code
 from nti.store.store import get_gift_registry
 from nti.store.store import get_invitation_code
-from nti.store.store import get_purchase_attempt
-from nti.store.store import delete_purchase_history
-from nti.store.store import remove_purchase_attempt
 from nti.store.store import get_gift_purchase_history
 
 from nti.store.purchase_attempt import create_purchase_attempt
+
+from nti.store.purchase_index import IX_CREATOR
+from nti.store.purchase_index import IX_MIMETYPE
+from nti.store.purchase_index import get_purchase_catalog
 
 from nti.store.purchase_order import create_purchase_item
 from nti.store.purchase_order import create_purchase_order
@@ -98,13 +93,19 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
                    or params.get('purchasable') \
                    or params.get('purchasableId')
         if purchasable and get_purchasable(purchasable) is None:
-            raise hexc.HTTPUnprocessableEntity(_('Purchasable not found.'))
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Purchasable not found."),
+                            'field': u'purchasable'
+                        },
+                        None)
 
         all_failed = to_boolean(params.get('failed'))
         all_succeeded = to_boolean(params.get('succeeded'))
 
+        catalog = get_purchase_catalog()
         mime_types = PURCHASE_ATTEMPT_MIME_TYPES
-        catalog = component.getUtility(ICatalog, METADATA_CATALOG_NAME)
         intids_purchases = catalog[IX_MIMETYPE].apply({'any_of': mime_types})
 
         usernames = params.get('usernames') or params.get('username')
@@ -117,18 +118,19 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
         stream = BytesIO()
         writer = csv.writer(stream)
         response = request.response
-        response.content_encoding = str('identity')
-        response.content_type = str('text/csv; charset=UTF-8')
-        response.content_disposition = str('attachment; filename="purchases.csv"')
+        response.content_encoding = 'identity'
+        response.content_type = 'text/csv; charset=UTF-8'
+        response.content_disposition = 'attachment; filename="purchases.csv"'
 
-        header = ["username", 'name', 'email',
-                  'transaction', 'date', 'amount', 'status']
+        header = ["username", 'name', 'email','transaction', 
+                  'date', 'amount', 'status']
         writer.writerow(header)
 
         intids = component.getUtility(IIntIds)
-        for uid in intids_purchases:
+        for uid in intids_purchases or ():
             purchase = intids.queryObject(uid)
-            if is_broken(purchase, uid) or not IPurchaseAttempt.providedBy(purchase):
+            if     not IPurchaseAttempt.providedBy(purchase) \
+                or is_broken(purchase, uid):
                 continue
 
             if purchasable and purchasable not in purchase.Items:
@@ -185,31 +187,35 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
         stream = BytesIO()
         writer = csv.writer(stream)
         response = request.response
-        response.content_encoding = str('identity')
-        response.content_type = str('text/csv; charset=UTF-8')
-        response.content_disposition = str('attachment; filename="gifts.csv"')
+        response.content_encoding = 'identity'
+        response.content_type = 'text/csv; charset=UTF-8'
+        response.content_disposition = 'attachment; filename="gifts.csv"'
 
-        header = ["transaction", "from", 'sender', 'to', 'receiver', 'date',
-                  'amount', 'status']
+        header = ["transaction", "from", 'sender', 'to', 
+                  'receiver', 'date', 'amount', 'status']
         writer.writerow(header)
 
         registry = get_gift_registry()
         for username in registry.keys():
             if usernames and username not in usernames:
                 continue
-            purchases = get_gift_purchase_history(username, start_time=start_time,
-                                                  end_time=end_time)
+            purchases = get_gift_purchase_history(username, 
+                                                  end_time=end_time,
+                                                  start_time=start_time)
             if all_succeeded:
-                purchases = [p for p in purchases if p.has_succeeded()]
+                purchases = (p for p in purchases if p.has_succeeded())
             elif all_failed:
-                purchases = [p for p in purchases if p.has_failed()]
+                purchases = (p for p in purchases if p.has_failed())
 
             for p in purchases:
-                started = isodate.date_isoformat(datetime.fromtimestamp(p.StartTime))
+                start_time = datetime.fromtimestamp(p.StartTime)
+                started = isodate.date_isoformat(start_time)
                 amount = getattr(p.Pricing, 'TotalPurchasePrice', None) or u''
                 row_data = [get_gift_code(p),
-                            username, p.SenderName,
-                            p.Receiver, p.ReceiverName,
+                            username,
+                            p.SenderName,
+                            p.Receiver, 
+                            p.ReceiverName,
                             started,
                             amount,
                             p.State]
@@ -224,63 +230,6 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
 # post views
 
 
-_BasePostStoreView = AbstractPostView  # alias
-
-
-@view_config(name="DeletePurchaseAttempt")
-@view_config(name="delete_purchase_attempt")
-@view_defaults(route_name='objects.generic.traversal',
-               renderer='rest',
-               permission=nauth.ACT_NTI_ADMIN,
-               context=StorePathAdapter,
-               request_method='POST')
-class DeletePurchaseAttemptView(_BasePostStoreView):
-
-    def __call__(self):
-        values = self.readInput()
-        purchase_id = values.get('ntiid') \
-                   or values.get('purchase') \
-                   or values.get('purchaseId')
-        if not purchase_id:
-            msg = _("Must specify a valid purchase attempt id.")
-            raise hexc.HTTPUnprocessableEntity(msg)
-
-        purchase = get_purchase_attempt(purchase_id)
-        if not purchase:
-            msg = _('Purchase attempt not found.')
-            raise hexc.HTTPNotFound(msg)
-
-        if remove_purchase_attempt(purchase, purchase.creator):
-            logger.info("Purchase attempt '%s' has been deleted")
-        return hexc.HTTPNoContent()
-
-
-@view_config(name="DeletePurchaseHistory")
-@view_config(name="delete_purchase_history")
-@view_defaults(route_name='objects.generic.traversal',
-               renderer='rest',
-               permission=nauth.ACT_NTI_ADMIN,
-               context=StorePathAdapter,
-               request_method='POST')
-class DeletePurchaseHistoryView(_BasePostStoreView):
-
-    def __call__(self):
-        values = self.readInput()
-        username = values.get('username')
-        if not username:
-            msg = _("Must specify a valid username.")
-            raise hexc.HTTPUnprocessableEntity(msg)
-
-        user = User.get_user(username)
-        if not user:
-            raise hexc.HTTPUnprocessableEntity(_('User not found.'))
-
-        if delete_purchase_history(user):
-            logger.info("%s purchase history has been removed", user)
-
-        return hexc.HTTPNoContent()
-
-
 @view_config(name="GeneratePurchaseInvoice")
 @view_config(name="generate_purchase_invoice")
 @view_defaults(route_name='objects.generic.traversal',
@@ -288,8 +237,8 @@ class DeletePurchaseHistoryView(_BasePostStoreView):
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class GeneratePurchaseInvoiceWitStripeView(AbstractPostView,
-                                           GeneratePurchaseInvoiceViewMixin):
+class GeneratePurchaseInvoiceView(AbstractPostView, # order matters
+                                  GeneratePurchaseInvoiceViewMixin): 
     pass
 
 
@@ -300,7 +249,7 @@ class GeneratePurchaseInvoiceWitStripeView(AbstractPostView,
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class CreateInviationPurchaseAttemptView(_BasePostStoreView):
+class CreateInviationPurchaseAttemptView(AbstractPostView):
 
     def price_order(self, order):
         pricer = component.getUtility(IPurchasablePricer)
@@ -330,27 +279,52 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
                       or values.get('purchasable') \
                       or values.get('purchasableId')
         if not purchasable_id:
-            msg = _("Must specify a valid purchasable.")
-            raise hexc.HTTPUnprocessableEntity(msg)
+            msg = _(u"Must specify a valid purchasable.")
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': msg,
+                            'field': u'purchasable'
+                        },
+                        None)
 
         purchase = get_purchasable(purchasable_id)
         if not purchase:
-            msg = _('Purchasable not found')
-            raise hexc.HTTPUnprocessableEntity(msg)
+            msg = _(u'Purchasable not found')
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': msg,
+                            'field': u'purchasable'
+                        },
+                        None)
 
         quantity = values.get('quantity') or 0
         if not is_valid_pve_int(quantity):
-            msg = _('Must specify a valid quantity.')
-            raise hexc.HTTPUnprocessableEntity(msg)
+            msg = _(u'Must specify a valid quantity.')
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': msg,
+                            'field': u'quantity'
+                        },
+                        None)
 
-        expiration = values.get('expiration') or \
-                     values.get('expiry') or \
-                     values.get('expirationTime') or \
-                     values.get('expirationDate')
+        expiration = values.get('expiry') \
+                  or values.get('expiration') \
+                  or values.get('expirationTime') \
+                  or values.get('expirationDate')
         if expiration:
             expirationTime = parse_datetime(expiration, safe=True)
             if expirationTime is None:
-                msg = _('Invalid expiration date/time.')
+                msg = _(u'Invalid expiration date/time.')
+                raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': msg,
+                            'field': u'quantity'
+                        },
+                        None)
                 raise hexc.HTTPUnprocessableEntity(msg)
         else:
             expirationTime = None
@@ -358,7 +332,7 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
         user = self.remoteUser
         hist = IPurchaseHistory(user)
         processor = values.get('processor') or PAYMENT_PROCESSORS[0]
-        purchase = self.create_purchase_attempt(purchasable_id, 
+        purchase = self.create_purchase_attempt(purchasable_id,
                                                 quantity=quantity,
                                                 processor=processor,
                                                 expirationTime=expirationTime)
@@ -366,6 +340,6 @@ class CreateInviationPurchaseAttemptView(_BasePostStoreView):
 
         logger.info("Invitation purchase %s created for user %s. " +
                     "Redemption(s) %s. Expiration %s",
-                    get_invitation_code(purchase), 
+                    get_invitation_code(purchase),
                     user, quantity, expiration)
         return purchase

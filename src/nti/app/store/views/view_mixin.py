@@ -432,10 +432,10 @@ def find_purchase(key):
 
 class GeneratePurchaseInvoiceViewMixin(object):
 
-    def __call__(self):
+    def _do_call(self):
         values = self.readInput()
         trx_id = values.get('code') \
-              or values.get('purchase ') \
+              or values.get('purchase') \
               or values.get('purchaseId') \
               or values.get('transaction') \
               or values.get('transactionId ')
@@ -472,6 +472,9 @@ class GeneratePurchaseInvoiceViewMixin(object):
                                          payment_charge,
                                          request=self.request))
         return hexc.HTTPNoContent()
+    
+    def __call__(self):
+        return self._do_call()
 
 
 class RefundPaymentViewMixin(object):
