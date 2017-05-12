@@ -14,7 +14,8 @@
 		
 	<include package="nti.store" file="meta.zcml" />
 	<include package="nti.store.payments.stripe" file="meta.zcml" />
-
+	<include package="nti.store.payments.payeezy" file="meta.zcml" />
+	
 	<stripe:registerStripeKey
 		alias="CMU"
 		live_mode="False"
