@@ -175,7 +175,7 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
                         None)
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
-        params = {'api_key': payeezy_key.Provider}
+        params = {'api_key': payeezy_key}
         required = (('card_cvv', 'card_cvv', 'cvv'),
                     ('card_type', 'card_type', 'type'),
                     ('card_expiry', 'card_expiry', 'expiry'),
