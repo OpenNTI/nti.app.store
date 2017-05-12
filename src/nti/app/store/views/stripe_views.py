@@ -15,7 +15,6 @@ from functools import partial
 from zope import component
 
 from zope.component.hooks import getSite
-from zope.component.hooks import site as current_site
 
 import transaction
 
@@ -34,9 +33,6 @@ from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import is_valid_boolean
 from nti.app.store.utils import AbstractPostView 
-
-from nti.app.store.views import get_job_site
-from nti.app.store.views import dataserver_folder
 
 from nti.app.store.views import StorePathAdapter
 
@@ -270,15 +266,13 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
 def process_purchase(manager, purchase_id, username, token, expected_amount,
                      stripe_key, request, site_name=None):
     logger.info("Processing purchase %s", purchase_id)
-    if site_name is None:
-        site = dataserver_folder()
-    else:
-        site = get_job_site(site_name)
-    with current_site(site):
-        manager.process_purchase(purchase_id=purchase_id, username=username,
-                                 token=token, expected_amount=expected_amount,
-                                 api_key=stripe_key.PrivateKey,
-                                 request=request)
+    manager.process_purchase(token=token,
+                             request=request,
+                             username=username,
+                             site_name=site_name,
+                             purchase_id=purchase_id,
+                             api_key=stripe_key.PrivateKey,
+                             expected_amount=expected_amount,)
 
 
 def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
