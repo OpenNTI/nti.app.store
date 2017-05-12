@@ -10,8 +10,13 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import sys
+from functools import partial
 
 from zope import component
+
+from zope.component.hooks import site as current_site
+
+import transaction
 
 from pyramid import httpexceptions as hexc
 
@@ -26,6 +31,8 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.utils import AbstractPostView
 
+from nti.app.store.views import get_job_site
+from nti.app.store.views import dataserver_folder
 from nti.app.store.views import PayeezyPathAdapter
 
 from nti.app.store.views.general_views import PriceOrderView as GeneralPriceOrderView 
@@ -94,6 +101,52 @@ class PriceOrderView(GeneralPriceOrderView):
                request_method='POST')
 class PricePurchasableView(GeneralPricePurchasableView):
     processor = PAYEEZY
+
+
+# purchase views
+
+
+def process_purchase(manager, purchase_id, username, token, 
+                     card_type, cardholder_name, card_expiry, expected_amount,
+                     payeezy_key, request, site_name=None):
+    logger.info("Processing purchase %s", purchase_id)
+    if site_name is None:
+        site = dataserver_folder()
+    else:
+        site = get_job_site(site_name)
+
+    with current_site(site):
+        manager.process_purchase(token=token, 
+                                 request=request,
+                                 username=username,
+                                 api_key=payeezy_key,
+                                 card_type=card_type,
+                                 card_expiry=card_expiry,
+                                 purchase_id=purchase_id,
+                                 expected_amount=expected_amount,
+                                 cardholder_name=cardholder_name,
+                                 request=request)
+
+
+def addAfterCommitHook(manager, purchase_id, username, token, 
+                     card_type, cardholder_name, card_expiry, expected_amount,
+                     payeezy_key, request, site_name=None):
+
+    processor = partial(process_purchase,
+                        token=token,
+                        manager=manager,
+                        request=request,
+                        username=username,
+                        card_type=card_type,
+                        site_name=site_name,
+                        card_expiry=card_expiry,
+                        payeezy_key=payeezy_key,
+                        purchase_id=purchase_id,
+                        cardholder_name=cardholder_name,
+                        expected_amount=expected_amount)
+
+    hook = lambda s: s and request.nti_gevent_spawn(processor)
+    transaction.get().addAfterCommitHook(hook)
 
 
 # token views
