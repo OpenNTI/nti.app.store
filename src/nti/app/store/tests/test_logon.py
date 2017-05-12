@@ -7,11 +7,11 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-from nti.app.testing.decorators import WithSharedApplicationMockDS
+import unittest
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
-import unittest
+from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 
 class TestLogon(ApplicationLayerTest):
