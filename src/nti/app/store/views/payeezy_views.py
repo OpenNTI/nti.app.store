@@ -14,8 +14,6 @@ from functools import partial
 
 from zope import component
 
-from zope.component.hooks import site as current_site
-
 import transaction
 
 from pyramid import httpexceptions as hexc
@@ -31,8 +29,6 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.utils import AbstractPostView
 
-from nti.app.store.views import get_job_site
-from nti.app.store.views import dataserver_folder
 from nti.app.store.views import PayeezyPathAdapter
 
 from nti.app.store.views.general_views import PriceOrderView as GeneralPriceOrderView 
@@ -110,21 +106,15 @@ def process_purchase(manager, purchase_id, username, token,
                      card_type, cardholder_name, card_expiry, expected_amount,
                      payeezy_key, request, site_name=None):
     logger.info("Processing purchase %s", purchase_id)
-    if site_name is None:
-        site = dataserver_folder()
-    else:
-        site = get_job_site(site_name)
-
-    with current_site(site):
-        manager.process_purchase(token=token, 
-                                 request=request,
-                                 username=username,
-                                 api_key=payeezy_key,
-                                 card_type=card_type,
-                                 card_expiry=card_expiry,
-                                 purchase_id=purchase_id,
-                                 expected_amount=expected_amount,
-                                 cardholder_name=cardholder_name)
+    manager.process_purchase(token=token, 
+                             request=request,
+                             username=username,
+                             api_key=payeezy_key,
+                             card_type=card_type,
+                             card_expiry=card_expiry,
+                             purchase_id=purchase_id,
+                             expected_amount=expected_amount,
+                             cardholder_name=cardholder_name)
 
 
 def addAfterCommitHook(manager, purchase_id, username, token, 

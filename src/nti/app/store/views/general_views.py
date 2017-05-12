@@ -19,9 +19,6 @@ from requests.structures import CaseInsensitiveDict
 from zope import component
 from zope import interface
 
-from zope.component.hooks import getSite
-from zope.component.hooks import site as current_site
-
 from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
@@ -42,7 +39,7 @@ from nti.app.store.utils import parse_datetime
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import AbstractPostView
 
-from nti.app.store.views import get_job_site
+from nti.app.store.views import get_current_site
 from nti.app.store.views import StorePathAdapter
 
 from nti.app.store.views.view_mixin import price_order
@@ -170,10 +167,8 @@ def _sync_purchase(purchase, request):
     purchase_id = purchase.id
     creator = purchase.creator
     processor = purchase.Processor
+    site_name = get_current_site()
     username = getattr(creator, 'username', creator)
-
-    site = getSite()
-    site_name = site.__name__ if site is not None else None
 
     def sync_purchase():
         manager = component.getUtility(IPaymentProcessor, name=processor)
@@ -182,10 +177,9 @@ def _sync_purchase(purchase, request):
                               request=request)
 
     def process_sync():
-        site = get_job_site(site_name)
-        with current_site(site):
-            runner = component.getUtility(IDataserverTransactionRunner)
-            runner(sync_purchase)
+        runner = component.getUtility(IDataserverTransactionRunner)
+        runner(sync_purchase,
+               site_mames = (site_name,) if site_name else ())
 
     gevent.spawn(process_sync)
 

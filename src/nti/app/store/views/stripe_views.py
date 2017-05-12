@@ -14,8 +14,6 @@ from functools import partial
 
 from zope import component
 
-from zope.component.hooks import getSite
-
 import transaction
 
 from pyramid import httpexceptions as hexc
@@ -34,6 +32,7 @@ from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import is_valid_boolean
 from nti.app.store.utils import AbstractPostView 
 
+from nti.app.store.views import get_current_site
 from nti.app.store.views import StorePathAdapter
 
 from nti.app.store.views.view_mixin import PriceOrderViewMixin
@@ -387,7 +386,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
 
         request = self.request
         username = self.username
-        site_name = getattr(getSite(), '__name__', None) # tests
+        site_name = get_current_site ()
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
         # process purchase after commit
