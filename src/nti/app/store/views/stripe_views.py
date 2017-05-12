@@ -387,7 +387,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
 
         request = self.request
         username = self.username
-        site_name = getattr(getSite(), '__name__', None)
+        site_name = getattr(getSite(), '__name__', None) # tests
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
         # process purchase after commit
