@@ -28,6 +28,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.contentfile import validate_sources
 
+from nti.app.externalization.error import raise_json_error as raise_error
+
 from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
@@ -77,13 +79,18 @@ MIMETYPE = StandardExternalFields.MIMETYPE
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 
-def validate_purchasble_items(purchasable):
+def validate_purchasble_items(purchasable, request=None):
     for item in purchasable.Items:
         obj = find_object_with_ntiid(item)
         if obj is None:
             logger.error("Cannot find item %s", item)
-            msg = _(u'Cannot find purchasable item.')
-            raise hexc.HTTPUnprocessableEntity(msg)
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {    
+                            'message': _(u'Cannot find purchasable item.'),
+                            'field': u'Items'
+                        },
+                        None)
 
 
 def get_namedfile(source, name='icon.dat'):
@@ -94,7 +101,7 @@ def get_namedfile(source, name='icon.dat'):
         contentType, _, _ = getImageInfo(source)
         source.seek(0)  # reset
         factory = NamedBlobImage if contentType else NamedBlobFile
-    contentType = contentType or u'application/octet-stream'
+    contentType = contentType or 'application/octet-stream'
     filename = getattr(source, 'filename', None) \
             or getattr(source, 'name', name)
     result = factory(filename=filename, 
@@ -136,8 +143,13 @@ class CreatePurchasableView(AbstractAuthenticatedView,
         if not externalValue.get(NTIID):
             nttype = get_ntiid_type(externalValue.get(MIMETYPE))
             if not nttype:
-                msg = _(u'Invalid purchasable MimeType.')
-                raise hexc.HTTPUnprocessableEntity(msg)
+                raise_error(self.request,
+                            hexc.HTTPUnprocessableEntity,
+                            {    
+                                'message': _(u'Invalid purchasable MimeType.'),
+                                'field': u'mimeType'
+                            },
+                            None)
             ntiid = self._make_tiid(nttype, self.remoteUser)
             externalValue[NTIID] = ntiid
         datatype = self.findContentType(externalValue)
@@ -156,9 +168,13 @@ class CreatePurchasableView(AbstractAuthenticatedView,
     def __call__(self):
         purchasable = self._createObject()
         if get_purchasable(purchasable.NTIID) != None:
-            msg = _(u'Purchasable already created.')
-            raise hexc.HTTPUnprocessableEntity(msg)
-        validate_purchasble_items(purchasable)
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {    
+                            'message': _(u'Purchasable already created.'),
+                        },
+                        None)
+        validate_purchasble_items(purchasable, self.request)
         lifecycleevent.created(purchasable)
 
         # add object to conenction
@@ -208,9 +224,13 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
         new_items = set(theObject.Items)
         if old_items.difference(new_items):
             purchases = count_purchases_for_items(theObject.NTIID)
-            if purchases:  # there are purchases
-                msg = _('Cannot change purchasable items.')
-                raise hexc.HTTPUnprocessableEntity(msg)
+            if purchases: # there are purchases
+                raise_error(self.request,
+                            hexc.HTTPUnprocessableEntity,
+                            {    
+                                'message': _(u'Cannot change purchasable items.'),
+                            },
+                            None)
 
         notifyModified(theObject, externalValue)
         return theObject
@@ -232,8 +252,12 @@ class DeletePurchasableView(AbstractAuthenticatedView,
         # check if items have been changed
         purchases = count_purchases_for_items(purchasable.NTIID)
         if purchases:  # there are purchases
-            msg = _(u'Cannot delete purchasable.')
-            raise hexc.HTTPUnprocessableEntity(msg)
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {    
+                            'message': _(u'Cannot delete purchasable.'),
+                        },
+                        None)
 
         registry = purchasable.__parent__  # parent site manager
         # raise removed event
