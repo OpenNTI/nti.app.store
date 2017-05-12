@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -82,7 +82,7 @@ def validate_purchasble_items(purchasable):
         obj = find_object_with_ntiid(item)
         if obj is None:
             logger.error("Cannot find item %s", item)
-            msg = _('Cannot find purchasable item.')
+            msg = _(u'Cannot find purchasable item.')
             raise hexc.HTTPUnprocessableEntity(msg)
 
 
@@ -136,7 +136,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
         if not externalValue.get(NTIID):
             nttype = get_ntiid_type(externalValue.get(MIMETYPE))
             if not nttype:
-                msg = _('Invalid purchasable MimeType.')
+                msg = _(u'Invalid purchasable MimeType.')
                 raise hexc.HTTPUnprocessableEntity(msg)
             ntiid = self._make_tiid(nttype, self.remoteUser)
             externalValue[NTIID] = ntiid
@@ -156,7 +156,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
     def __call__(self):
         purchasable = self._createObject()
         if get_purchasable(purchasable.NTIID) != None:
-            msg = _('Purchasable already created.')
+            msg = _(u'Purchasable already created.')
             raise hexc.HTTPUnprocessableEntity(msg)
         validate_purchasble_items(purchasable)
         lifecycleevent.created(purchasable)
@@ -232,7 +232,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
         # check if items have been changed
         purchases = count_purchases_for_items(purchasable.NTIID)
         if purchases:  # there are purchases
-            msg = _('Cannot delete purchasable.')
+            msg = _(u'Cannot delete purchasable.')
             raise hexc.HTTPUnprocessableEntity(msg)
 
         registry = purchasable.__parent__  # parent site manager
