@@ -38,12 +38,12 @@ class MockRunner(object):
 
 
 def do_purchase(manager, purchase_id, username, token, expected_amount,
-                stripe_key, request, site_names):
+                stripe_key, request, site_name=None):
     result = process_purchase(token=token,
                               request=request,
                               manager=manager,
                               username=username,
-                              site_names=site_names,
+                              site_name=site_name,
                               stripe_key=stripe_key,
                               purchase_id=purchase_id,
                               expected_amount=expected_amount)

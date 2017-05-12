@@ -14,6 +14,9 @@ from functools import partial
 
 from zope import component
 
+from zope.component.hooks import getSite
+from zope.component.hooks import site as current_site
+
 import transaction
 
 from pyramid import httpexceptions as hexc
@@ -26,12 +29,14 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
-from nti.app.store import get_possible_site_names
 
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import is_valid_boolean
 from nti.app.store.utils import AbstractPostView 
+
+from nti.app.store.views import get_job_site
+from nti.app.store.views import dataserver_folder
 
 from nti.app.store.views import StorePathAdapter
 
@@ -263,24 +268,28 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
 
 
 def process_purchase(manager, purchase_id, username, token, expected_amount,
-                     stripe_key, request, site_names=()):
+                     stripe_key, request, site_name=None):
     logger.info("Processing purchase %s", purchase_id)
-    manager.process_purchase(purchase_id=purchase_id, username=username,
-                             token=token, expected_amount=expected_amount,
-                             api_key=stripe_key.PrivateKey,
-                             request=request,
-                             site_names=site_names)
+    if site_name is None:
+        site = dataserver_folder()
+    else:
+        site = get_job_site(site_name)
+    with current_site(site):
+        manager.process_purchase(purchase_id=purchase_id, username=username,
+                                 token=token, expected_amount=expected_amount,
+                                 api_key=stripe_key.PrivateKey,
+                                 request=request)
 
 
 def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
-                       stripe_key, request, site_names=()):
+                       stripe_key, request, site_name=None):
 
     processor = partial(process_purchase,
                         token=token,
                         request=request,
                         manager=manager,
                         username=username,
-                        site_names=site_names,
+                        site_name=site_name,
                         stripe_key=stripe_key,
                         purchase_id=purchase_id,
                         expected_amount=expected_amount)
@@ -384,7 +393,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
 
         request = self.request
         username = self.username
-        site_names = get_possible_site_names(request, include_default=True)
+        site_name = getattr(getSite(), '__name__', None)
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
         # process purchase after commit
@@ -392,7 +401,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
                            request=request,
                            manager=manager,
                            username=username,
-                           site_names=site_names,
+                           site_name=site_name,
                            stripe_key=stripe_key,
                            purchase_id=purchase_id,
                            expected_amount=expected_amount)
@@ -550,7 +559,7 @@ def refund_purchase(purchase, amount, refund_application_fee=None, request=None)
     return manager.refund_purchase(purchase, 
                                    amount=amount,
                                    request=request,
-                                   refund_application_fee=refund_application_fee,)
+                                   refund_application_fee=refund_application_fee)
 
 
 @view_config(name="RefundPaymentWithStripe")
