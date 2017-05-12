@@ -124,8 +124,7 @@ def process_purchase(manager, purchase_id, username, token,
                                  card_expiry=card_expiry,
                                  purchase_id=purchase_id,
                                  expected_amount=expected_amount,
-                                 cardholder_name=cardholder_name,
-                                 request=request)
+                                 cardholder_name=cardholder_name)
 
 
 def addAfterCommitHook(manager, purchase_id, username, token, 
