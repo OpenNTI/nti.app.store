@@ -35,8 +35,6 @@ from nti.links.links import Link
 
 from nti.property.property import alias
 
-from nti.store.utils import ALL_STORE_MIME_TYPES
-
 from nti.traversal.traversal import find_interface
 
 
@@ -121,7 +119,7 @@ class _StoreCollection(object):
 
     @property
     def accepts(self):
-        return ALL_STORE_MIME_TYPES
+        return ()
 
 
 @component.adapter(IUser)

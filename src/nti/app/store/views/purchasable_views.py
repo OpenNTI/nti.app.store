@@ -55,6 +55,8 @@ from nti.ntiids.ntiids import make_ntiid
 from nti.ntiids.ntiids import make_specific_safe
 from nti.ntiids.ntiids import find_object_with_ntiid
 
+from nti.store import PURCHASABLE
+
 from nti.store import get_purchase_catalog
 
 from nti.store.interfaces import IPurchasable
@@ -65,8 +67,6 @@ from nti.store.store import get_purchasable
 from nti.store.store import get_purchasables
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
-
-from nti.store.utils import get_ntiid_type
 
 from nti.zodb.containers import time_to_64bit_int
 
@@ -141,16 +141,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
     def _createObject(self):
         externalValue = self.readInput()
         if not externalValue.get(NTIID):
-            nttype = get_ntiid_type(externalValue.get(MIMETYPE))
-            if not nttype:
-                raise_error(self.request,
-                            hexc.HTTPUnprocessableEntity,
-                            {    
-                                'message': _(u'Invalid purchasable MimeType.'),
-                                'field': u'mimeType'
-                            },
-                            None)
-            ntiid = self._make_tiid(nttype, self.remoteUser)
+            ntiid = self._make_tiid(PURCHASABLE, self.remoteUser)
             externalValue[NTIID] = ntiid
         datatype = self.findContentType(externalValue)
         result = self.createAndCheckContentObject(owner=None,
