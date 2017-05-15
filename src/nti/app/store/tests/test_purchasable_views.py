@@ -14,6 +14,7 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_entries
 from hamcrest import has_property
+from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
 import fudge
@@ -98,8 +99,8 @@ class TestStoreViews(ApplicationLayerTest):
         url = '/dataserver2/store/purchasables/collection'
         res = self.testapp.get(url, status=200)
         assert_that(res.json_body,
-                    has_entries('Items', has_length(3),
-                                'ItemCount', is_(3)))
+                    has_entries('Items', has_length(greater_than_or_equal_to(3)),
+                                'ItemCount', is_(greater_than_or_equal_to(3))))
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.purchasable_views.validate_purchasble_items',
