@@ -51,9 +51,6 @@
 	<subscriber	factory=".workspaces._RedeemPurchaseCodeInvitationsLinkProvider"
 				provides="nti.app.invitations.interfaces.IUserInvitationsLinkProvider"/>
 
-	<!-- Purchase -->
-	<subscriber handler=".subscribers._purchase_attempt_successful" />
-
 	<!-- Filters -->
 	<subscriber	factory=".filters._StoreContentObjectFilter"
 				provides="nti.dataserver.interfaces.ICreatableObjectFilter"
