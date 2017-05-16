@@ -96,7 +96,7 @@ class TestStripeViews(ApplicationLayerTest):
         assert_that(json_body, has_entry('PurchasePrice', 600.0))
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
-    @fudge.patch('nti.store.payments.stripe.stripe_pricing.get_coupon')
+    @fudge.patch('nti.store.payments.stripe.pricing.get_coupon')
     def test_price_purchasable_with_stripe_coupon(self, mock_gc):
 
         code = str(uuid.uuid4())
