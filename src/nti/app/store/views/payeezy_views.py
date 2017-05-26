@@ -187,13 +187,18 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
         optional = (('city', 'city', 'city'),
                     ('zip', 'zip', 'address_zip'),
                     ('state',  'state', 'address_state'),
-                    ('street', 'street', 'address_line1'),
+                    ('street_1', 'street', 'address_line1'),
+                    ('street_2', 'street2', 'address_line2'),
                     ('country', 'country', 'address_country'))
         for k, p, a in optional:
             value = values.get(p) or values.get(a)
             if value:
                 params[k] = text_(value)
 
+        street = '%s\n%s' % (param.pop('street_1', None) or u'', 
+                             param.pop('street_2', None) or u'') 
+        if street.strip():
+            param['street'] = street.strip()
         token = manager.create_token(**params)
         return token
 
