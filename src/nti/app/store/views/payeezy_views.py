@@ -195,10 +195,10 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
             if value:
                 params[k] = text_(value)
 
-        street = '%s\n%s' % (param.pop('street_1', None) or u'', 
-                             param.pop('street_2', None) or u'') 
-        if street.strip():
-            param['street'] = street.strip()
+        street = ('%s\n%s' % (param.pop('street_1', None) or u'', 
+                              param.pop('street_2', None) or u'')).strip()
+        if street:
+            param['street'] = street
         token = manager.create_token(**params)
         return token
 
