@@ -30,10 +30,11 @@ from nti.app.store import MessageFactory as _
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import is_valid_boolean
-from nti.app.store.utils import AbstractPostView 
+from nti.app.store.utils import AbstractPostView
 
 from nti.app.store.views import get_current_site
 from nti.app.store.views import StorePathAdapter
+from nti.app.store.views import StripePathAdapter
 
 from nti.app.store.views.view_mixin import PriceOrderViewMixin
 from nti.app.store.views.view_mixin import BasePaymentViewMixin
@@ -83,11 +84,11 @@ LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
 
 class BaseStripeViewMixin(BaseProcessorViewMixin):
     processor = STRIPE
-    key_interface = IStripeConnectKey   
+    key_interface = IStripeConnectKey
 
 
 @view_config(name="GetStripeConnectKey")
-@view_config(name="get_connect_key") # TODO: remove
+@view_config(name="get_connect_key")  # TODO: remove
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                permission=nauth.ACT_READ,
@@ -96,6 +97,17 @@ class BaseStripeViewMixin(BaseProcessorViewMixin):
 class GetStripeConnectKeyView(AbstractAuthenticatedView,
                               GetProcesorConnectKeyViewMixin,
                               BaseStripeViewMixin):
+    pass
+
+
+@view_config(name="GetConnectKey")
+@view_config(name="get_connect_key")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=StripePathAdapter,
+               request_method='GET')
+class GetConnectKeyView(GetStripeConnectKeyView):
     pass
 
 
@@ -124,7 +136,7 @@ def _call_pricing_func(func):
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class PriceStripeOrderView(AbstractAuthenticatedView, 
+class PriceStripeOrderView(AbstractAuthenticatedView,
                            BaseStripeViewMixin,
                            PriceOrderViewMixin):
 
@@ -139,9 +151,19 @@ class PriceStripeOrderView(AbstractAuthenticatedView,
     def _do_call(self):
         order = self.readCreateUpdateContentObject()
         assert IStripePurchaseOrder.providedBy(order)
-        if order.Coupon: # replace item coupons
+        if order.Coupon:  # replace item coupons
             replace_items_coupon(order, None)
         return self._do_pricing(order)
+
+
+@view_config(name="PriceOrder")
+@view_config(name="price_order")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               context=StripePathAdapter,
+               request_method='POST')
+class PriceOrderView(PriceStripeOrderView):
+    pass
 
 
 def perform_pricing(purchasable_id, quantity=None, coupon=None):
@@ -159,7 +181,7 @@ def perform_pricing(purchasable_id, quantity=None, coupon=None):
                renderer='rest',
                context=StorePathAdapter,
                request_method='POST')
-class PricePurchasableWithStripeCouponView(AbstractPostView, 
+class PricePurchasableWithStripeCouponView(AbstractPostView,
                                            BaseStripeViewMixin):
 
     def price_purchasable(self, values=None):
@@ -177,7 +199,7 @@ class PricePurchasableWithStripeCouponView(AbstractPostView,
         if not is_valid_pve_int(quantity):
             raise_error(self.request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Invalid quantity."),
                             'field': u'quantity'
                         },
@@ -196,6 +218,16 @@ class PricePurchasableWithStripeCouponView(AbstractPostView,
     def __call__(self):
         result = self.price_purchasable()
         return result
+
+
+@view_config(name="PricePurchasable")
+@view_config(name="price_purchasable")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               context=StripePathAdapter,
+               request_method='POST')
+class PricePurchasableView(PricePurchasableWithStripeCouponView):
+    pass
 
 
 # token views
@@ -233,7 +265,7 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
                 if not value:
                     raise_error(self.request,
                                 hexc.HTTPUnprocessableEntity,
-                                {    
+                                {
                                     'message': _(u"Invalid value."),
                                     'field': param
                                 },
@@ -257,6 +289,17 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
         token = manager.create_token(**params)
         result = LocatedExternalDict(Token=token.id)
         return result
+
+
+@view_config(name="CreateToken")
+@view_config(name="create_token")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=StripePathAdapter,
+               request_method='POST')
+class CreateTokenView(CreateStripeTokenView):
+    pass
 
 
 # purchase views
@@ -287,7 +330,7 @@ def addAfterCommitHook(manager, purchase_id, username, token, expected_amount,
                         purchase_id=purchase_id,
                         expected_amount=expected_amount)
 
-    hook = lambda s: s and request.nti_gevent_spawn(processor)
+    def hook(s): return s and request.nti_gevent_spawn(processor)
     transaction.get().addAfterCommitHook(hook)
 
 
@@ -298,16 +341,16 @@ def validate_coupon(request, coupon, api_key):
             if not manager.validate_coupon(coupon, api_key):
                 raise_error(request,
                             hexc.HTTPUnprocessableEntity,
-                            {    
+                            {
                                 'message': _(u"Invalid coupon."),
                                 'field': u'coupon'
-                             },
+                            },
                             None)
         except StandardError as e:
             exc_info = sys.exc_info()
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Invalid coupon."),
                             'field': u'coupon',
                             'code': e.__class__.__name__
@@ -324,7 +367,7 @@ def validate_stripe_key(request, purchasables=()):
         if stripe_key is None:
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Invalid purchasable provider."),
                             'field': u'purchasables',
                             'value': provider
@@ -335,7 +378,7 @@ def validate_stripe_key(request, purchasables=()):
         elif result != stripe_key:
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Cannot mix purchasable providers."),
                             'field': u'purchasables'
                         },
@@ -343,7 +386,7 @@ def validate_stripe_key(request, purchasables=()):
     if result is None:
         raise_error(request,
                     hexc.HTTPUnprocessableEntity,
-                    {    
+                    {
                         'message': _(u"Could not find a purchasable provider."),
                         'field': u'purchasables'
                     },
@@ -386,7 +429,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
 
         request = self.request
         username = self.username
-        site_name = get_current_site ()
+        site_name = get_current_site()
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
         # process purchase after commit
@@ -400,10 +443,10 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
                            expected_amount=expected_amount)
 
         # return
-        result = LocatedExternalDict({    
-                    ITEMS: [purchase_attempt],
-                    LAST_MODIFIED: purchase_attempt.lastModified
-                 })
+        result = LocatedExternalDict({
+            ITEMS: [purchase_attempt],
+            LAST_MODIFIED: purchase_attempt.lastModified
+        })
         return result
 
 
@@ -414,7 +457,7 @@ class BasePaymentWithStripeView(BasePaymentViewMixin):
                permission=nauth.ACT_READ,
                context=StorePathAdapter,
                request_method='POST')
-class ProcessPaymentWithStripeView(AbstractPostView, 
+class ProcessPaymentWithStripeView(AbstractPostView,
                                    BasePaymentWithStripeView):
 
     def validatePurchasable(self, request, purchasable_id):
@@ -422,13 +465,26 @@ class ProcessPaymentWithStripeView(AbstractPostView,
         if IPurchasableChoiceBundle.providedBy(purchasable):
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Cannot purchase a bundle item."),
                             'field': u'purchasables',
                             'value': purchasable_id
                         },
                         None)
         return purchasable
+
+
+@view_config(name="PostPayment")
+@view_config(name="post_payment")
+@view_config(name="ProcessPayment")
+@view_config(name="process_payment")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=StripePathAdapter,
+               request_method='POST')
+class ProcessPaymentView(ProcessPaymentWithStripeView):
+    pass
 
 
 @view_config(name="GiftStripePaymentPreflight")
@@ -448,7 +504,7 @@ class GiftWithStripePreflightView(AbstractPostView,
         if count and len(result) > 1:
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Can only purchase one bundle item at a time."),
                             'field': u'purchasables'
                         },
@@ -478,6 +534,16 @@ class GiftWithStripePreflightView(AbstractPostView,
         return record
 
 
+@view_config(name="GiftPaymentPreflight")
+@view_config(name="gift_payment_preflight")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               context=StripePathAdapter,
+               request_method='POST')
+class GiftPreflightView(GiftWithStripePreflightView):
+    pass
+
+
 @view_config(name="GiftStripePayment")
 @view_config(name="gift_stripe_payment")
 @view_defaults(route_name='objects.generic.traversal',
@@ -503,11 +569,11 @@ class GiftWithStripeView(GiftWithStripePreflightView,
     def registerPurchaseAttempt(self, purchase, record):
         result = register_gift_purchase_attempt(record['Creator'], purchase)
         return result
-    
+
     @property
     def username(self):
         return None
-    
+
     def __call__(self):
         values = self.readInput()
         record = self.getPaymentRecord(self.request, values)
@@ -521,11 +587,21 @@ class GiftWithStripeView(GiftWithStripePreflightView,
             logger.warn("There are pending purchase(s) for item(s) %s",
                         list(purchase_attempt.Items))
             return LocatedExternalDict({
-                        ITEMS: purchases,
-                        LAST_MODIFIED: lastModified
-                   })
+                ITEMS: purchases,
+                LAST_MODIFIED: lastModified
+            })
         result = self.processPurchase(purchase_attempt, record)
         return result
+
+
+@view_config(name="GiftPayment")
+@view_config(name="gift_payment")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               context=StripePathAdapter,
+               request_method='POST')
+class GiftPaymentView(GiftWithStripeView):
+    pass
 
 
 # invoice
@@ -544,12 +620,23 @@ class GeneratePurchaseInvoiceWitStripeView(AbstractPostView,
     pass
 
 
+@view_config(name="GeneratePurchaseInvoice")
+@view_config(name="generate_purchase_invoice")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=StripePathAdapter,
+               request_method='POST')
+class GeneratePurchaseInvoiceView(GeneratePurchaseInvoiceWitStripeView):
+    pass
+
+
 # refund
 
 
 def refund_purchase(purchase, amount, refund_application_fee=None, request=None):
     manager = component.getUtility(IPaymentProcessor, name=STRIPE)
-    return manager.refund_purchase(purchase, 
+    return manager.refund_purchase(purchase,
                                    amount=amount,
                                    request=request,
                                    refund_application_fee=refund_application_fee)
@@ -562,10 +649,10 @@ def refund_purchase(purchase, amount, refund_application_fee=None, request=None)
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class RefundPaymentWithStripeView(AbstractPostView, 
-                                  BaseStripeViewMixin, 
+class RefundPaymentWithStripeView(AbstractPostView,
+                                  BaseStripeViewMixin,
                                   RefundPaymentViewMixin):
-    
+
     def processInput(self, values=None):
         values = self.readInput()
         purchase, amount = super(RefundPaymentWithStripeView, self).processInput(values)
@@ -576,7 +663,7 @@ class RefundPaymentWithStripeView(AbstractPostView,
             if not is_valid_boolean(refund_application_fee):
                 raise_error(self.request,
                             hexc.HTTPUnprocessableEntity,
-                            {    
+                            {
                                 'message': _(u"Please provide a valid application fee."),
                                 'field': u'refundApplicationFee'
                             },
@@ -589,7 +676,7 @@ class RefundPaymentWithStripeView(AbstractPostView,
         request = self.request
         purchase, amount, refund_application_fee = self.processInput()
         try:
-            refund_purchase(purchase, 
+            refund_purchase(purchase,
                             amount=amount,
                             refund_application_fee=refund_application_fee,
                             request=request)
@@ -598,14 +685,25 @@ class RefundPaymentWithStripeView(AbstractPostView,
             exc_info = sys.exc_info()
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
+                        {
                             'message': _(u"Error while refunding transaction."),
                             'code': e.__class__.__name__
                         },
                         exc_info[2])
 
         result = LocatedExternalDict({
-                    ITEMS: [purchase],
-                    LAST_MODIFIED: purchase.lastModified
-                 })
+            ITEMS: [purchase],
+            LAST_MODIFIED: purchase.lastModified
+        })
         return result
+
+
+@view_config(name="RefundPayment")
+@view_config(name="refund_payment")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_NTI_ADMIN,
+               context=StripePathAdapter,
+               request_method='POST')
+class RefundPaymentView(RefundPaymentWithStripeView):
+    pass
