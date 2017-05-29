@@ -85,7 +85,7 @@ class TestStripeViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_price_purchasable_with_stripe_coupon_quantity(self):
         url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
-        params = {'purchasableID': self.purchasable_id, 'quantity': 2}
+        params = {'purchasableId': self.purchasable_id, 'quantity': 2}
         body = json.dumps(params)
 
         res = self.testapp.post(url, body, status=200)
@@ -113,7 +113,7 @@ class TestStripeViews(ApplicationLayerTest):
         interface.alsoProvides(coupon, IStripeCoupon)
 
         url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
-        params = {'coupon': code, 'purchasableID': self.purchasable_id}
+        params = {'coupon': code, 'purchasableId': self.purchasable_id}
         body = json.dumps(params)
 
         res = self.testapp.post(url, body, status=200)
@@ -153,7 +153,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_pr.is_callable().with_args().raises(InvalidStripeCoupon())
 
         url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
-        params = {'coupon': '123', 'purchasableID': self.purchasable_id}
+        params = {'coupon': '123', 'purchasableId': self.purchasable_id}
         body = json.dumps(params)
 
         res = self.testapp.post(url, body, status=422)
@@ -168,7 +168,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_pr.is_callable().with_args().raises(NoSuchStripeCoupon())
 
         url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
-        params = {'coupon': '123', 'purchasableID': self.purchasable_id}
+        params = {'coupon': '123', 'purchasableId': self.purchasable_id}
         body = json.dumps(params)
 
         res = self.testapp.post(url, body, status=422)
@@ -183,7 +183,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_pr.is_callable().with_args().raises(PricingException("Aizen"))
 
         url = '/dataserver2/store/@@price_purchasable_with_stripe_coupon'
-        params = {'coupon': '123', 'purchasableID': self.purchasable_id}
+        params = {'coupon': '123', 'purchasableId': self.purchasable_id}
         body = json.dumps(params)
 
         res = self.testapp.post(url, body, status=422)
@@ -236,7 +236,7 @@ class TestStripeViews(ApplicationLayerTest):
 
         self._create_fakge_charge(300, mock_cc)
         url = '/dataserver2/store/@@post_stripe_payment'
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'token': "tok_1053"}
         body = json.dumps(params)
@@ -291,7 +291,7 @@ class TestStripeViews(ApplicationLayerTest):
 
         self._create_fakge_charge(199, mock_cc)
         url = '/dataserver2/store/@@gift_stripe_payment'
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'from': 'ichigo+@bleach.org',
                   'sender': 'Ichigo Kurosaki',
@@ -342,31 +342,31 @@ class TestStripeViews(ApplicationLayerTest):
 
         # no purchasable
         url = '/dataserver2/store/@@gift_stripe_payment_preflight'
-        params = {'purchasableID': None}
+        params = {'purchasableId': None}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
         # invalid purchasable
-        params = {'purchasableID': 'foo'}
+        params = {'purchasableId': 'foo'}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
         # no token
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'token': None}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
         # invalid amount
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 'foo',
                   'token': "tok_1053"}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
         # no sender
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'token': "tok_1053",
                   "from": None}
@@ -374,7 +374,7 @@ class TestStripeViews(ApplicationLayerTest):
         self.testapp.post(url, body, status=422)
 
         # invalid from
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'token': "tok_1053",
                   "from": 'foo'}
@@ -382,7 +382,7 @@ class TestStripeViews(ApplicationLayerTest):
         self.testapp.post(url, body, status=422)
 
         # invalid receiver
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'from': 'ichigo@bleach.org',
                   'sender': 'Ichigo Kurosaki',
@@ -393,7 +393,7 @@ class TestStripeViews(ApplicationLayerTest):
         self.testapp.post(url, body, status=422)
 
         # no receiver
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'from': 'ichigo@bleach.org',
                   'sender': 'Ichigo Kurosaki',
@@ -403,7 +403,7 @@ class TestStripeViews(ApplicationLayerTest):
         self.testapp.post(url, body, status=422)
 
         # no receiver
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'from': 'ichigo@bleach.org',
                   'sender': 'Ichigo Kurosaki',
@@ -412,7 +412,7 @@ class TestStripeViews(ApplicationLayerTest):
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
                   'from': 'ichigo@bleach.org',
                   'sender': 'Ichigo Kurosaki',
@@ -427,13 +427,43 @@ class TestStripeViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_invalid_post_stripe_payment(self):
         url = '/dataserver2/store/@@post_stripe_payment'
-        params = {'purchasableID': 'not found',
+        params = {'purchasableId': 'not found',
                   'amount': 300,
                   'token': 'xyz'}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
 
-        params = {'purchasableID': self.purchasable_id,
+        params = {'purchasableId': self.purchasable_id,
                   'amount': 300}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_create_token(self):
+        url = '/dataserver2/store/stripe/@@create_token'
+        params = {
+            'provider': 'CMU',
+            'cvc': '019',
+            'expiry': '0930',
+            'number': '4012000033330026',
+            'name': 'Ichigo Kurosaki',
+            # optional
+            'city': 'Norman',
+            'zip': '73072',
+            'state': 'OK',
+            'street': '3001 Oak Tree Ave #F6',
+            'country': 'USA',
+        }
+        body = json.dumps(params)
+        res = self.testapp.post(url, body, status=200)
+        json_body = res.json_body
+        assert_that(json_body,
+                    has_entry('MimeType', 'application/vnd.nextthought.store.stripetoken'))
+        assert_that(json_body,
+                    has_entry('CardID', is_not(none())))
+        assert_that(json_body,
+                    has_entry('Type', 'Visa'))
+        assert_that(json_body,
+                    has_entry('Value', is_not(none())))
+        assert_that(json_body,
+                    has_entry('ID', is_not(none())))

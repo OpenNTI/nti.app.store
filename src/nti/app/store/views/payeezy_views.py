@@ -152,7 +152,6 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
 
     def __call__(self):
         values = self.readInput()
-        # street=None, city=None, state=None, zip_code=None, country=None
         payeezy_key = self.get_connect_key(values)
         if payeezy_key is None:
             raise_error(self.request,
@@ -165,40 +164,39 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
 
         params = {'api_key': payeezy_key}
-        required = (('card_cvv', 'card_cvv', 'cvv'),
+        required = (('card_cvv', 'cvv', 'cvc'),
+                    ('card_number', 'number', 'cc'),
                     ('card_type', 'card_type', 'type'),
                     ('card_expiry', 'card_expiry', 'expiry'),
-                    ('card_number', 'card_number', 'number'),
                     ('cardholder_name', 'cardholder_name', 'name'))
 
-        for key, param, alias in required:
-            value = values.get(param) or values.get(alias)
+        for k, p, a in required:
+            value = values.get(k) or values.get(p) or values.get(a)
             if not value:
                 raise_error(self.request,
                             hexc.HTTPUnprocessableEntity,
                             {
                                 'message': _(u"Invalid value."),
-                                'field': param
+                                'field': k,
                             },
                             None)
-            params[key] = text_(value)
+            params[k] = text_(value)
 
         # optional
         optional = (('city', 'city', 'city'),
-                    ('zip', 'zip', 'address_zip'),
+                    ('zip_code', 'zip', 'address_zip'),
                     ('state',  'state', 'address_state'),
                     ('street_1', 'street', 'address_line1'),
                     ('street_2', 'street2', 'address_line2'),
                     ('country', 'country', 'address_country'))
         for k, p, a in optional:
-            value = values.get(p) or values.get(a)
+            value = values.get(k) or values.get(p) or values.get(a)
             if value:
                 params[k] = text_(value)
-
-        street = ('%s\n%s' % (param.pop('street_1', None) or u'', 
-                              param.pop('street_2', None) or u'')).strip()
+        street = ('%s\n%s' % (params.pop('street_1', None) or u'', 
+                              params.pop('street_2', None) or u'')).strip()
         if street:
-            param['street'] = street
+            params['street'] = street
         token = manager.create_token(**params)
         return token
 

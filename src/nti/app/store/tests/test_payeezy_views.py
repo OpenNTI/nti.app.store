@@ -7,6 +7,7 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import none
 from hamcrest import is_not
 from hamcrest import contains
 from hamcrest import has_entry
@@ -87,3 +88,32 @@ class TestPayeezyViews(ApplicationLayerTest):
         json_body = res.json_body
         assert_that(json_body, has_entry('Type', 'PricingError'))
         assert_that(json_body, has_entry('Message', 'Aizen'))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_create_token(self):
+        url = '/dataserver2/store/payeezy/@@create_token'
+        params = {
+            'provider': 'CMU',
+            'card_cvv': '019',
+            'card_type': 'visa',
+            'card_expiry': '0930',
+            'card_number': '4012000033330026',
+            'cardholder_name': 'Ichigo Kurosaki',
+            # optional
+            'city': 'Norman',
+            'zip': '73072',
+            'state': 'OK',
+            'street': '3001 Oak Tree Ave #F6',
+            'country': 'USA',
+        }
+        body = json.dumps(params)
+        res = self.testapp.post(url, body, status=200)
+        json_body = res.json_body
+        assert_that(json_body,
+                    has_entry('MimeType', 'application/vnd.nextthought.store.payeezyfdtoken'))
+        assert_that(json_body,
+                    has_entry('correlation_id', is_not(none())))
+        assert_that(json_body,
+                    has_entry('type', 'visa'))
+        assert_that(json_body,
+                    has_entry('value', is_not(none())))

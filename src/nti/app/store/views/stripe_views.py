@@ -68,6 +68,8 @@ from nti.store.payments.stripe import InvalidStripeCoupon
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
 
+from nti.store.payments.stripe.model import StripeToken
+
 from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
@@ -252,42 +254,47 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
 
         params = {'api_key': stripe_key.PrivateKey}
         customer_id = values.get('customer') \
-                   or values.get('customerID') \
+                   or values.get('customerId') \
                    or values.get('customer_id')
         if not customer_id:
-            required = (('cvc', 'cvc', ''),
-                        ('exp_year', 'expYear', 'exp_year'),
-                        ('exp_month', 'expMonth', 'exp_month'),
-                        ('number', 'CC', 'number'))
+            required = (('cvc', 'cvv', 'card_cvv'),
+                        ('number', 'cc', 'card_number'),
+                        ('card_expiry', 'card_expiry', 'expiry'))
 
-            for key, param, alias in required:
-                value = values.get(param) or values.get(alias)
+            for k, p, a in required:
+                value = values.get(k) or values.get(p) or values.get(a)
                 if not value:
                     raise_error(self.request,
                                 hexc.HTTPUnprocessableEntity,
                                 {
                                     'message': _(u"Invalid value."),
-                                    'field': param
+                                    'field': p
                                 },
                                 None)
-                params[key] = text_(value)
+                params[k] = text_(value)
+            expiry = params.pop('card_expiry', u'')
+            index = 2 if len(expiry) >= 4 else 1
+            params['exp_year'] = expiry[index:]
+            params['exp_month'] = expiry[0:index]
         else:
             params['customer_id'] = customer_id
 
         # optional
-        optional = (('address_line1', 'address_line1', 'address'),
-                    ('address_line2', 'address_line2', ''),
+        optional = (('address_line1', 'street', 'address'),
+                    ('address_line2', 'street2', 'street_2'),
                     ('address_city', 'address_city', 'city'),
                     ('address_state', 'address_state', 'state'),
-                    ('address_zip', 'address_zip', 'zip'),
+                    ('address_zip', 'zip_code', 'zip'),
                     ('address_country', 'address_country', 'country'))
         for k, p, a in optional:
-            value = values.get(p) or values.get(a)
+            value = values.get(k) or values.get(p) or values.get(a)
             if value:
                 params[k] = text_(value)
 
         token = manager.create_token(**params)
-        result = LocatedExternalDict(Token=token.id)
+        result = StripeToken(Value=token.id,
+                             Type=token.card.type,
+                             CardID=token.card.id)
         return result
 
 
