@@ -135,13 +135,13 @@ class TestStripeViews(ApplicationLayerTest):
         json_body = res.json_body
         assert_that(json_body, has_entry('Currency', 'USD'))
         assert_that(json_body, has_entry('Class', 'PricingResults'))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Items', contains(has_entry('Amount', 300.0))))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Items', contains(has_entry('Currency', 'USD'))))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Items', contains(has_entry('PurchasePrice', 600.0))))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Items', contains(has_entry('Quantity', 2))))
         assert_that(json_body, has_entry('TotalPurchasePrice', 600.0))
         assert_that(json_body, has_entry('TotalNonDiscountedPrice', 600.0))
@@ -196,7 +196,7 @@ class TestStripeViews(ApplicationLayerTest):
         res = self.testapp.get(url, status=200)
         json_body = res.json_body
         assert_that(json_body, has_key('Items'))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Last Modified', greater_than_or_equal_to(0)))
         items = json_body['Items']
         return items
@@ -245,7 +245,7 @@ class TestStripeViews(ApplicationLayerTest):
         json_body = res.json_body
 
         assert_that(json_body, has_key('Items'))
-        assert_that(json_body, 
+        assert_that(json_body,
                     has_entry('Last Modified', greater_than_or_equal_to(0)))
 
         items = json_body['Items']
@@ -256,7 +256,7 @@ class TestStripeViews(ApplicationLayerTest):
         assert_that(items[0], has_entry('TokenID', 'tok_1053'))
         assert_that(items[0], has_entry('ID', is_not(none())))
         assert_that(items[0], has_entry('TransactionID', is_not(none())))
-        assert_that(items[0], 
+        assert_that(items[0],
                     has_entry('Order', has_entry('Items', has_length(1))))
 
         pid = items[0]['ID']
@@ -274,7 +274,7 @@ class TestStripeViews(ApplicationLayerTest):
         tid = items[0]['TransactionID']
         url = '/dataserver2/store/@@get_purchase_attempt/%s' % tid
         res = self.testapp.get(url, status=200)
-        assert_that(res.json_body, 
+        assert_that(res.json_body,
                     has_entry('Items',
                               has_item(has_entry('Class', 'PurchaseAttempt'))))
 
@@ -311,9 +311,9 @@ class TestStripeViews(ApplicationLayerTest):
 
         items = json_body['Items']
         assert_that(items, has_length(1))
-        assert_that(items[0], 
+        assert_that(items[0],
                     has_entry('Order', has_entry('Items', has_length(1))))
-        assert_that(items[0], 
+        assert_that(items[0],
                     has_entry('MimeType', 'application/vnd.nextthought.store.giftpurchaseattempt'))
         assert_that(items[0], has_entry('State', 'Success'))
         assert_that(items[0], has_entry('ChargeID', 'charge_1046'))

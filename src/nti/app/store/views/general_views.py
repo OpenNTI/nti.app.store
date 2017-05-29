@@ -4,15 +4,16 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
 import time
-import gevent
 from urllib import unquote
 from functools import partial
+
+import gevent
 
 from requests.structures import CaseInsensitiveDict
 
@@ -125,7 +126,13 @@ class GetGiftPendingPurchasesView(AbstractAuthenticatedView):
         else:
             username = self.remoteUser.username
         if not username:
-            raise hexc.HTTPUnprocessableEntity(_('Must provide a user name.'))
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Must provide a user name."),
+                            'field': 'username'
+                        },
+                        None)
         purchases = get_gift_pending_purchases(username)
         result = LocatedExternalDict()
         result[ITEMS] = purchases
@@ -202,12 +209,22 @@ class BaseGetPurchaseAttemptView(object):
 
     def _do_get(self, purchase_id, username=None):
         if not purchase_id:
-            msg = _("Must specify a valid purchase attempt id.")
-            raise hexc.HTTPUnprocessableEntity(msg)
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Must specify a valid purchase attempt id."),
+                            'field': 'purchase_id'
+                        },
+                        None)
 
         if not username:
-            msg = _("Must specify a valid user/creator name.")
-            raise hexc.HTTPUnprocessableEntity(msg)
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Must specify a valid user/creator name."),
+                            'field': 'username'
+                        },
+                        None)
 
         try:
             purchase = get_purchase_by_code(purchase_id)
@@ -217,7 +234,14 @@ class BaseGetPurchaseAttemptView(object):
 
         purchase = get_purchase_attempt(purchase_id, username)
         if purchase is None:
-            raise hexc.HTTPNotFound(detail=_('Purchase attempt not found.'))
+            raise_error(self.request,
+                        hexc.HTTPNotFound,
+                        {
+                            'message': _(u"Invalid purchase attempt id."),
+                            'field': 'purchase_id',
+                            'value': purchase_id
+                        },
+                        None)
         elif purchase.is_pending() and _should_sync(purchase):
             _sync_purchase(purchase, self.request)
 
@@ -438,5 +462,5 @@ class PriceOrderView(AbstractAuthenticatedView, PriceOrderViewMixin):
 
     def _do_call(self):
         order = self.readCreateUpdateContentObject()
-        assert self.content_predicate.providedBy(order)
+        assert self.content_predicate(order)
         return self._do_pricing(order)
