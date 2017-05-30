@@ -21,6 +21,8 @@ from zope.container.interfaces import ILocation
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
 from nti.app.store import STORE
+from nti.app.store import STRIPE
+from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 
 from nti.appserver.pyramid_authorization import has_permission
@@ -40,6 +42,8 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseItem
+
+from nti.store.payments.payeezy.interfaces import IPayeezyConnectKey
 
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
@@ -117,49 +121,81 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
 class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 
     def set_links(self, original, external):
-        if original.Amount:
-            ds_store_path = self.ds_store_path
-            links = external.setdefault(LINKS, [])
-
-            href = ds_store_path + '@@price_purchasable_with_stripe_coupon'
+        stripe_path = self.ds_store_path + '/' + STRIPE
+        links = external.setdefault(LINKS, [])
+        quoted = urllib.quote(original.Provider)
+        # set common links
+        for name, rel, meth in (
+                ('create_token', 'create_stripe_token', 'POST'),
+                ('get_connect_key', 'get_stripe_connect_key', 'GET'),
+                ('price_purchasable', 'price_purchasable_with_stripe_coupon', 'POST')):
+            params = {'provider': quoted} if meth == 'GET' else None
+            href = stripe_path + '@@' + name
             link = Link(href,
-                        rel="price_purchasable_with_stripe_coupon",
-                        method='POST')
+                        rel=rel,
+                        method=meth,
+                        params=params)
             interface.alsoProvides(link, ILocation)
             links.append(link)
-
-            quoted = urllib.quote(original.Provider)
-            href = ds_store_path + '@@get_stripe_connect_key'
-            link = Link(href,
-                        rel="get_stripe_connect_key",
-                        method='GET',
-                        params={'provider': quoted})
+        # set links authenticated users
+        if self._is_authenticated:
+            href = stripe_path + '@@post_payment'
+            link = Link(href, rel="post_stripe_payment", method='POST')
             interface.alsoProvides(link, ILocation)
             links.append(link)
-
-            href = ds_store_path + '@@create_stripe_token'
-            link = Link(href, rel="create_stripe_token", method='POST')
+        # set links giftable objects
+        if original.Giftable:
+            href = stripe_path + '@@gift_payment'
+            link = Link(href, rel="gift_stripe_payment", method='POST')
             interface.alsoProvides(link, ILocation)
             links.append(link)
-
-            if self._is_authenticated:
-                href = ds_store_path + '@@post_stripe_payment'
-                link = Link(href, rel="post_stripe_payment", method='POST')
-                interface.alsoProvides(link, ILocation)
-                links.append(link)
-
-            if original.Giftable:
-                href = ds_store_path + '@@gift_stripe_payment'
-                link = Link(href, rel="gift_stripe_payment", method='POST')
-                interface.alsoProvides(link, ILocation)
-                links.append(link)
 
     def _do_decorate_external(self, original, external):
         keyname = original.Provider
         result = component.queryUtility(IStripeConnectKey, keyname)
-        if result is not None:
+        if result is not None and original.Amount:
             self.set_links(original, external)
             external['StripeConnectKey'] = to_external_object(result)
+
+
+@component.adapter(IPurchasable)
+class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
+
+    def set_links(self, original, external):
+        payeezy_path = self.ds_store_path + '/' + PAYEEZY
+        links = external.setdefault(LINKS, [])
+        quoted = urllib.quote(original.Provider)
+        # set common links
+        for name, rel, meth in (
+                ('create_token', 'create_payeezy_token', 'POST'),
+                ('get_connect_key', 'get_payeezy_connect_key', 'GET'),
+                ('price_purchasable', 'price_purchasable_with_payeezy', 'POST')):
+            params = {'provider': quoted} if meth == 'GET' else None
+            href = payeezy_path + '@@' + name
+            link = Link(href,
+                        rel=rel,
+                        method=meth,
+                        params=params)
+            interface.alsoProvides(link, ILocation)
+            links.append(link)
+        # set links authenticated users
+        if self._is_authenticated:
+            href = payeezy_path + '@@post_payment'
+            link = Link(href, rel="post_payeezy_payment", method='POST')
+            interface.alsoProvides(link, ILocation)
+            links.append(link)
+        # set links giftable objects
+        if original.Giftable:
+            href = payeezy_path + '@@gift_payment'
+            link = Link(href, rel="gift_stripe_payment", method='POST')
+            interface.alsoProvides(link, ILocation)
+            links.append(link)
+
+    def _do_decorate_external(self, original, external):
+        keyname = original.Provider
+        result = component.queryUtility(IPayeezyConnectKey, keyname)
+        if result is not None and original.Amount:
+            self.set_links(original, external)
 
 
 @component.adapter(IPurchasable)

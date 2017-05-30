@@ -18,6 +18,8 @@ from zope.container.contained import Contained
 
 from zope.location.interfaces import ILocation
 
+from pyramid.threadlocal import get_current_request
+
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
 from nti.app.store import STORE
@@ -90,6 +92,16 @@ class _StoreCollection(object):
         self.__parent__ = user_workspace
 
     @property
+    def root(self):
+        request = get_current_request()
+        if request is not None:
+            root = request.route_path('objects.generic.traversal',
+                                      traverse=())
+        else:
+            root = 'dataserver2'
+        return root
+
+    @property
     def links(self):
         result = []
         ds_folder = find_interface(self.__parent__,
@@ -110,7 +122,8 @@ class _StoreCollection(object):
             interface.alsoProvides(link, ILocation)
             result.append(link)
         # stripe links
-        href = '/dataserver2/%s/%s' % (STORE, STRIPE)
+        root = self.root
+        href = '/%s/%s/%s' % (root, STORE, STRIPE)
         for rel, name in (('gift_stripe_payment', 'gift_payment'),
                           ('gift_stripe_payment_preflight', 'gift_payment_preflight'),
                           ('price_purchasable_with_stripe_coupon', 'price_purchasable')):
@@ -119,7 +132,7 @@ class _StoreCollection(object):
             interface.alsoProvides(link, ILocation)
             result.append(link)
         # payeezy links
-        href = '/dataserver2/%s/%s' % (STORE, PAYEEZY)
+        href = '/%s/%s/%s' % (root, STORE, PAYEEZY)
         for rel, name in (('gift_payeezy_payment', 'gift_payment'),
                           ('gift_payeezy_payment_preflight', 'gift_payment_preflight'),
                           ('price_purchasable_with_payeezy', 'price_purchasable')):
