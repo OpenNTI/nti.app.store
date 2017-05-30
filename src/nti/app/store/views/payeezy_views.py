@@ -194,7 +194,7 @@ class BasePaymentWithPayeezyView(BasePaymentViewMixin):
         payeezy_key = validate_payeez_key(request, purchasables)
         result['Payeezy'] = payeezy_key
         # validate card type
-        card_type = result.get('card_type') or result.get('CardType')
+        card_type = values.get('card_type') or values.get('CardType')
         if not is_valid_credit_card_type(card_type):
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
@@ -205,9 +205,9 @@ class BasePaymentWithPayeezyView(BasePaymentViewMixin):
                         None)
         result['card_type'] = card_type
         # validate card expirty
-        expiry = result.get('card_expiry') \
-              or result.get('CardExpiry') \
-              or result.get('expiry')
+        expiry = values.get('card_expiry') \
+              or values.get('CardExpiry') \
+              or values.get('expiry')
         expiry = str(expiry) if expiry else None
         if not expiry or not re.match(r'[0-9]{4}', expiry):
             raise_error(request,
@@ -217,11 +217,11 @@ class BasePaymentWithPayeezyView(BasePaymentViewMixin):
                             'field': 'card_expiry'
                         },
                         None)
-        result['card_expiry'] = expiry[:4]
+        result['card_expiry'] = text_(expiry[:4])
         # validate card holder name
-        name = result.get('cardholder_name') \
-            or result.get('CardHolderName') \
-            or result.get('name')
+        name = values.get('cardholder_name') \
+            or values.get('CardHolderName') \
+            or values.get('name')
         if not name:
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
