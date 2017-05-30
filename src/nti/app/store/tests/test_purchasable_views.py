@@ -73,7 +73,7 @@ class TestStoreViews(ApplicationLayerTest):
     def test_create_purchasable(self, mock_vp):
         mock_vp.is_callable().with_args().returns(None)
 
-        ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
+        ntiid = 'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
 
         with mock_dataserver.mock_db_trans(self.ds):
             p = get_purchasable(ntiid)
@@ -109,7 +109,7 @@ class TestStoreViews(ApplicationLayerTest):
         mock_vp.is_callable().with_args().returns(None)
         mock_gpi.is_callable().with_args().returns(0)
 
-        ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'
+        ntiid = 'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'
 
         ext_obj = dict(self.purchasalbe)
         ext_obj[NTIID] = ntiid
@@ -135,7 +135,7 @@ class TestStoreViews(ApplicationLayerTest):
         mock_vp.is_callable().with_args().returns(None)
         mock_gpi.is_callable().with_args().returns(3)
 
-        ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-dare_devil'
+        ntiid = 'tag:nextthought.com,2011-10:CMU-purchasable-dare_devil'
 
         ext_obj = dict(self.purchasalbe)
         ext_obj[NTIID] = ntiid
@@ -160,7 +160,7 @@ class TestStoreViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_create_purchasable_invalid(self):
-        ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
+        ntiid = 'tag:nextthought.com,2011-10:CMU-purchasable-computer_science_for_practicing_engineer'
         ext_obj = dict(self.purchasalbe)
         ext_obj[NTIID] = ntiid
         ext_obj[ITEMS] = [u'tag:nextthought.com,2011-10:NTI-HTML-no_in_database']
@@ -173,7 +173,7 @@ class TestStoreViews(ApplicationLayerTest):
     def test_enable_purchasable(self, mock_vp):
         mock_vp.is_callable().with_args().returns(None)
 
-        ntiid = u'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'
+        ntiid = 'tag:nextthought.com,2011-10:CMU-purchasable-peaky_blinders'
         ext_obj = dict(self.purchasalbe)
         ext_obj[NTIID] = ntiid
         ext_obj[ITEMS] = list(ext_obj[ITEMS])
