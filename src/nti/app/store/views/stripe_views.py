@@ -90,7 +90,7 @@ class BaseStripeViewMixin(BaseProcessorViewMixin):
 
 
 @view_config(name="GetStripeConnectKey")
-@view_config(name="get_connect_key")  # TODO: remove
+@view_config(name="get_connect_key")
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                permission=nauth.ACT_READ,
