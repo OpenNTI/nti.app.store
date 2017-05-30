@@ -206,7 +206,7 @@ class TestStripeViews(ApplicationLayerTest):
         items = self._get_pending_purchases()
         assert_that(items, has_length(greater_than_or_equal_to(0)))
 
-    def _create_fakge_charge(self, amount, mock_cc):
+    def _create_fake_charge(self, amount, mock_cc):
         card = fudge.Fake()
         card.has_attr(name=u"Steve")
         card.has_attr(last4=4242)
@@ -234,7 +234,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_aach.is_callable().with_args().calls(do_purchase)
         mock_gtr.is_callable().with_args().returns(MockRunner())
 
-        self._create_fakge_charge(300, mock_cc)
+        self._create_fake_charge(300, mock_cc)
         url = '/dataserver2/store/@@post_stripe_payment'
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
@@ -289,7 +289,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_aach.is_callable().with_args().calls(do_purchase)
         mock_gtr.is_callable().with_args().returns(MockRunner())
 
-        self._create_fakge_charge(199, mock_cc)
+        self._create_fake_charge(199, mock_cc)
         url = '/dataserver2/store/@@gift_stripe_payment'
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
@@ -338,7 +338,7 @@ class TestStripeViews(ApplicationLayerTest):
         mock_aach.is_callable().with_args().calls(do_purchase)
         mock_gtr.is_callable().with_args().returns(MockRunner())
 
-        self._create_fakge_charge(199, mock_cc)
+        self._create_fake_charge(199, mock_cc)
 
         # no purchasable
         url = '/dataserver2/store/@@gift_stripe_payment_preflight'
