@@ -306,8 +306,8 @@ class TestStripeViews(ApplicationLayerTest):
         json_body = res.json_body
 
         assert_that(json_body, has_key('Items'))
-        assert_that(json_body, has_entry(
-            'Last Modified', greater_than_or_equal_to(0)))
+        assert_that(json_body,
+                    has_entry('Last Modified', greater_than_or_equal_to(0)))
 
         items = json_body['Items']
         assert_that(items, has_length(1))

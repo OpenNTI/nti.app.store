@@ -60,7 +60,6 @@ def do_purchase(manager, purchase_id, username, token,
     return result
 
 
-
 class TestPayeezyViews(ApplicationLayerTest):
 
     layer = ApplicationStoreTestLayer
@@ -161,7 +160,7 @@ class TestPayeezyViews(ApplicationLayerTest):
             'transaction_tag': u'Fullbring',
             'amount': amount,
             'currency': u'USD',
-            
+
         }
         return charge
 
@@ -172,10 +171,10 @@ class TestPayeezyViews(ApplicationLayerTest):
     def test_post_payment(self, mock_hook, mock_exe, mock_runner):
         mock_hook.is_callable().with_args().calls(do_purchase)
         mock_runner.is_callable().with_args().returns(MockRunner())
-        
+
         charge = self._create_fake_charge(300)
         mock_exe.is_callable().with_args().returns(charge)
-        
+
         url = '/dataserver2/store/payeezy/@@post_payment'
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
@@ -190,7 +189,7 @@ class TestPayeezyViews(ApplicationLayerTest):
         assert_that(json_body, has_key('Items'))
         assert_that(json_body,
                     has_entry('Last Modified', greater_than_or_equal_to(0)))
-        
+
         items = json_body['Items']
         assert_that(items, has_length(1))
 
@@ -213,12 +212,68 @@ class TestPayeezyViews(ApplicationLayerTest):
         res = self.testapp.get(url, params=params, status=200)
         assert_that(res.json_body, has_entry('Items',
                                              has_item(has_entry('Class', 'PurchaseAttempt'))))
-    
+
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.payeezy_views.addAfterCommitHook')
     @fudge.patch('nti.store.payments.payeezy.processor.purchase.execute_charge')
     @fudge.patch('nti.store.payments.payeezy.processor.purchase.get_transaction_runner')
-    def test_gift_stripe_payment_preflight(self, mock_hook, mock_exe, mock_runner):
+    def test_gift_payment(self, mock_hook, mock_exe, mock_runner):
+        mock_hook.is_callable().with_args().calls(do_purchase)
+        mock_runner.is_callable().with_args().returns(MockRunner())
+
+        charge = self._create_fake_charge(300)
+        mock_exe.is_callable().with_args().returns(charge)
+
+        url = '/dataserver2/store/payeezy/@@gift_payment'
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'from': 'ichigo@bleach.org',
+                  'sender': 'Ichigo Kurosaki',
+                  'receiver': 'aizen@bleach.org',
+                  'To': 'Aizen Sosuke',
+                  'message': 'Getsuga Tenshou',
+                  'immediate': True,
+                  'token': "9211263973560026",
+                  'card_type': 'visa',
+                  'card_expiry': '0930'}
+        body = json.dumps(params)
+
+        res = self.testapp.post(url, body, status=200)
+        json_body = res.json_body
+
+        assert_that(json_body, has_key('Items'))
+        assert_that(json_body,
+                    has_entry('Last Modified', greater_than_or_equal_to(0)))
+
+        items = json_body['Items']
+        assert_that(items, has_length(1))
+        assert_that(items[0],
+                    has_entry('Order', has_entry('Items', has_length(1))))
+        assert_that(items[0],
+                    has_entry('MimeType', 'application/vnd.nextthought.store.giftpurchaseattempt'))
+        assert_that(items[0], has_entry('State', 'Success'))
+        assert_that(items[0], has_entry('ID', is_not(none())))
+        assert_that(items[0], has_entry('NTIID', is_not(none())))
+        assert_that(items[0], has_entry('Creator', 'ichigo@bleach.org'))
+        assert_that(items[0], has_entry('SenderName', 'Ichigo Kurosaki'))
+        assert_that(items[0], has_entry('ReceiverName', 'Aizen Sosuke'))
+        assert_that(items[0], has_entry('DeliveryDate', is_not(none())))
+        assert_that(items[0], has_entry('PayeezyTokenType', 'visa'))
+        assert_that(items[0], has_entry('PayeezyTokenID', '9211263973560026'))
+        assert_that(items[0], has_entry('PayeezyTransactionID', 'Xcution'))
+
+        url = '/dataserver2/store/@@get_gift_purchase_attempt'
+        params = {
+            "purchaseID": items[0]['NTIID'],
+            'creator': 'ichigo@bleach.org'
+        }
+        self.testapp.get(url, params=params, status=200)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.payeezy_views.addAfterCommitHook')
+    @fudge.patch('nti.store.payments.payeezy.processor.purchase.execute_charge')
+    @fudge.patch('nti.store.payments.payeezy.processor.purchase.get_transaction_runner')
+    def test_gift_payment_preflight(self, mock_hook, mock_exe, mock_runner):
         mock_hook.is_callable().with_args().calls(do_purchase)
         mock_runner.is_callable().with_args().returns(MockRunner())
 
@@ -242,27 +297,27 @@ class TestPayeezyViews(ApplicationLayerTest):
                   'token': None}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
-        
+
         # no card type
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
-                  'token': "9211263973560026", 
+                  'token': "9211263973560026",
                   'card_type': None}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
-        
+
         # invalid card type
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
-                  'token': "9211263973560026", 
+                  'token': "9211263973560026",
                   'card_type': 'pisa'}
         body = json.dumps(params)
         self.testapp.post(url, body, status=422)
-        
+
         # no card expiry
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
-                  'token': "9211263973560026", 
+                  'token': "9211263973560026",
                   'card_type': 'visa',
                   'card_expiry': None}
         body = json.dumps(params)
@@ -271,7 +326,7 @@ class TestPayeezyViews(ApplicationLayerTest):
         # invalid card expiry
         params = {'purchasableId': self.purchasable_id,
                   'amount': 300,
-                  'token': "9211263973560026", 
+                  'token': "9211263973560026",
                   'card_type': 'visa',
                   'card_expiry': 'xexs'}
         body = json.dumps(params)

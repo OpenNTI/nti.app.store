@@ -332,10 +332,10 @@ class GiftPreflightView(AbstractPostView, GiftPreflightViewMixin):
         return result
 
     def getPaymentRecord(self, request, values):
+        values['cardholder_name'] = values.get('cardholder_name') \
+                                 or values.get('Sender') or values.get('SenderName')
         record = super(GiftPreflightView, self).getPaymentRecord(request, values)
         purchasables = self.resolvePurchasables(record['Purchasables'])
-        if not values.get('cardholder_name'):
-            values['cardholder_name'] = record.get('Sender') or record.get('SenderName')
         return validate_payeezy_record(request, purchasables, record, values)
 
     @property
