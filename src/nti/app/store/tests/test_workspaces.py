@@ -44,4 +44,4 @@ class TestWorkspaces(ApplicationLayerTest):
             assert_that(store_wss, has_length(1))
             store_wss, = store_wss
             assert_that(store_wss['Items'],
-                        has_item(has_entry('Links', has_length(12))))
+                        has_item(has_entry('Links', has_length(15))))
