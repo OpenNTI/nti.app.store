@@ -97,7 +97,7 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Purchasable not found."),
-                            'field': u'purchasable'
+                            'field': 'purchasable'
                         },
                         None)
 
@@ -284,7 +284,7 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': msg,
-                            'field': u'purchasable'
+                            'field': 'purchasable'
                         },
                         None)
 
@@ -295,7 +295,7 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': msg,
-                            'field': u'purchasable'
+                            'field': 'purchasable'
                         },
                         None)
 
@@ -306,7 +306,7 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': msg,
-                            'field': u'quantity'
+                            'field': 'quantity'
                         },
                         None)
 
@@ -319,12 +319,12 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
             if expirationTime is None:
                 msg = _(u'Invalid expiration date/time.')
                 raise_error(self.request,
-                        hexc.HTTPUnprocessableEntity,
-                        {
-                            'message': msg,
-                            'field': u'quantity'
-                        },
-                        None)
+                            hexc.HTTPUnprocessableEntity,
+                            {
+                                'message': msg,
+                                'field': 'quantity'
+                            },
+                            None)
                 raise hexc.HTTPUnprocessableEntity(msg)
         else:
             expirationTime = None

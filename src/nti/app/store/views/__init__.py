@@ -41,7 +41,6 @@ class PurchasablesPathAdapter(object):
     def __getitem__(self, ntiid):
         if not ntiid:
             raise hexc.HTTPNotFound()
-
         ntiid = unquote(ntiid)
         result = get_purchasable(ntiid)
         if result is not None:

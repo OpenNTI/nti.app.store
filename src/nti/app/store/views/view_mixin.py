@@ -145,7 +145,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid purchasable."),
-                            'field': u'purchasables',
+                            'field': 'purchasables',
                             'value': purchasable_id
                         },
                         None)
@@ -170,7 +170,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a purchasable."),
-                            'field': u'purchasables'
+                            'field': 'purchasables'
                         },
                         None)
         elif isinstance(purchasables, six.string_types):
@@ -188,7 +188,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid token."),
-                            'field': u'token'
+                            'field': 'token'
                         },
                         None)
             raise hexc.HTTPUnprocessableEntity(_(u"No token provided"))
@@ -200,7 +200,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid expected amount."),
-                            'field': u'amount'
+                            'field': 'amount'
                         },
                         None)
         if expected_amount is not None:
@@ -215,7 +215,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid quantity."),
-                            'field': u'quantity'
+                            'field': 'quantity'
                         },
                         None)
         quantity = int(quantity) if quantity else None
@@ -283,7 +283,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Can only purchase one bundle item at a time."),
-                            'field': u'purchasables'
+                            'field': 'purchasables'
                         },
                         None)
         return result
@@ -298,7 +298,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a sender email."),
-                            'field': u'from'
+                            'field': 'from'
                         },
                         None)
 
@@ -310,7 +310,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid sender email."),
-                            'field': u'from',
+                            'field': 'from',
                             'code': e.__class__.__name__
                         },
                         exc_info[2])
@@ -331,7 +331,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                             hexc.HTTPUnprocessableEntity,
                             {
                                 'message': _(u"Please provide a valid receiver email."),
-                                'field': u'receiver',
+                                'field': 'receiver',
                                 'code': e.__class__.__name__
                             },
                             exc_info[2])
@@ -349,7 +349,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                             hexc.HTTPUnprocessableEntity,
                             {
                                 'message': _(u"Please provide a receiver email."),
-                                'field': u'immediate'
+                                'field': 'immediate'
                             },
                             None)
             today = date.today()
@@ -365,7 +365,7 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a receiver email."),
-                            'field': u'message'
+                            'field': 'message'
                         },
                         None)
         return record
@@ -447,7 +447,7 @@ class GeneratePurchaseInvoiceViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a transaction id."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
 
@@ -457,7 +457,7 @@ class GeneratePurchaseInvoiceViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Transaction not found."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
         elif not purchase.has_succeeded():
@@ -465,7 +465,7 @@ class GeneratePurchaseInvoiceViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Transaction was not successful."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
         manager = component.getUtility(IPaymentProcessor, name=purchase.Processor)
@@ -494,7 +494,7 @@ class RefundPaymentViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a transaction id."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
 
@@ -504,7 +504,7 @@ class RefundPaymentViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Transaction not found."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
         elif not purchase.has_succeeded():
@@ -512,7 +512,7 @@ class RefundPaymentViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Transaction was not successful."),
-                            'field': u'transaction'
+                            'field': 'transaction'
                         },
                         None)
 
@@ -522,7 +522,7 @@ class RefundPaymentViewMixin(object):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid amount."),
-                            'field': u'amount'
+                            'field': 'amount'
                         },
                         None)
         amount = float(amount) if amount is not None else None

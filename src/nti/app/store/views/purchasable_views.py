@@ -88,7 +88,7 @@ def validate_purchasble_items(purchasable, request=None):
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u'Cannot find purchasable item.'),
-                            'field': u'Items'
+                            'field': 'Items'
                         },
                         None)
 

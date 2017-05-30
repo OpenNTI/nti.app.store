@@ -203,7 +203,7 @@ class PricePurchasableWithStripeCouponView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid quantity."),
-                            'field': u'quantity'
+                            'field': 'quantity'
                         },
                         None)
         quantity = int(quantity)
@@ -359,7 +359,7 @@ def validate_coupon(request, coupon, api_key):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid coupon."),
-                            'field': u'coupon',
+                            'field': 'coupon',
                             'code': e.__class__.__name__
                         },
                         exc_info[2])
@@ -376,7 +376,7 @@ def validate_stripe_key(request, purchasables=()):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid purchasable provider."),
-                            'field': u'purchasables',
+                            'field': 'purchasables',
                             'value': provider
                         },
                         None)
@@ -387,7 +387,7 @@ def validate_stripe_key(request, purchasables=()):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Cannot mix purchasable providers."),
-                            'field': u'purchasables'
+                            'field': 'purchasables'
                         },
                         None)
     if result is None:
@@ -395,7 +395,7 @@ def validate_stripe_key(request, purchasables=()):
                     hexc.HTTPUnprocessableEntity,
                     {
                         'message': _(u"Could not find a purchasable provider."),
-                        'field': u'purchasables'
+                        'field': 'purchasables'
                     },
                     None)
     return result
@@ -474,7 +474,7 @@ class ProcessPaymentWithStripeView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Cannot purchase a bundle item."),
-                            'field': u'purchasables',
+                            'field': 'purchasables',
                             'value': purchasable_id
                         },
                         None)
@@ -513,7 +513,7 @@ class GiftWithStripePreflightView(AbstractPostView,
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Can only purchase one bundle item at a time."),
-                            'field': u'purchasables'
+                            'field': 'purchasables'
                         },
                         None)
         return result
@@ -672,7 +672,7 @@ class RefundPaymentWithStripeView(AbstractPostView,
                             hexc.HTTPUnprocessableEntity,
                             {
                                 'message': _(u"Please provide a valid application fee."),
-                                'field': u'refundApplicationFee'
+                                'field': 'refundApplicationFee'
                             },
                             None)
             refund_application_fee = to_boolean(refund_application_fee)

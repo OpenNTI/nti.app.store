@@ -154,7 +154,7 @@ def redeem_invitation_purchase(user, code, purchasable,
                         hexc.HTTPUnprocessableEntity,
                         {    
                             'message': _(u"The code is not for this purchasable."),
-                            'field': u'code'
+                            'field': 'code'
                         },
                         None)
 
@@ -211,7 +211,7 @@ def redeem_gift_purchase(user, code, item=None, vendor_updates=None, request=Non
                     hexc.HTTPNotFound,
                     {    
                         'message': _(u"Purchase attempt not found."),
-                        'field': u'code'
+                        'field': 'code'
                     },
                     None)
 
@@ -307,7 +307,7 @@ class RedeemPurchaseCodeView(AbstractPostView):
                         hexc.HTTPNotFound,
                         {    
                             'message': _(u"Must specify a valid purchasable id."),
-                            'field': u'ntiid'
+                            'field': 'ntiid'
                         },
                         None)
 
@@ -319,7 +319,7 @@ class RedeemPurchaseCodeView(AbstractPostView):
                         hexc.HTTPNotFound,
                         {    
                             'message': _(u"Must specify a valid invitation code."),
-                            'field': u'code'
+                            'field': 'code'
                         },
                         None)
 
@@ -361,7 +361,7 @@ class RedeemGiftView(AbstractPostView):
                         hexc.HTTPNotFound,
                         {    
                             'message': _(u"Must specify a valid gift code."),
-                            'field': u'code'
+                            'field': 'code'
                         },
                         None)
 

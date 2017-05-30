@@ -322,13 +322,12 @@ class GetPurchasablesView(AbstractAuthenticatedView):
         values = CaseInsensitiveDict(self.request.params)
         ntiids = values.get("purchasable") or values.get('purchasables')
         if ntiids:
-            ntiids = ntiids.split()
-            ntiids = {unquote(x).lower() for x in ntiids}
+            ntiids = {unquote(x) for x in ntiids.split()}
 
         purchasables = []
         for p in get_all_purchasables():
             if      self._check_access(p) \
-                and (not ntiids or p.NTIID.lower() in ntiids):
+                and (not ntiids or p.NTIID in ntiids):
                 purchasables.append(p)
         result = LocatedExternalDict()
         result[ITEMS] = purchasables

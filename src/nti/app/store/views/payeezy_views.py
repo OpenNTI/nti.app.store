@@ -158,7 +158,7 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Invalid provider key."),
-                            'field': u'provider'
+                            'field': 'provider'
                         },
                         None)
         manager = component.getUtility(IPaymentProcessor, name=self.processor)
