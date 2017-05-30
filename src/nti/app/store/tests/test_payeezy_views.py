@@ -214,3 +214,137 @@ class TestPayeezyViews(ApplicationLayerTest):
         assert_that(res.json_body, has_entry('Items',
                                              has_item(has_entry('Class', 'PurchaseAttempt'))))
     
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.payeezy_views.addAfterCommitHook')
+    @fudge.patch('nti.store.payments.payeezy.processor.purchase.execute_charge')
+    @fudge.patch('nti.store.payments.payeezy.processor.purchase.get_transaction_runner')
+    def test_gift_stripe_payment_preflight(self, mock_hook, mock_exe, mock_runner):
+        mock_hook.is_callable().with_args().calls(do_purchase)
+        mock_runner.is_callable().with_args().returns(MockRunner())
+
+        charge = self._create_fake_charge(300)
+        mock_exe.is_callable().with_args().returns(charge)
+
+        # no purchasable
+        url = '/dataserver2/store/payeezy/@@gift_payment_preflight'
+        params = {'purchasableId': None}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # invalid purchasable
+        params = {'purchasableId': 'foo'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # no token
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': None}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+        
+        # no card type
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026", 
+                  'card_type': None}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+        
+        # invalid card type
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026", 
+                  'card_type': 'pisa'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+        
+        # no card expiry
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026", 
+                  'card_type': 'visa',
+                  'card_expiry': None}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # invalid card expiry
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026", 
+                  'card_type': 'visa',
+                  'card_expiry': 'xexs'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # invalid amount
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 'foo',
+                  'token': "9211263973560026",
+                  'card_type': 'visa',
+                  'card_expiry': '0930'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # no sender
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026",
+                  'card_type': 'visa',
+                  'card_expiry': '0930',
+                  "from": None}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # invalid from
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'token': "9211263973560026",
+                  "from": 'foo'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # invalid receiver
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'from': 'ichigo@bleach.org',
+                  'sender': 'Ichigo Kurosaki',
+                  'receiver': 'aizen',
+                  'token': "9211263973560026",
+                  'immediate': True}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # no receiver
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'from': 'ichigo@bleach.org',
+                  'sender': 'Ichigo Kurosaki',
+                  'token': "9211263973560026",
+                  'message': 'gift'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        # no receiver
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'from': 'ichigo@bleach.org',
+                  'sender': 'Ichigo Kurosaki',
+                  'token': "9211263973560026",
+                  'To': 'Aizen Sosuke'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=422)
+
+        params = {'purchasableId': self.purchasable_id,
+                  'amount': 300,
+                  'from': 'ichigo@bleach.org',
+                  'sender': 'Ichigo Kurosaki',
+                  'receiver': 'aizen@bleach.org',
+                  'To': 'Aizen Sosuke',
+                  'message': 'Getsuga Tenshou',
+                  'immediate': True,
+                  'token': "9211263973560026",
+                  'card_type': 'visa',
+                  'card_expiry': '0930'}
+        body = json.dumps(params)
+        self.testapp.post(url, body, status=200)
