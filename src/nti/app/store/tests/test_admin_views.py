@@ -183,7 +183,7 @@ class TestAdminViews(ApplicationLayerTest):
         assert_that(res.json_body, has_entry('RemainingInvitations', is_(5)))
         assert_that(res.json_body, has_entry('ExpirationTime', is_not(none())))
         assert_that(res.json_body, has_entry('InvitationCode', is_not(none())))
-        assert_that(res.json_body, 
+        assert_that(res.json_body,
                     has_entry('MimeType', 'application/vnd.nextthought.store.invitationpurchaseattempt'))
 
         pid = res.json_body['ID']
@@ -199,8 +199,8 @@ class TestAdminViews(ApplicationLayerTest):
                 'code': code, 'AllowVendorUpdates': True,
                 'purchasable': self.purchasable_id
             }
-            res = self.testapp.post_json(url, params, 
-                                         status=200, 
+            res = self.testapp.post_json(url, params,
+                                         status=200,
                                          extra_environ=environ)
             assert_that(res.json_body,
                         has_entry('MimeType', 'application/vnd.nextthought.store.redeemedpurchaseattempt'))
@@ -209,3 +209,25 @@ class TestAdminViews(ApplicationLayerTest):
         res = self.testapp.get(url, body, status=200)
         assert_that(res.json_body['Items'][0],
                     has_entry('Consumers', has_length(2)))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.addAfterCommitHook')
+    @fudge.patch('nti.store.payments.stripe.processor.purchase.create_charge')
+    @fudge.patch('nti.store.payments.stripe.processor.purchase.get_transaction_runner')
+    def test_rebuild_purchase_catalog(self, mock_aach, mock_cc, mock_gtr):
+        mock_aach.is_callable().with_args().calls(do_purchase)
+        mock_gtr.is_callable().with_args().returns(MockRunner())
+
+        self._create_fakge_charge(300, mock_cc)
+        url = '/dataserver2/store/@@post_stripe_payment'
+        body = {
+            'purchasableID': self.purchasable_id,
+            'amount': 300,
+            'token': u"tok_1053"
+        }
+        body = json.dumps(body)
+        self.testapp.post(url, body, status=200)
+
+        url = '/dataserver2/store/@@rebuild_purchase_catalog'
+        res = self.testapp.post(url, status=200)
+        assert_that(res.json_body['Total'], is_(1))

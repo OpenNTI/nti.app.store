@@ -19,6 +19,8 @@ from requests.structures import CaseInsensitiveDict
 
 from zope import component
 
+from zope.component.hooks import site as current_site
+
 from zope.intid.interfaces import IIntIds
 
 from pyramid import httpexceptions as hexc
@@ -43,14 +45,24 @@ from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
 
 from nti.dataserver import authorization as nauth
 
+from nti.dataserver.interfaces import IDataserver
+from nti.dataserver.interfaces import IShardLayout
+
+from nti.externalization.interfaces import LocatedExternalDict
+from nti.externalization.interfaces import StandardExternalFields
+
+from nti.site.hostpolicy import get_host_site
+from nti.site.hostpolicy import get_all_host_sites
+
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
+from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPurchasablePricer
 
-from nti.store.store import get_gift_code
+from nti.store.store import get_gift_code, get_purchase_history
 from nti.store.store import get_gift_registry
 from nti.store.store import get_invitation_code
 from nti.store.store import get_gift_purchase_history
@@ -60,6 +72,7 @@ from nti.store.purchase_attempt import create_purchase_attempt
 from nti.store.purchase_index import IX_CREATOR
 from nti.store.purchase_index import IX_MIMETYPE
 from nti.store.purchase_index import get_purchase_catalog
+from nti.store.purchase_index import create_purchase_catalog
 
 from nti.store.purchase_order import create_purchase_item
 from nti.store.purchase_order import create_purchase_order
@@ -69,6 +82,9 @@ from nti.store.purchasable import get_purchasable
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
 from nti.zodb import is_broken
+
+TOTAL = StandardExternalFields.TOTAL
+ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 
 def _tx_string(s):
@@ -90,8 +106,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
         request = self.request
         params = CaseInsensitiveDict(request.params)
         purchasable = params.get('ntiid') \
-                   or params.get('purchasable') \
-                   or params.get('purchasableId')
+            or params.get('purchasable') \
+            or params.get('purchasableId')
         if purchasable and get_purchasable(purchasable) is None:
             raise_error(self.request,
                         hexc.HTTPUnprocessableEntity,
@@ -122,22 +138,22 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
         response.content_type = 'text/csv; charset=UTF-8'
         response.content_disposition = 'attachment; filename="purchases.csv"'
 
-        header = ["username", 'name', 'email','transaction', 
+        header = ["username", 'name', 'email', 'transaction',
                   'date', 'amount', 'status']
         writer.writerow(header)
 
         intids = component.getUtility(IIntIds)
         for uid in intids_purchases or ():
             purchase = intids.queryObject(uid)
-            if     not IPurchaseAttempt.providedBy(purchase) \
-                or is_broken(purchase, uid):
+            if not IPurchaseAttempt.providedBy(purchase) \
+                    or is_broken(purchase, uid):
                 continue
 
             if purchasable and purchasable not in purchase.Items:
                 continue
 
-            if     (all_succeeded and not purchase.has_succeeded()) \
-                or (all_failed and not purchase.has_failed()):
+            if (all_succeeded and not purchase.has_succeeded()) \
+                    or (all_failed and not purchase.has_failed()):
                 continue
 
             status = purchase.State
@@ -191,7 +207,7 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
         response.content_type = 'text/csv; charset=UTF-8'
         response.content_disposition = 'attachment; filename="gifts.csv"'
 
-        header = ["transaction", "from", 'sender', 'to', 
+        header = ["transaction", "from", 'sender', 'to',
                   'receiver', 'date', 'amount', 'status']
         writer.writerow(header)
 
@@ -199,7 +215,7 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
         for username in registry.keys():
             if usernames and username not in usernames:
                 continue
-            purchases = get_gift_purchase_history(username, 
+            purchases = get_gift_purchase_history(username,
                                                   end_time=end_time,
                                                   start_time=start_time)
             if all_succeeded:
@@ -214,7 +230,7 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
                 row_data = [get_gift_code(p),
                             username,
                             p.SenderName,
-                            p.Receiver, 
+                            p.Receiver,
                             p.ReceiverName,
                             started,
                             amount,
@@ -237,8 +253,8 @@ class GetUsersGiftHistoryView(AbstractAuthenticatedView):
                permission=nauth.ACT_NTI_ADMIN,
                context=StorePathAdapter,
                request_method='POST')
-class GeneratePurchaseInvoiceView(AbstractPostView, # order matters
-                                  GeneratePurchaseInvoiceViewMixin): 
+class GeneratePurchaseInvoiceView(AbstractPostView,  # order matters
+                                  GeneratePurchaseInvoiceViewMixin):
     pass
 
 
@@ -275,9 +291,9 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
     def __call__(self):
         values = self.readInput()
         purchasable_id = values.get('item') \
-                      or values.get('ntiid') \
-                      or values.get('purchasable') \
-                      or values.get('purchasableId')
+            or values.get('ntiid') \
+            or values.get('purchasable') \
+            or values.get('purchasableId')
         if not purchasable_id:
             msg = _(u"Must specify a valid purchasable.")
             raise_error(self.request,
@@ -311,9 +327,9 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                         None)
 
         expiration = values.get('expiry') \
-                  or values.get('expiration') \
-                  or values.get('expirationTime') \
-                  or values.get('expirationDate')
+            or values.get('expiration') \
+            or values.get('expirationTime') \
+            or values.get('expirationDate')
         if expiration:
             expirationTime = parse_datetime(expiration, safe=True)
             if expirationTime is None:
@@ -343,3 +359,60 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                     get_invitation_code(purchase),
                     user, quantity, expiration)
         return purchase
+
+
+@view_config(name='RebuildPurchaseCatalog')
+@view_config(name='rebuild_purchase_catalog')
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               request_method='POST',
+               context=StorePathAdapter,
+               permission=nauth.ACT_NTI_ADMIN)
+class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
+
+    def index_item(self, doc_id, obj, catalog, seen):
+        items = list(obj.Items or ())
+        if len(items) == 1 and items[0] in seen:
+            name = seen[items[0]]
+            with current_site(get_host_site(name)):
+                catalog.index_doc(doc_id, obj)
+        else:
+            found = False
+            for site in get_all_host_sites():
+                with current_site(site):
+                    for item in items:
+                        purchasable = component.queryUtility(IPurchasable,
+                                                             name=item)
+                        if purchasable is not None:
+                            found = True
+                            seen[item] = site.__name__
+                            catalog.index_doc(doc_id, obj)
+            if not found:  # should not happen
+                catalog.index_doc(doc_id, obj)
+
+    def __call__(self):
+        intids = component.getUtility(IIntIds)
+        # remove indexes
+        catalog = get_purchase_catalog()
+        for name, index in list(catalog.items()):
+            intids.unregister(index)
+            del catalog[name]
+        # recreate indexes
+        create_purchase_catalog(catalog, family=intids.family)
+        for index in catalog.values():
+            intids.register(index)
+        # reindex
+        count = 0
+        seen = dict()
+        dataserver = component.getUtility(IDataserver)
+        users_folder = IShardLayout(dataserver).users_folder
+        for user in users_folder.values():
+            history = get_purchase_history(user, False)
+            for attempt in history or ():
+                doc_id = intids.queryId(attempt)
+                if doc_id is not None:
+                    self.index_item(doc_id, attempt, catalog, seen)
+                    count += 1
+        result = LocatedExternalDict()
+        result[ITEM_COUNT] = result[TOTAL] = count
+        return result
