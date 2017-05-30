@@ -483,8 +483,6 @@ class ProcessPaymentWithStripeView(AbstractPostView,
 
 @view_config(name="PostPayment")
 @view_config(name="post_payment")
-@view_config(name="ProcessPayment")
-@view_config(name="process_payment")
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                permission=nauth.ACT_READ,

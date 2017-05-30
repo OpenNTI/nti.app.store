@@ -4,7 +4,7 @@
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -21,6 +21,8 @@ from zope.location.interfaces import ILocation
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
 from nti.app.store import STORE
+from nti.app.store import STRIPE
+from nti.app.store import PAYEEZY
 
 from nti.app.store.interfaces import IStoreWorkspace
 
@@ -91,24 +93,38 @@ class _StoreCollection(object):
     def links(self):
         result = []
         ds_folder = find_interface(self.__parent__,
-								   IDataserverFolder, 
-								   strict=False)
+                                   IDataserverFolder,
+                                   strict=False)
         for rel in ('get_purchase_attempt',
                     'get_pending_purchases',
                     'get_purchase_history',
                     'get_purchasables',
-                    'redeem_purchase_code',
                     'redeem_gift',
+                    'redeem_purchase_code',
                     'get_gift_pending_purchases',
                     'get_gift_purchase_attempt',
-                    'price_purchasable',
-                    # stripe links
-                    'gift_stripe_payment',
-                    'gift_stripe_payment_preflight',
-                    'price_purchasable_with_stripe_coupon'):
+                    'price_purchasable'):
             link = Link(STORE, rel=rel, elements=('@@' + rel,))
             link.__name__ = link.target
             link.__parent__ = ds_folder
+            interface.alsoProvides(link, ILocation)
+            result.append(link)
+        # stripe links
+        href = '/dataserver2/%s/%s' % (STORE, STRIPE)
+        for rel, name in (('gift_stripe_payment', 'gift_payment'),
+                          ('gift_stripe_payment_preflight', 'gift_payment_preflight'),
+                          ('price_purchasable_with_stripe_coupon', 'price_purchasable')):
+            link = Link(href, rel=rel, elements=('@@' + name,))
+            link.__name__ = ''
+            interface.alsoProvides(link, ILocation)
+            result.append(link)
+        # payeezy links
+        href = '/dataserver2/%s/%s' % (STORE, PAYEEZY)
+        for rel, name in (('gift_payeezy_payment', 'gift_payment'),
+                          ('gift_payeezy_payment_preflight', 'gift_payment_preflight'),
+                          ('price_purchasable_with_payeezy', 'price_purchasable')):
+            link = Link(href, rel=rel, elements=('@@' + name,))
+            link.__name__ = ''
             interface.alsoProvides(link, ILocation)
             result.append(link)
         return result

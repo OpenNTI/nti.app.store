@@ -22,4 +22,4 @@ class TestLogon(ApplicationLayerTest):
     def test_link_for_user(self):
         provider = _BaseStoreLinkProvider(DummyRequest())
         links = provider.get_links()
-        assert_that(links, has_length(7))
+        assert_that(links, has_length(10))

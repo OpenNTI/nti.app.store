@@ -15,6 +15,8 @@ from zope import interface
 from pyramid.interfaces import IRequest
 
 from nti.app.store import STORE
+from nti.app.store import STRIPE
+from nti.app.store import PAYEEZY
 
 from nti.appserver.interfaces import IAuthenticatedUserLinkProvider
 from nti.appserver.interfaces import IUnauthenticatedUserLinkProvider
@@ -32,19 +34,31 @@ class _BaseStoreLinkProvider(object):
     def link_map(self):
         result = {}
         root = self.request.route_path('objects.generic.traversal',
-									   traverse=())
+                                       traverse=())
         root = root[:-1] if root.endswith('/') else root
         for name in ('get_purchasables',
                      'price_purchasable',
                      'get_gift_purchase_attempt',
-                     'get_gift_pending_purchases',
-                      # stripe links
-                     'gift_stripe_payment',
-                     'gift_stripe_payment_preflight',
-                     'price_purchasable_with_stripe_coupon'):
+                     'get_gift_pending_purchases'):
             elements = (STORE, '@@' + name)
             link = Link(root, elements=elements, rel=name)
             result[name] = link
+        # stripe links
+        for rel, name in (('gift_stripe_payment', 'gift_payment'),
+                          ('gift_stripe_payment_preflight',
+                           'gift_payment_preflight'),
+                          ('price_purchasable_with_stripe_coupon', 'price_purchasable')):
+            elements = (STORE, STRIPE, '@@' + name)
+            link = Link(root, elements=elements, rel=rel)
+            result[rel] = link
+        # payeezy links
+        for rel, name in (('gift_payeezy_payment', 'gift_payment'),
+                          ('gift_payeezy_payment_preflight',
+                           'gift_payment_preflight'),
+                          ('price_purchasable_with_payeezy', 'price_purchasable')):
+            elements = (STORE, PAYEEZY, '@@' + name)
+            link = Link(root, elements=elements, rel=rel)
+            result[rel] = link
         return result
 
     def get_links(self):
