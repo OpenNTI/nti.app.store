@@ -9,6 +9,7 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import re
 import sys
 from functools import partial
 
@@ -29,11 +30,13 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.utils import AbstractPostView
 
+from nti.app.store.views import get_current_site
 from nti.app.store.views import PayeezyPathAdapter
 
-from nti.app.store.views.general_views import PriceOrderView as GeneralPriceOrderView 
+from nti.app.store.views.general_views import PriceOrderView as GeneralPriceOrderView
 from nti.app.store.views.general_views import PricePurchasableView as GeneralPricePurchasableView
 
+from nti.app.store.views.view_mixin import BasePaymentViewMixin
 from nti.app.store.views.view_mixin import BaseProcessorViewMixin
 from nti.app.store.views.view_mixin import RefundPaymentViewMixin
 from nti.app.store.views.view_mixin import GetProcesorConnectKeyViewMixin
@@ -46,10 +49,16 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.store.interfaces import IPaymentProcessor
+from nti.store.interfaces import IPurchasableChoiceBundle
 
 from nti.store.payments.payeezy import PAYEEZY
 
 from nti.store.payments.payeezy.interfaces import IPayeezyConnectKey
+
+from nti.store.payments.utils import is_valid_credit_card_type
+
+from nti.store.purchase_order import create_purchase_item
+from nti.store.purchase_order import create_purchase_order
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
@@ -102,11 +111,11 @@ class PricePurchasableView(GeneralPricePurchasableView):
 # purchase views
 
 
-def process_purchase(manager, purchase_id, username, token, 
+def process_purchase(manager, purchase_id, username, token,
                      card_type, cardholder_name, card_expiry, expected_amount,
                      payeezy_key, request, site_name=None):
     logger.info("Processing purchase %s", purchase_id)
-    manager.process_purchase(token=token, 
+    manager.process_purchase(token=token,
                              request=request,
                              username=username,
                              api_key=payeezy_key,
@@ -117,9 +126,9 @@ def process_purchase(manager, purchase_id, username, token,
                              cardholder_name=cardholder_name)
 
 
-def addAfterCommitHook(manager, purchase_id, username, token, 
-                     card_type, cardholder_name, card_expiry, expected_amount,
-                     payeezy_key, request, site_name=None):
+def addAfterCommitHook(manager, purchase_id, username, token,
+                       card_type, cardholder_name, card_expiry, expected_amount,
+                       payeezy_key, request, site_name=None):
 
     processor = partial(process_purchase,
                         token=token,
@@ -134,8 +143,161 @@ def addAfterCommitHook(manager, purchase_id, username, token,
                         cardholder_name=cardholder_name,
                         expected_amount=expected_amount)
 
-    hook = lambda s: s and request.nti_gevent_spawn(processor)
+    def hook(s): return s and request.nti_gevent_spawn(processor)
     transaction.get().addAfterCommitHook(hook)
+
+
+def validate_payeez_key(request, purchasables=()):
+    result = None
+    for purchasable in purchasables or ():
+        provider = purchasable.Provider
+        payeezy_key = component.queryUtility(IPayeezyConnectKey, provider)
+        if payeezy_key is None:
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid purchasable provider."),
+                            'field': 'purchasables',
+                            'value': provider
+                        },
+                        None)
+        if result is None:
+            result = payeezy_key
+        elif result != payeezy_key:
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Cannot mix purchasable providers."),
+                            'field': 'purchasables'
+                        },
+                        None)
+    if result is None:
+        raise_error(request,
+                    hexc.HTTPUnprocessableEntity,
+                    {
+                        'message': _(u"Could not find a purchasable provider."),
+                        'field': 'purchasables'
+                    },
+                    None)
+    return result
+
+
+class BasePaymentWithPayeezyView(BasePaymentViewMixin):
+
+    processor = PAYEEZY
+
+    def getPaymentRecord(self, request, values=None):
+        values = values or self.readInput()
+        result = BasePaymentViewMixin.getPaymentRecord(self, request, values)
+        # validate payeezy key
+        purchasables = self.resolvePurchasables(result['Purchasables'])
+        payeezy_key = validate_payeez_key(request, purchasables)
+        result['Payeezy'] = payeezy_key
+        # validate card type
+        card_type = result.get('card_type') or result.get('CardType')
+        if not is_valid_credit_card_type(card_type):
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid card type."),
+                            'field': 'card_type'
+                        },
+                        None)
+        result['card_type'] = card_type
+        # validate card expirty
+        expiry = result.get('card_expiry') \
+              or result.get('CardExpiry') \
+              or result.get('expiry')
+        expiry = str(expiry) if expiry else None
+        if not expiry or not re.match(r'[0-9]{4}', expiry):
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid card expirty."),
+                            'field': 'card_expiry'
+                        },
+                        None)
+        result['card_expiry'] = expiry[:4]
+        # validate card holder name
+        name = result.get('cardholder_name') \
+            or result.get('CardHolderName') \
+            or result.get('name')
+        if not name:
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Invalid card holder name."),
+                            'field': 'cardholder_name'
+                        },
+                        None)
+        result['cardholder_name'] = name
+        return result
+
+    def createPurchaseOrder(self, record):
+        purchasables = record['Purchasables']
+        items = tuple(create_purchase_item(p) for p in purchasables)
+        result = create_purchase_order(items, quantity=record['Quantity'])
+        return result
+
+    def processPurchase(self, purchase_attempt, record):
+        purchase_id = self.registerPurchaseAttempt(purchase_attempt, record)
+        logger.info("Purchase attempt (%s) created", purchase_id)
+
+        token = record['Token']
+        payeezy_key = record['Payeezy']
+        card_type = record['card_type']
+        card_expiry = record['card_expiry']
+        cardholder_name = record['cardholder_name']
+        expected_amount = record['ExpectedAmount']
+
+        request = self.request
+        username = self.username
+        site_name = get_current_site()
+        manager = component.getUtility(IPaymentProcessor, name=self.processor)
+
+        # process purchase after commit
+        addAfterCommitHook(token=token,
+                           request=request,
+                           manager=manager,
+                           username=username,
+                           site_name=site_name,
+                           payeezy_key=payeezy_key,
+                           purchase_id=purchase_id,
+                           card_type=card_type,
+                           card_expiry=card_expiry,
+                           cardholder_name=cardholder_name,
+                           expected_amount=expected_amount)
+
+        # return
+        result = LocatedExternalDict({
+            ITEMS: [purchase_attempt],
+            LAST_MODIFIED: purchase_attempt.lastModified
+        })
+        return result
+
+
+@view_config(name="PostPayment")
+@view_config(name="post_payment")
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_READ,
+               context=PayeezyPathAdapter,
+               request_method='POST')
+class ProcessPaymentView(AbstractPostView, BasePaymentWithPayeezyView):
+
+    def validatePurchasable(self, request, purchasable_id):
+        purchasable = super(ProcessPaymentView, self).validatePurchasable(
+            request, purchasable_id)
+        if IPurchasableChoiceBundle.providedBy(purchasable):
+            raise_error(request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"Cannot purchase a bundle item."),
+                            'field': 'purchasables',
+                            'value': purchasable_id
+                        },
+                        None)
+        return purchasable
 
 
 # token views
@@ -193,7 +355,7 @@ class CreateTokenView(AbstractPostView, BasePayeezyViewMixin):
             value = values.get(k) or values.get(p) or values.get(a)
             if value:
                 params[k] = text_(value)
-        street = ('%s\n%s' % (params.pop('street_1', None) or u'', 
+        street = ('%s\n%s' % (params.pop('street_1', None) or u'',
                               params.pop('street_2', None) or u'')).strip()
         if street:
             params['street'] = street
