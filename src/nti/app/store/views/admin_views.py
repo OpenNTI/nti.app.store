@@ -62,11 +62,6 @@ from nti.store.interfaces import IPurchaseAttempt
 from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPurchasablePricer
 
-from nti.store.store import get_gift_code, get_purchase_history
-from nti.store.store import get_gift_registry
-from nti.store.store import get_invitation_code
-from nti.store.store import get_gift_purchase_history
-
 from nti.store.purchase_attempt import create_purchase_attempt
 
 from nti.store.purchase_index import IX_CREATOR
@@ -78,6 +73,12 @@ from nti.store.purchase_order import create_purchase_item
 from nti.store.purchase_order import create_purchase_order
 
 from nti.store.purchasable import get_purchasable
+
+from nti.store.store import get_gift_code
+from nti.store.store import get_gift_registry
+from nti.store.store import get_invitation_code
+from nti.store.store import get_purchase_history
+from nti.store.store import get_gift_purchase_history
 
 from nti.store.utils import PURCHASE_ATTEMPT_MIME_TYPES
 
@@ -401,7 +402,7 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
         create_purchase_catalog(catalog, family=intids.family)
         for index in catalog.values():
             intids.register(index)
-        # reindex
+        # reindex user purchase history
         count = 0
         seen = dict()
         dataserver = component.getUtility(IDataserver)
@@ -412,6 +413,14 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
                 doc_id = intids.queryId(attempt)
                 if doc_id is not None:
                     self.index_item(doc_id, attempt, catalog, seen)
+                    count += 1
+        # reindex gift registry
+        registry = get_gift_registry()
+        for container in registry.values():
+            for obj in container.values():
+                doc_id = intids.queryId(attempt)
+                if doc_id is not None:
+                    self.index_item(doc_id, obj, catalog, seen)
                     count += 1
         result = LocatedExternalDict()
         result[ITEM_COUNT] = result[TOTAL] = count
