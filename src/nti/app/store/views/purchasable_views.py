@@ -14,6 +14,10 @@ import time
 from zope import component
 from zope import lifecycleevent
 
+from zope.component.hooks import getSite
+
+from zope.site.interfaces import IFolder
+
 from zope.intid.interfaces import IIntIds
 
 from plone.namedfile.file import getImageInfo
@@ -67,6 +71,8 @@ from nti.store.store import get_purchasable
 from nti.store.store import get_purchasables
 from nti.store.store import remove_purchasable
 from nti.store.store import register_purchasable
+
+from nti.traversal.traversal import find_interface
 
 from nti.zodb.containers import time_to_64bit_int
 
@@ -170,6 +176,7 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 
         # add object to conenction
         register_purchasable(purchasable)
+        purchasable.__parent__ = getSite()
         self.request.response.status_int = 201
         return purchasable
 
@@ -250,8 +257,9 @@ class DeletePurchasableView(AbstractAuthenticatedView,
                         },
                         None)
 
-        registry = purchasable.__parent__  # parent site manager
         # raise removed event
+        folder = find_interface(purchasable, IFolder, strict=False)
+        registry = folder.getSiteManager() if folder is not None else None
         remove_purchasable(purchasable, registry=registry)
         return hexc.HTTPNoContent()
 
