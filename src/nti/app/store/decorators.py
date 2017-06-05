@@ -121,7 +121,7 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
 class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 
     def set_links(self, original, external):
-        stripe_path = self.ds_store_path + '/' + STRIPE
+        stripe_path = '%s/%s/' % (self.ds_store_path, STRIPE)
         links = external.setdefault(LINKS, [])
         quoted = urllib.quote(original.Provider)
         # set common links
@@ -162,7 +162,7 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
 class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
 
     def set_links(self, original, external):
-        payeezy_path = self.ds_store_path + '/' + PAYEEZY
+        payeezy_path = '%s/%s/' % (self.ds_store_path, PAYEEZY)
         links = external.setdefault(LINKS, [])
         quoted = urllib.quote(original.Provider)
         # set common links
