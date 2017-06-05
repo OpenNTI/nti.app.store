@@ -54,6 +54,11 @@ from nti.externalization.interfaces import StandardExternalFields
 from nti.site.hostpolicy import get_host_site
 from nti.site.hostpolicy import get_all_host_sites
 
+from nti.store.index import IX_CREATOR
+from nti.store.index import IX_MIMETYPE
+from nti.store.index import get_purchase_catalog
+from nti.store.index import create_purchase_catalog
+
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
 
@@ -63,11 +68,6 @@ from nti.store.interfaces import IPurchaseHistory
 from nti.store.interfaces import IPurchasablePricer
 
 from nti.store.purchase_attempt import create_purchase_attempt
-
-from nti.store.purchase_index import IX_CREATOR
-from nti.store.purchase_index import IX_MIMETYPE
-from nti.store.purchase_index import get_purchase_catalog
-from nti.store.purchase_index import create_purchase_catalog
 
 from nti.store.purchase_order import create_purchase_item
 from nti.store.purchase_order import create_purchase_order

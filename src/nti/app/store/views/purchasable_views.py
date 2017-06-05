@@ -61,11 +61,10 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store import PURCHASABLE
 
-from nti.store import get_purchase_catalog
+from nti.store.index import IX_ITEMS
+from nti.store.index import get_purchase_catalog
 
 from nti.store.interfaces import IPurchasable
-
-from nti.store.purchase_index import IX_ITEMS
 
 from nti.store.store import get_purchasable
 from nti.store.store import get_purchasables
