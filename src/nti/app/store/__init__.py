@@ -16,13 +16,13 @@ from nti.site.runner import get_possible_site_names
 
 
 #: Store path
-STORE = u'store'
+STORE = 'store'
 
 #: Stripe path
-STRIPE = u'stripe'
+STRIPE = 'stripe'
 
 #: Payeezy path
-PAYEEZY = u'payeezy'
+PAYEEZY = 'payeezy'
 
 #: Purchasables path
-PURCHASABLES = u'purchasables'
+PURCHASABLES = 'purchasables'
