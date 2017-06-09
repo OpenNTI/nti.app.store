@@ -107,8 +107,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
         request = self.request
         params = CaseInsensitiveDict(request.params)
         purchasable = params.get('ntiid') \
-            or params.get('purchasable') \
-            or params.get('purchasableId')
+                   or params.get('purchasable') \
+                   or params.get('purchasableId')
         if purchasable and get_purchasable(purchasable) is None:
             raise_error(self.request,
                         hexc.HTTPUnprocessableEntity,
@@ -292,9 +292,9 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
     def __call__(self):
         values = self.readInput()
         purchasable_id = values.get('item') \
-            or values.get('ntiid') \
-            or values.get('purchasable') \
-            or values.get('purchasableId')
+                     or values.get('ntiid') \
+                     or values.get('purchasable') \
+                     or values.get('purchasableId')
         if not purchasable_id:
             msg = _(u"Must specify a valid purchasable.")
             raise_error(self.request,
