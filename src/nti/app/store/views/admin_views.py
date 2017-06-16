@@ -57,7 +57,6 @@ from nti.site.hostpolicy import get_all_host_sites
 from nti.store.index import IX_CREATOR
 from nti.store.index import IX_MIMETYPE
 from nti.store.index import get_purchase_catalog
-from nti.store.index import create_purchase_catalog
 
 from nti.store.interfaces import PA_STATE_SUCCESS
 from nti.store.interfaces import PAYMENT_PROCESSORS
@@ -393,15 +392,10 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
 
     def __call__(self):
         intids = component.getUtility(IIntIds)
-        # remove indexes
+        # clear indexes
         catalog = get_purchase_catalog()
-        for name, index in list(catalog.items()):
-            intids.unregister(index)
-            del catalog[name]
-        # recreate indexes
-        create_purchase_catalog(catalog, family=intids.family)
-        for index in catalog.values():
-            intids.register(index)
+        for index in list(catalog.values()):
+            index.clear()
         # reindex user purchase history
         count = 0
         seen = dict()
