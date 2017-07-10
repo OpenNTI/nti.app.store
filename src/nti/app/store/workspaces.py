@@ -94,11 +94,11 @@ class _StoreCollection(object):
     @property
     def root(self):
         request = get_current_request()
-        if request is not None:
-            root = request.route_path('objects.generic.traversal',
-                                      traverse=())
-        else:
-            root = 'dataserver2'
+        try:
+            result = request.path_info_peek() if request else None
+        except AttributeError:  # in unit test we may see this
+            result = None
+        root = result or "dataserver2"
         return root
 
     @property
