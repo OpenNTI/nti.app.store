@@ -106,7 +106,8 @@ def get_namedfile(source, name='icon.dat'):
             or getattr(source, 'name', name)
     result = File(contentType)
     result.filename = filename
-    result.data = source.read()
+    with result.open("w") as fp:
+        fp.write(source.read())
     return result
 
 
