@@ -16,11 +16,11 @@ from zope import lifecycleevent
 
 from zope.component.hooks import getSite
 
-from zope.site.interfaces import IFolder
+from zope.file.file import File
 
 from zope.intid.interfaces import IIntIds
 
-from plone.namedfile.file import getImageInfo
+from zope.site.interfaces import IFolder
 
 from pyramid import httpexceptions as hexc
 
@@ -51,9 +51,6 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.externalization.internalization import notifyModified
-
-from nti.namedfile.file import NamedBlobFile
-from nti.namedfile.file import NamedBlobImage
 
 from nti.ntiids.ntiids import make_ntiid
 from nti.ntiids.ntiids import make_specific_safe
@@ -100,18 +97,12 @@ def validate_purchasble_items(purchasable, request=None):
 
 def get_namedfile(source, name='icon.dat'):
     contentType = getattr(source, 'contentType', None)
-    if contentType:
-        factory = NamedBlobFile
-    else:
-        contentType, _, _ = getImageInfo(source)
-        source.seek(0)  # reset
-        factory = NamedBlobImage if contentType else NamedBlobFile
     contentType = contentType or 'application/octet-stream'
     filename = getattr(source, 'filename', None) \
             or getattr(source, 'name', name)
-    result = factory(filename=filename, 
-                     data=source.read(),
-                     contentType=contentType)
+    result = File(contentType)
+    result.filename = filename
+    result.data = source.read()
     return result
 
 
