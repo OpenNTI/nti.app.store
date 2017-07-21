@@ -39,6 +39,8 @@ from nti.app.store import MessageFactory as _
 
 from nti.app.store.views import PurchasablesPathAdapter
 
+from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
+
 from nti.common.random import generate_random_hex_string
 
 from nti.coremetadata.interfaces import SYSTEM_USER_ID
@@ -115,6 +117,12 @@ def handle_multipart(contentObject, sources, provided=IPurchasable):
             setattr(contentObject, name, namedfile)
 
 
+def get_provider():
+    policy = component.queryUtility(ISitePolicyUserEventListener)
+    provider = getattr(policy, 'PROVIDER', None) or u'NTI'
+    return provider
+
+
 @view_config(route_name='objects.generic.traversal',
              context=PurchasablesPathAdapter,
              request_method='POST',
@@ -126,20 +134,20 @@ class CreatePurchasableView(AbstractAuthenticatedView,
     content_predicate = IPurchasable.providedBy
 
     def _make_tiid(self, nttype, creator=SYSTEM_USER_ID):
+        provider = get_provider()
         current_time = time_to_64bit_int(time.time())
-        creator = getattr(creator, 'username', creator)
         extra = generate_random_hex_string(6)
         specific_base = '%s.%s.%s' % (creator, current_time, extra)
         specific = make_specific_safe(specific_base)
         ntiid = make_ntiid(nttype=nttype,
-                           provider='NTI',
+                           provider=provider,
                            specific=specific)
         return ntiid
 
     def _createObject(self):
         externalValue = self.readInput()
         if not externalValue.get(NTIID):
-            ntiid = self._make_tiid(PURCHASABLE, self.remoteUser)
+            ntiid = self._make_tiid(PURCHASABLE)
             externalValue[NTIID] = ntiid
         datatype = self.findContentType(externalValue)
         result = self.createAndCheckContentObject(owner=None,
@@ -202,6 +210,12 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
 
     content_predicate = IPurchasable.providedBy
 
+    def readInput(self, value=None):
+        result = ModeledContentUploadRequestUtilsMixin.readInput(self, value)
+        result.pop(NTIID, None)
+        result.pop('ntiid', None)
+        return result
+
     def __call__(self):
         theObject = self.request.context
         self._check_object_exists(theObject)
@@ -211,7 +225,6 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
         old_items = set(theObject.Items)
 
         externalValue = self.readInput()
-        externalValue.pop(NTIID, None)  # don't allow  updating ntiid
         self.updateContentObject(theObject, externalValue, notify=False)
 
         validate_purchasble_items(theObject)
