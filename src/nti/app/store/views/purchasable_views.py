@@ -20,8 +20,6 @@ from zope.file.file import File
 
 from zope.intid.interfaces import IIntIds
 
-from zope.site.interfaces import IFolder
-
 from pyramid import httpexceptions as hexc
 
 from pyramid.view import view_config
@@ -56,12 +54,18 @@ from nti.ntiids.ntiids import make_ntiid
 from nti.ntiids.ntiids import make_specific_safe
 from nti.ntiids.ntiids import find_object_with_ntiid
 
+from nti.site.interfaces import IHostPolicyFolder
+
+from nti.site.site import get_component_hierarchy_names
+
 from nti.store import PURCHASABLE
 
+from nti.store.index import IX_SITE
 from nti.store.index import IX_ITEMS
 from nti.store.index import get_purchase_catalog
 
 from nti.store.interfaces import IPurchasable
+from nti.store.interfaces import IPurchaseAttempt
 
 from nti.store.store import get_purchasable
 from nti.store.store import get_purchasables
@@ -71,8 +75,6 @@ from nti.store.store import register_purchasable
 from nti.traversal.traversal import find_interface
 
 from nti.zodb.containers import time_to_64bit_int
-
-from nti.zope_catalog.catalog import ResultSet
 
 ITEMS = StandardExternalFields.ITEMS
 NTIID = StandardExternalFields.NTIID
@@ -174,8 +176,14 @@ class CreatePurchasableView(AbstractAuthenticatedView,
 def get_purchases_for_items(*purchasables):
     catalog = get_purchase_catalog()
     intids = component.getUtility(IIntIds)
-    items_ids = catalog[IX_ITEMS].apply({'any_of': purchasables})
-    return ResultSet(items_ids, intids, True)
+    query = {
+        IX_ITEMS: {'any_of': purchasables},
+        IX_SITE: {'any_of': get_component_hierarchy_names()},
+    }
+    for doc_id in catalog.apply(query) or ():
+        obj = intids.queryObjet(doc_id)
+        if IPurchaseAttempt.providedBy(obj):
+            yield obj
 
 
 def count_purchases_for_items(*purchasables):
@@ -248,7 +256,7 @@ class DeletePurchasableView(AbstractAuthenticatedView,
                         None)
 
         # raise removed event
-        folder = find_interface(purchasable, IFolder, strict=False)
+        folder = find_interface(purchasable, IHostPolicyFolder, strict=False)
         registry = folder.getSiteManager() if folder is not None else None
         remove_purchasable(purchasable, registry=registry)
         return hexc.HTTPNoContent()
