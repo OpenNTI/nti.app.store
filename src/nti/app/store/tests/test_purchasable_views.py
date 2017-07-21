@@ -93,6 +93,10 @@ class TestStoreViews(ApplicationLayerTest):
             p = get_purchasable(ntiid)
             assert_that(p, is_not(none()))
 
+        href = '/dataserver2/store/purchasables/%s/@@purchases' % ntiid
+        res = self.testapp.get(href, status=200)
+        assert_that(res.json_body,
+                    has_entries('Items',  has_length(0)))
         # try to post again
         self.testapp.post_json(url, ext_obj, status=422)
 

@@ -32,6 +32,7 @@ from nti.app.contentfile import validate_sources
 
 from nti.app.externalization.error import raise_json_error as raise_error
 
+from nti.app.externalization.view_mixins import BatchingUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentEditRequestUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
@@ -313,6 +314,30 @@ class DisablePurchasableView(AbstractAuthenticatedView,
             lifecycleevent.modified(theObject)
         return theObject
 
+
+@view_config(route_name='objects.generic.traversal',
+             context=IPurchasable,
+             request_method='GET',
+             permission=nauth.ACT_CONTENT_EDIT,
+             name="purchases",
+             renderer='rest')
+class PurchasablePurchasesView(AbstractAuthenticatedView,
+                               BatchingUtilsMixin):
+
+    _DEFAULT_BATCH_SIZE = 30
+    _DEFAULT_BATCH_START = 0
+    
+    def __call__(self):
+        result = LocatedExternalDict()
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
+        purchases = list(get_purchases_for_items(self.context.NTIID))
+        purchases.sort(key=lambda x: x.StartTime, reverse=True)
+        result['TotalItemCount'] = len(purchases)
+        self._batch_items_iterable(result, purchases)
+        result[ITEM_COUNT] = len(result[ITEMS])
+        return result
+    
 
 @view_config(name="collection")
 @view_defaults(route_name='objects.generic.traversal',
