@@ -190,7 +190,7 @@ def get_purchases_for_items(*purchasables):
         IX_SITE: {'any_of': get_component_hierarchy_names()},
     }
     for doc_id in catalog.apply(query) or ():
-        obj = intids.queryObjet(doc_id)
+        obj = intids.queryObject(doc_id)
         if IPurchaseAttempt.providedBy(obj):
             yield obj
 
