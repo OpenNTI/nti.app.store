@@ -42,6 +42,8 @@ from nti.app.store.views import PurchasablesPathAdapter
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
+from nti.base.interfaces import DEFAULT_CONTENT_TYPE
+
 from nti.common.random import generate_random_hex_string
 
 from nti.coremetadata.interfaces import SYSTEM_USER_ID
@@ -102,7 +104,7 @@ def validate_purchasble_items(purchasable, request=None):
 
 def get_namedfile(source, name='icon.dat'):
     contentType = getattr(source, 'contentType', None)
-    contentType = contentType or 'application/octet-stream'
+    contentType = contentType or DEFAULT_CONTENT_TYPE
     filename = getattr(source, 'filename', None) \
             or getattr(source, 'name', name)
     result = File(contentType)
