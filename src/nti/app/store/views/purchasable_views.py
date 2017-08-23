@@ -14,6 +14,8 @@ import time
 from zope import component
 from zope import lifecycleevent
 
+from zope.annotation.interfaces import IAnnotations
+
 from zope.component.hooks import getSite
 
 from zope.file.file import File
@@ -95,9 +97,9 @@ def validate_purchasble_items(purchasable, request=None):
             logger.error("Cannot find item %s", item)
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u'Cannot find purchasable item.'),
-                            'field': 'Items'
+                        {
+                             'message': _(u'Cannot find purchasable item.'),
+                             'field': 'Items'
                         },
                         None)
 
@@ -123,8 +125,11 @@ def handle_multipart(contentObject, sources, provided=IPurchasable):
 
 def get_provider():
     policy = component.queryUtility(ISitePolicyUserEventListener)
-    provider = getattr(policy, 'PROVIDER', None) or u'NTI'
-    return provider
+    provider = getattr(policy, 'PROVIDER', None)
+    if not provider:
+        annontations = IAnnotations(getSite(), {})
+        provider = annontations.get('PROVIDER')
+    return provider or u'NTI'
 
 
 @view_config(route_name='objects.generic.traversal',
@@ -171,8 +176,8 @@ class CreatePurchasableView(AbstractAuthenticatedView,
         if get_purchasable(purchasable.NTIID) != None:
             raise_error(self.request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u'Purchasable already created.'),
+                        {
+                             'message': _(u'Purchasable already created.'),
                         },
                         None)
         validate_purchasble_items(purchasable, self.request)
@@ -237,11 +242,11 @@ class UpdatePurchasableView(AbstractAuthenticatedView,
         new_items = set(theObject.Items)
         if old_items.difference(new_items):
             purchases = count_purchases_for_items(theObject.NTIID)
-            if purchases: # there are purchases
+            if purchases:  # there are purchases
                 raise_error(self.request,
                             hexc.HTTPUnprocessableEntity,
-                            {    
-                                'message': _(u'Cannot change purchasable items.'),
+                            {
+                                 'message': _(u'Cannot change purchasable items.'),
                             },
                             None)
 
@@ -267,8 +272,8 @@ class DeletePurchasableView(AbstractAuthenticatedView,
         if purchases:  # there are purchases
             raise_error(self.request,
                         hexc.HTTPUnprocessableEntity,
-                        {    
-                            'message': _(u'Cannot delete purchasable.'),
+                        {
+                             'message': _(u'Cannot delete purchasable.'),
                         },
                         None)
 
@@ -328,7 +333,7 @@ class PurchasablePurchasesView(AbstractAuthenticatedView,
 
     _DEFAULT_BATCH_SIZE = 30
     _DEFAULT_BATCH_START = 0
-    
+
     def __call__(self):
         result = LocatedExternalDict()
         result.__name__ = self.request.view_name
@@ -339,7 +344,7 @@ class PurchasablePurchasesView(AbstractAuthenticatedView,
         self._batch_items_iterable(result, purchases)
         result[ITEM_COUNT] = len(result[ITEMS])
         return result
-    
+
 
 @view_config(name="collection")
 @view_defaults(route_name='objects.generic.traversal',
