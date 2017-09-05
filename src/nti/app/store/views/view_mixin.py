@@ -101,7 +101,7 @@ class PriceOrderViewMixin(ModeledContentUploadRequestUtilsMixin):
     def _do_pricing(self, order):
         raise NotImplementedError()
 
-    def readCreateUpdateContentObject(self, *args, **kwargs):
+    def readCreateUpdateContentObject(self, *unused_args, **unused_kwargs):
         externalValue = self.readInput()
         result = find_factory_for(externalValue)()
         update_from_external_object(result, externalValue, notify=False)
@@ -151,7 +151,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                         None)
         return purchasable
 
-    def validatePurchasables(self, request, values, purchasables=()):
+    def validatePurchasables(self, request, unused_values, purchasables=()):
         result = [self.validatePurchasable(request, p) for p in purchasables]
         return result
 
@@ -235,7 +235,7 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
                                          context=record.get('Context'))
         return result
 
-    def registerPurchaseAttempt(self, purchase_attempt, record):
+    def registerPurchaseAttempt(self, purchase_attempt, unused_record):
         purchase_id = register_purchase_attempt(purchase_attempt,
                                                 self.username)
         return purchase_id

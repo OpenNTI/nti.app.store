@@ -33,7 +33,7 @@ class ApplicationStoreTestLayer(ZopeComponentLayer,
     configure_events = False
 
     @classmethod
-    def _setup_library(cls, *args, **kwargs):
+    def _setup_library(cls, *unused_args, **unused_kwargs):
         return Library()
 
     @classmethod

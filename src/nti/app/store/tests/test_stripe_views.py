@@ -50,7 +50,7 @@ from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 class MockRunner(object):
 
-    def __call__(self, func, *args, **kwargs):
+    def __call__(self, func, *unused_args, **unused_kwargs):
         return func()
 
 

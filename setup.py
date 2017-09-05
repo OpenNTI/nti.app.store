@@ -9,6 +9,13 @@ entry_points = {
     ],
 }
 
+TESTS_REQUIRE = [
+    'nti.app.testing',
+    'nti.testing',
+    'zope.dottedname',
+    'zope.testrunner',
+]
+
 
 def _read(fname):
     with codecs.open(fname, encoding='utf-8') as f:
@@ -25,6 +32,8 @@ setup(
     license='Apache',
     keywords='pyramid store',
     classifiers=[
+        'Framework :: Zope',
+        'Framework :: Pyramid',
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Operating System :: OS Independent',
@@ -32,15 +41,19 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
+    url="https://github.com/NextThought/nti.app.store",
     zip_safe=True,
     packages=find_packages('src'),
     package_dir={'': 'src'},
     include_package_data=True,
     namespace_packages=['nti', 'nti.app'],
+    tests_require=TESTS_REQUIRE,
     install_requires=[
         'setuptools',
         'nti.store',
     ],
+    extras_require={
+        'test': TESTS_REQUIRE,
+    },
     entry_points=entry_points,
-    test_suite="nti.app.store.tests",
 )

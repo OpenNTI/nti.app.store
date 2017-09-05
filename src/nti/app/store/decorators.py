@@ -58,7 +58,7 @@ LINKS = StandardExternalFields.LINKS
 @interface.implementer(IExternalObjectDecorator)
 class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
-    def _predicate(self, context, result):
+    def _predicate(self, unused_context, unused_result):
         return True
 
     @property
@@ -213,7 +213,7 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
                 return True
         return False
 
-    def _predicate(self, context, result):
+    def _predicate(self, context, unused_result):
         return (    self._acl_decoration
                 and self._is_authenticated
                 and has_permission(ACT_CONTENT_EDIT, context, self.request))
