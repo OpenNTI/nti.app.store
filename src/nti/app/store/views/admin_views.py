@@ -51,6 +51,8 @@ from nti.dataserver.interfaces import IShardLayout
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.metadata import queue_add as metadata_queue_add
+
 from nti.site.hostpolicy import get_host_site
 from nti.site.hostpolicy import get_all_host_sites
 
@@ -380,15 +382,16 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
             found = False
             for site in get_all_host_sites():
                 with current_site(site):
-                    for item in items:
-                        purchasable = component.queryUtility(IPurchasable,
-                                                             name=item)
+                    for item in items or ():
+                        purchasable = component.queryUtility(IPurchasable, item)
                         if purchasable is not None:
                             found = True
                             seen[item] = site.__name__
                             catalog.index_doc(doc_id, obj)
+                            metadata_queue_add(obj)
             if not found:  # should not happen
                 catalog.index_doc(doc_id, obj)
+                metadata_queue_add(obj)
 
     def __call__(self):
         intids = component.getUtility(IIntIds)
