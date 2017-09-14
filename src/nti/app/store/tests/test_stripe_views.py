@@ -22,8 +22,10 @@ does_not = is_not
 import fudge
 
 import uuid
+
 import stripe
-import anyjson as json
+
+import simplejson as json
 
 from zope import interface
 

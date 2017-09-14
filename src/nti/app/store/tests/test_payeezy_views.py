@@ -20,7 +20,7 @@ does_not = is_not
 
 import fudge
 
-import anyjson as json
+import simplejson as json
 
 from nti.app.store.views.payeezy_views import process_purchase
 

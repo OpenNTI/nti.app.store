@@ -17,8 +17,9 @@ does_not = is_not
 
 import csv
 import fudge
-import anyjson as json
 from six import StringIO
+
+import simplejson as json
 
 from nti.app.store.views.stripe_views import process_purchase
 
