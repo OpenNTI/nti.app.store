@@ -16,7 +16,7 @@ does_not = is_not
 
 from nti.appserver.workspaces import UserService
 
-from nti.dataserver.users import User
+from nti.dataserver.users.users import User
 
 from nti.externalization.externalization import toExternalObject
 
