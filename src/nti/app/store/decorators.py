@@ -4,12 +4,11 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
-logger = __import__('logging').getLogger(__name__)
-
-import urllib
+from six.moves import urllib_parse
 
 from zope import component
 from zope import interface
@@ -34,7 +33,7 @@ from nti.externalization.interfaces import IExternalObjectDecorator
 
 from nti.externalization.externalization import to_external_object
 
-from nti.externalization.singleton import SingletonDecorator
+from nti.externalization.singleton import Singleton
 
 from nti.links.links import Link
 
@@ -53,6 +52,8 @@ from nti.store.store import has_history_by_item
 
 ITEMS = StandardExternalFields.ITEMS
 LINKS = StandardExternalFields.LINKS
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @interface.implementer(IExternalObjectDecorator)
@@ -83,7 +84,7 @@ class _PurchasableDecorator(_BaseRequestAwareDecorator):
             # insert history link
             if username and has_history_by_item(username, original.NTIID):
                 history_href = ds_store_path + '@@get_purchase_history'
-                quoted = urllib.quote(original.NTIID)
+                quoted = urllib_parse.quote(original.NTIID)
                 link = Link(history_href,
                             rel="history",
                             method='GET',
@@ -123,7 +124,7 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
     def set_links(self, original, external):
         stripe_path = '%s/%s/' % (self.ds_store_path, STRIPE)
         links = external.setdefault(LINKS, [])
-        quoted = urllib.quote(original.Provider)
+        quoted = urllib_parse.quote(original.Provider)
         # set common links
         for name, rel, meth in (
                 ('create_token', 'create_stripe_token', 'POST'),
@@ -164,7 +165,7 @@ class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
     def set_links(self, original, external):
         payeezy_path = '%s/%s/' % (self.ds_store_path, PAYEEZY)
         links = external.setdefault(LINKS, [])
-        quoted = urllib.quote(original.Provider)
+        quoted = urllib_parse.quote(original.Provider)
         # set common links
         for name, rel, meth in (
                 ('create_token', 'create_payeezy_token', 'POST'),
@@ -220,7 +221,7 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 
     def _do_decorate_external(self, context, result):
         _links = []
-        ntiid = urllib.quote(context.NTIID)
+        ntiid = urllib_parse.quote(context.NTIID)
         path = self.ds_store_path + '/' + PURCHASABLES + '/' + ntiid
 
         # enable / disable link
@@ -242,9 +243,7 @@ class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 
 @component.adapter(IPurchaseItem)
 @interface.implementer(IExternalObjectDecorator)
-class _PurchaseItemDecorator(object):
-
-    __metaclass__ = SingletonDecorator
+class _PurchaseItemDecorator(Singleton):
 
     def decorateExternalObject(self, original, external):
         purchasable = get_purchasable(original.NTIID)
