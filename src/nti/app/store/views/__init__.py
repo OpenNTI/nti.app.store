@@ -4,12 +4,11 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
-logger = __import__('logging').getLogger(__name__)
-
-from urllib import unquote
+from six.moves.urllib_parse  import unquote
 
 from zope import component
 from zope import interface
@@ -28,6 +27,8 @@ from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 
 from nti.store.purchasable import get_purchasable
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @interface.implementer(IPathAdapter, IContained)

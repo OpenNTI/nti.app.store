@@ -4,14 +4,13 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import time
-from urllib import unquote
 from functools import partial
+from six.moves.urllib_parse import unquote
 
 import gevent
 
@@ -81,6 +80,8 @@ ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
+
+logger = __import__('logging').getLogger(__name__)
 
 
 # get views
