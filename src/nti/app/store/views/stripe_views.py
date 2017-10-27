@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import sys
 from functools import partial
@@ -82,6 +81,8 @@ from nti.store.store import register_gift_purchase_attempt
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
+
+logger = __import__('logging').getLogger(__name__)
 
 
 class BaseStripeViewMixin(BaseProcessorViewMixin):

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
@@ -19,9 +20,9 @@ from hamcrest import assert_that
 from hamcrest import greater_than_or_equal_to
 does_not = is_not
 
-import fudge
-
 import uuid
+
+import fudge
 
 import stripe
 
@@ -30,6 +31,12 @@ import simplejson as json
 from zope import interface
 
 from nti.app.store.views.stripe_views import process_purchase
+
+from nti.app.store.tests import ApplicationStoreTestLayer
+
+from nti.app.testing.application_webtest import ApplicationLayerTest
+
+from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.externalization.externalization import to_external_object
 
@@ -42,12 +49,6 @@ from nti.store.payments.stripe.interfaces import IStripeCoupon
 
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
-
-from nti.app.store.tests import ApplicationStoreTestLayer
-
-from nti.app.testing.application_webtest import ApplicationLayerTest
-
-from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 
 class MockRunner(object):

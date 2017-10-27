@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import datetime
 
@@ -38,6 +37,8 @@ from nti.store.store import get_transaction_code
 
 DEFAULT_EMAIL_SUBJECT = _(u"Purchase Confirmation")
 DEFAULT_PURCHASE_TEMPLATE = 'purchase_confirmation_email'
+
+logger = __import__('logging').getLogger(__name__)
 
 
 def queue_simple_html_text_email(*args, **kwargs):

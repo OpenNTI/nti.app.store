@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from zope import component
 from zope import interface
@@ -64,6 +63,8 @@ from nti.store.store import get_purchase_attempt
 from nti.store.store import get_purchase_purchasables
 
 GENERIC_GIFT_ERROR_MESSAGE = _(u"Gift/Invitation not found.")
+
+logger = __import__('logging').getLogger(__name__)
 
 
 def find_redeemable_purchase(code):

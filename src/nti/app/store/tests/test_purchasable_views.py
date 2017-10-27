@@ -22,15 +22,15 @@ import fudge
 
 from six.moves.urllib_parse import quote
 
-from nti.externalization.interfaces import StandardExternalFields
-
-from nti.store.purchasable import get_purchasable
-
 from nti.app.store.tests import ApplicationStoreTestLayer
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
+
+from nti.externalization.interfaces import StandardExternalFields
+
+from nti.store.purchasable import get_purchasable
 
 from nti.dataserver.tests import mock_dataserver
 
