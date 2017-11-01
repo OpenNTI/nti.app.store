@@ -26,7 +26,11 @@ from nti.app.store import PURCHASABLES
 
 from nti.appserver.pyramid_authorization import has_permission
 
+from nti.appserver.workspaces.interfaces import ICatalogWorkspaceLinkProvider
+
 from nti.dataserver.authorization import ACT_CONTENT_EDIT
+
+from nti.dataserver.interfaces import IUser
 
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.interfaces import IExternalObjectDecorator
@@ -254,3 +258,21 @@ class _PurchaseItemDecorator(Singleton):
                 if item is not None:
                     item = to_external_object(item)
                     items.append(item)
+
+
+@component.adapter(IUser)
+@interface.implementer(ICatalogWorkspaceLinkProvider)
+class _CatalogWorkspaceAdminLinkDecorator(object):
+
+    def __init__(self, user):
+        self.user = user
+
+    def links(self, unused_catalog_workspace):
+        link = Link(self.user,  # IUser
+                    method="POST",
+                    rel="redeem_purchase_code",
+                    elements=('@@redeem_purchase_code',))
+        link.__name__ = 'redeem_purchase_code'
+        link.__parent__ = self.user
+        interface.alsoProvides(link, ILocation)
+        return (link,)

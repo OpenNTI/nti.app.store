@@ -19,6 +19,10 @@
 			 provides="nti.namedfile.interfaces.IFileConstraints" />
 
 	<!-- Decorators -->
+	<subscriber factory=".decorators._CatalogWorkspaceAdminLinkDecorator"
+                provides="nti.appserver.workspaces.interfaces.ICatalogWorkspaceLinkProvider"/>
+
+
 	<subscriber factory=".decorators._PurchasableDecorator"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
 				for="nti.store.interfaces.IPurchasable

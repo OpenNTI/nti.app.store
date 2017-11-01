@@ -40,9 +40,14 @@ class TestWorkspaces(ApplicationLayerTest):
 
             assert_that(ext_object['Items'],
                         has_item(has_entry('Title', 'store')))
-            store_wss = [x for x in ext_object['Items']
-                         if x['Title'] == 'store']
-            assert_that(store_wss, has_length(1))
-            store_wss, = store_wss
+            store_wss = next(x for x in ext_object['Items']
+                         if x['Title'] == 'store')
             assert_that(store_wss['Items'],
                         has_item(has_entry('Links', has_length(15))))
+
+            # Catalog
+            assert_that(ext_object['Items'],
+                        has_item(has_entry('Title', 'Catalog')))
+            catalog_ws = next(x for x in ext_object['Items']
+                         if x['Title'] == 'Catalog')
+            self.require_link_href_with_rel(catalog_ws, 'redeem_purchase_code')
