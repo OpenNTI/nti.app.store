@@ -187,7 +187,7 @@ def _sync_purchase(purchase, request):
     def process_sync():
         runner = component.getUtility(IDataserverTransactionRunner)
         runner(sync_purchase,
-               site_mames = (site_name,) if site_name else ())
+               site_names = (site_name,) if site_name else ())
 
     gevent.spawn(process_sync)
 
@@ -453,7 +453,7 @@ class PricePurchasableView(AbstractPostView):
 class PriceOrderView(AbstractAuthenticatedView, PriceOrderViewMixin):
 
     procesor = ''
-    
+
     def _do_pricing(self, order):
         result = _call_pricing_func(partial(price_order, order, self.procesor))
         status = 422 if IPricingError.providedBy(result) else 200
