@@ -192,7 +192,7 @@ class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
         # set links giftable objects
         if original.Giftable:
             href = payeezy_path + '@@gift_payment'
-            link = Link(href, rel="gift_stripe_payment", method='POST')
+            link = Link(href, rel="gift_payeezy_payment", method='POST')
             interface.alsoProvides(link, ILocation)
             links.append(link)
 
