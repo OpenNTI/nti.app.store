@@ -9,24 +9,25 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import csv
-import six
 from io import BytesIO
 from datetime import datetime
 
 import isodate
 
+from pyramid import httpexceptions as hexc
+
+from pyramid.view import view_config
+from pyramid.view import view_defaults
+
 from requests.structures import CaseInsensitiveDict
+
+import six
 
 from zope import component
 
 from zope.component.hooks import site as current_site
 
 from zope.intid.interfaces import IIntIds
-
-from pyramid import httpexceptions as hexc
-
-from pyramid.view import view_config
-from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
@@ -156,8 +157,8 @@ class GetUsersPurchaseHistoryView(AbstractAuthenticatedView):
             if purchasable and purchasable not in purchase.Items:
                 continue
 
-            if (all_succeeded and not purchase.has_succeeded()) \
-                    or (all_failed and not purchase.has_failed()):
+            if     (all_succeeded and not purchase.has_succeeded()) \
+                or (all_failed and not purchase.has_failed()):
                 continue
 
             status = purchase.State
@@ -356,6 +357,7 @@ class CreateInviationPurchaseAttemptView(AbstractPostView):
                                                 quantity=quantity,
                                                 processor=processor,
                                                 expirationTime=expirationTime)
+        # pylint: disable=too-many-function-args
         hist.add_purchase(purchase)
 
         logger.info("Invitation purchase %s created for user %s. " +
@@ -406,6 +408,7 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
         seen = dict()
         dataserver = component.getUtility(IDataserver)
         users_folder = IShardLayout(dataserver).users_folder
+        # pylint: disable=no-member
         for user in users_folder.values():
             history = get_purchase_history(user, False)
             for attempt in history or ():
@@ -417,7 +420,7 @@ class RebuildPurchaseCatalogView(AbstractAuthenticatedView):
         registry = get_gift_registry()
         for container in registry.values():
             for obj in container.values():
-                doc_id = intids.queryId(attempt)
+                doc_id = intids.queryId(obj)
                 if doc_id is not None:
                     self.index_item(doc_id, obj, catalog, seen)
                     count += 1
