@@ -179,10 +179,10 @@ class BasePaymentViewMixin(ModeledContentUploadRequestUtilsMixin):
 
         result['Purchasables'] = purchasables
         purchasables = self.validatePurchasables(request, values, purchasables)
-        
+
         context = self.parseContext(values, purchasables)
         result['Context'] = context
-        
+
         token = values.get('token', None)
         if not token:
             raise_error(request,
@@ -303,16 +303,14 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
                         },
                         None)
 
-        try:
-            checkEmailAddress(creator)
-        except Exception as e:
+        if not checkEmailAddress(creator):
             exc_info = sys.exc_info()
             raise_error(request,
                         hexc.HTTPUnprocessableEntity,
                         {
                             'message': _(u"Please provide a valid sender email."),
                             'field': 'from',
-                            'code': e.__class__.__name__
+                            'code': 'EmailAddressInvalid'
                         },
                         exc_info[2])
         record['From'] = record['Creator'] = creator
@@ -324,16 +322,14 @@ class GiftPreflightViewMixin(BasePaymentViewMixin):
 
         receiver = values.get('receiver')
         if receiver:
-            try:
-                checkEmailAddress(receiver)
-            except Exception as e:
+            if not checkEmailAddress(receiver):
                 exc_info = sys.exc_info()
                 raise_error(request,
                             hexc.HTTPUnprocessableEntity,
                             {
                                 'message': _(u"Please provide a valid receiver email."),
                                 'field': 'receiver',
-                                'code': e.__class__.__name__
+                                'code': 'EmailAddressInvalid'
                             },
                             exc_info[2])
         record['Receiver'] = receiver
@@ -476,7 +472,7 @@ class GeneratePurchaseInvoiceViewMixin(object):
                                          payment_charge,
                                          request=self.request))
         return hexc.HTTPNoContent()
-    
+
     def __call__(self):
         return self._do_call()
 
