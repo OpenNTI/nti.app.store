@@ -53,6 +53,7 @@ setup(
         'setuptools',
         'gevent',
         'isodate',
+	'nti.app.invitations',
         'nti.base',
         'nti.common',
         'nti.coremetadata',
