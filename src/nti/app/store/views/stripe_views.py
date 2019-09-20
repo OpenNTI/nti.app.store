@@ -294,7 +294,7 @@ class CreateStripeTokenView(AbstractPostView, BaseStripeViewMixin):
 
         token = manager.create_token(**params)
         result = StripeToken(Value=token.id,
-                             Type=token.card.type,
+                             Type=token.card.brand,
                              CardID=token.card.id)
         return result
 
