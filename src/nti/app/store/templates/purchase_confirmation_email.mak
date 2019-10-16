@@ -32,7 +32,7 @@ ORDER TOTAL: ${format_currency_attribute(nti_context.charge, 'Amount')}
 
 Payment Received: ${format_currency_attribute(nti_context.charge, 'Amount')}
 ${today} (**** **** **** ${nti_context.charge.CardLast4})
-all sales are final
+${refund_blurb}
 
 
 Thank you for your order, ${informal_username}! Your Items are available at ${request.application_url}

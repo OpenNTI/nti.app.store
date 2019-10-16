@@ -129,7 +129,7 @@
 			<tr style="border-top-style: solid; border-top-width: 1px; border-bottom-style: solid; border-bottom-width: 1px">
 				<td style="text-align:left; font-size: 10pt; color: #757474">
 					PAYMENT RECEIVED: ${options/today}  (**** **** **** ${context/charge/CardLast4})
-					<span style="color: #b8b8b8">All Sales Are Final</span>
+					<span style="color: #b8b8b8" tal:content="options/refund_blurb">All Sales Are Final</span>
 				</td>
 				<td  style="text-align:right; color: #757474" tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</td>
 			</tr>
