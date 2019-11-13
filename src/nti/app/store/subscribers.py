@@ -21,7 +21,7 @@ from pyramid.threadlocal import get_current_request
 
 from nti.app.store import MessageFactory as _
 
-from nti.appserver.brand.interfaces import ISiteBrand
+from nti.appserver.brand.utils import get_site_brand_name
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
@@ -167,8 +167,7 @@ class SitePurchaseMetadataProvider(object):
         data = data if data else {}
         data['Site'] = getattr(getSite(), '__name__', None)
         policy = component.getUtility(ISitePolicyUserEventListener)
-        brand = component.queryUtility(ISiteBrand)
-        site_display = getattr(brand, 'brand_name', '')
+        site_display = get_site_brand_name()
         site_alias = getattr(policy, 'COM_ALIAS', '')
         # We are inhereting the NT brand, try to use alias.
         if site_display == 'NextThought' and site_alias:
