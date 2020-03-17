@@ -5,27 +5,10 @@
 	  xmlns:tal="http://xml.zope.org/namespaces/tal">
 	<head>
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    	<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Purchase Confirmation</title>
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600" rel="stylesheet">
 		<style>
-			#green-bar {
-			background-color: #095b79;
-			width: 100%;
-			height: 5px;
-			margin-left: -30px;
-			padding-right: 40px;
-			}
-			#logo-bar {
-			margin-top: 20px;
-			margin-bottom: 30px;
-			}
-			body {
-			margin-left: 30px;
-			margin-right: 40px;
-			font-family: Helvetica, Arial, sans-serif;
-			font-size: 14pt;
-			color: #757474;
-			background-color: white;
-			}
 			a {
 			text-decoration: none;
 			color: #67a8cd;
@@ -47,114 +30,193 @@
 			padding-bottom: 4px;
 			line-height: 30px;
 			vertical-align: top;
-			white-space: nowrap;
 			}
+			body {
+				background-color: #F9F9F9;
+				color: #494949;
+				font-family: 'Open Sans', sans-serif, Helvetica, Arial;
+				font-size: 16px;
+				line-height: 24px;
+				padding-top: 20px;
+				padding-bottom: 20px;
+			}
+			.container {
+				width:100%;
+				max-width: 730px;
+				margin: 0 auto;
+				background-color: #FFFFFF;
+				padding-bottom: 50px;
+			}
+			.container .header {
+				width: 100%;
+			}
+			.container .header #logo-bar {
+				width: calc(100% - 10px);
+				max-width: 610px;
+				padding: 0 5px;
+				margin: 47px auto 20px;
+			}
+			.container .main{
+				width: calc(100% - 10px);
+				max-width: 610px;
+				padding: 0 5px;
+				margin: 0 auto;
+			}
+      		/* RESPONSIVE STUFF */
+      		@media screen and (max-width: 600px) {
+        		.responsive-table {
+              		width: 100% !important;
+        		}
+			}	
 		</style>
 	</head>
-	<body >
-		<div metal:use-macro="macro:header">
-        </div>
+	<body>
+	<div class="container">
+		<div metal:use-macro="macro:header"></div>
+		<div class="main">
+			<table border="0" cellpadding="0" cellspacing="0" width="100%">
+				<tr>
+					<td>
+					<h1 style="margin-bottom: 4px; margin-top: 0px;">Purchase Receipt</h1>
+					<table style="width: 100%;  border-top-style: solid; border-top-width: 1px;border-color: rgba(0,0,0,0.07);">
+						<tr style="font-weight: normal; font-size: 10pt; color: #b8b8b8; text-align: left">
+							<th>Billed To:</th><th>Date Purchased:</th><th>Transaction ID:</th>
+						</tr>
+						<tr style="font-weight: bold; font-size: 10pt; color: #494949">
+							<td tal:content="options/billed_to">Jonathan Jacobson</td>
+							<td tal:content="options/today">2013-04-27</td>
+							<td tal:content="options/transaction_id">TkJdcAE9696</td>
+						</tr>
+						<tr>
+							<!--! JAM: FIXME: This is incredibly USA centric and not localized -->
+							<td style="font-weight: 100; font-size: 10pt; color: #494949" colspan="3" tal:define="addr context/charge/Address">
+								<span tal:condition="addr/Street">${addr/Street}<br /></span>
+								<span tal:condition="addr/City">${addr/City}, </span>
+								<span tal:condition="addr/State">${addr/State} </span>
+								<span tal:condition="addr/Zip">${addr/Zip}<br /></span>
+								<span tal:condition="addr/Country">${addr/Country}</span>
+							</td>
+						</tr>
+					</table>
+					<h1 style="margin-bottom: 4px; margin-top: 20px;">Payment Details</h1>
+					<table id="payment_details" style="width: 100%; border-top-style: solid; border-top-width: 1px; border-collapse: collapse;border-color: rgba(0,0,0,0.07);">
+						<tal:block tal:repeat="item context/purchase/Order/Items">
+							<tr style="border-top-style: solid; border-top-width: 1px;border-color: rgba(0,0,0,0.07);">
+								<td>
+									<table border="0" cellpadding="0" cellspacing="0" width="70%" align="left" class="responsive-table">
+										<tr>
+											<td style="text-align:left; font-size: 10pt;">
+												<span style="font-weight: bold; color: #494949;" tal:content="item/purchasable/Title">The Professional Risk Managers' Handbook</span>
+												<span style="font-weight: bold; color: #494949;" tal:condition="exists:options/purchase_item_suffix"
+														tal:content="options/purchase_item_suffix"></span>
+												<span style="color: #b8b8b8" tal:condition="item/purchasable/License">&nbsp;(${item/purchasable/License})</span>
+												<div tal:condition="python:item.Quantity > 1">
+													ACTIVATION KEY: ${options/transaction_id}
+												</div>
+												<tal:block tal:condition="exists:options/redeem_by_clause" >
+													<div style="text-align:left; font-size: 8pt; color: #757474; font-weight:100; margin-top: 0px;"
+														tal:content="options/redeem_by_clause">Redeem by 10.24.2011</div>
+												</tal:block>
+											</td>
+										</tr>
+									</table>
+									<table border="0" cellpadding="0" cellspacing="0" width="30%" align="right" class="responsive-table">
+										<tr>
+											<td style="text-align:right; color: #757474;white-space: nowrap;">
+												<span tal:condition="python:item.Quantity > 1">
+													<span style="color: #b8b8b8">QTY: </span>
+													${item/Quantity}
+													&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+												</span>
+												<span tal:content="item/purchasable/currency:ATTR_W_CURRENCY_Amount">
+													US$19.50
+												</span>
+											</td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						</tal:block>
+						<tr style="border-top-style: solid; border-top-width: 1px;border-color: rgba(0,0,0,0.07);">
+							<td>
+								<table border="0" cellpadding="0" cellspacing="0" width="70%" align="left" class="responsive-table">
+									<tr>
+										<td style="text-align:left; font-size: 10pt; color: #757474; font-weight:100">SUBTOTAL</td>
+									</tr>
+								</table>
+								<table border="0" cellpadding="0" cellspacing="0" width="30%" align="right" class="responsive-table">
+									<tr>
+										<td style="text-align:right; color: #757474" tal:content="context/purchase/Pricing/currency:ATTR_W_CURRENCY_TotalNonDiscountedPrice">US$69.50</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						<tal:block tal:define="pricing context/purchase/Pricing;
+											currency pricing/Currency">
+						<tr style="border-top-style: solid; border-top-width: 1px;border-color: rgba(0,0,0,0.07);" tal:condition="python:pricing.TotalNonDiscountedPrice and pricing.TotalPurchasePrice &lt; pricing.TotalNonDiscountedPrice">
+							<td>
+								<table border="0" cellpadding="0" cellspacing="0" width="70%" align="left" class="responsive-table">
+									<tr>
+										<td style="text-align:left; font-size: 10pt; color: #757474; font-weight: 100">PROMO / DISCOUNTS: <span style="color: #b8b8b8" tal:content="context/purchase/Order/Coupon">FIVEDAYSALE</span></td>
+									</tr>
+								</table>
+								<table border="0" cellpadding="0" cellspacing="0" width="30%" align="right" class="responsive-table">
+									<tr>
+										<td style="text-align:right; color: #757474" tal:content="options/discount/currency:CURRENCY/?currency/formatted">$123</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						</tal:block>
 
-		<h1 style="margin-bottom: 4px; margin-top: 50px;">Purchase Receipt</h1>
-		<table style="width: 100%;  border-top-style: solid; border-top-width: 1px;">
-			<tr style="font-weight: normal; font-size: 10pt; color: #b8b8b8; text-align: left">
-				<th>Billed To:</th><th>Date Purchased:</th><th>Transaction ID:</th>
-			</tr>
-			<tr style="font-weight: bold; font-size: 10pt; color: #494949">
-				<td tal:content="options/billed_to">Jonathan Jacobson</td>
-				<td tal:content="options/today">2013-04-27</td>
-				<td tal:content="options/transaction_id">TkJdcAE9696</td>
-			</tr>
-			<tr>
-				<!--! JAM: FIXME: This is incredibly USA centric and not localized -->
-				<td style="font-weight: 100; font-size: 10pt; color: #494949" colspan="3" tal:define="addr context/charge/Address">
-					<span tal:condition="addr/Street">${addr/Street}<br /></span>
-					<span tal:condition="addr/City">${addr/City}, </span>
-					<span tal:condition="addr/State">${addr/State} </span>
-					<span tal:condition="addr/Zip">${addr/Zip}<br /></span>
-					<span tal:condition="addr/Country">${addr/Country}</span>
-				</td>
-			</tr>
-		</table>
+						<tr  style="border-top-style: solid; border-top-width: 1px;border-color: rgba(0,0,0,0.07);">
+							<td style="font-weight: bold; color: #494949; text-align: right;white-space: nowrap;">
+								ORDER TOTAL: <span tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</span>
+							</td>
+						</tr>
 
-		<h1 style="margin-bottom: 4px; margin-top: 50px;">Payment Details</h1>
-		<table id="payment_details" style="width: 100%; border-top-style: solid; border-top-width: 1px; border-collapse: collapse ">
-			<tal:block tal:repeat="item context/purchase/Order/Items">
-				<tr style="border-top-style: solid; border-top-width: 1px;">
-					<td style="text-align:left; font-size: 10pt;">
-						<span style="font-weight: bold; color: #494949;" tal:content="item/purchasable/Title">The Professional Risk Managers' Handbook</span>
-						<span style="font-weight: bold; color: #494949;" tal:condition="exists:ptions/purchase_item_suffix"
-								tal:content="options/purchase_item_suffix"></span>
-						<span style="color: #b8b8b8" tal:condition="item/purchasable/License">&nbsp;(${item/purchasable/License})</span>
-						<div tal:condition="python:item.Quantity > 1">
-							ACTIVATION KEY: ${options/transaction_id}
-						</div>
-					</td>
-					<td style="text-align:right; color: #757474">
-						<span tal:condition="python:item.Quantity > 1">
-							<span style="color: #b8b8b8">QTY: </span>
-							${item/Quantity}
-							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-						</span>
-						<span tal:content="item/purchasable/currency:ATTR_W_CURRENCY_Amount">
-							US$19.50
-						</span>
+						<tr style="border-top-style: solid; border-top-width: 1px; border-bottom-style: solid; border-bottom-width: 1px;border-color: rgba(0,0,0,0.07);">
+							<td>
+							<table border="0" cellpadding="0" cellspacing="0" width="70%" align="left" class="responsive-table">
+                                <tr>
+									<td style="text-align:left; font-size: 10pt; color: #757474">
+										PAYMENT RECEIVED: ${options/today}  (**** **** **** ${context/charge/CardLast4})
+										<span style="color: #b8b8b8" tal:content="options/refund_blurb">All Sales Are Final</span>
+									</td>
+								</tr>
+							</table>
+							<table border="0" cellpadding="0" cellspacing="0" width="30%" align="right" class="responsive-table">
+                                <tr>
+									<td  style="text-align:right; color: #757474" tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</td>
+								</tr>
+							</table>
+							</td>
+						</tr>
+					</table>
+
+					<div style="margin-top: 50px; font-size: 12pt;">
+						Thank you for your order, ${options/informal_username}! <br />
+						Your items are available
+						<a href="${request/application_url}">here</a>.
+					</div>
+
+					<div style="margin-top: 20px; color: #b8b8b8; font-size: 10pt">
+						<center>
+						<img src="https://d2ixlfeu83tci.cloudfront.net/images/purchase_email_logo1.png" width="104" height="24"
+							alt="NextThought Logo" />
+						<br />
+						<span>
+						Please keep a copy of this receipt for your records. <br />
+						If you have any questions, feel free to contact</span>
+						<a href="mailto:support@nextthought.com"
+							tal:attributes="href string:mailto:${options/support_email|default}"
+							tal:content="options/support_email">support@nextthought.com</a>.
+						</center>
+					</div>
 					</td>
 				</tr>
-				<tr tal:condition="exists:options/redeem_by_clause" >
-					<td style="text-align:left; font-size: 8pt; color: #757474; font-weight:100; margin-left: 60px; margin-top: 0px;"
-						tal:content="options/redeem_by_clause">Redeem by 10.24.2011</td>
-				</tr>
-			</tal:block>
-			<tr style="border-top-style: solid; border-top-width: 1px;">
-				<td style="text-align:left; font-size: 10pt; color: #757474; font-weight:100">SUBTOTAL</td>
-				<td style="text-align:right; color: #757474" tal:content="context/purchase/Pricing/currency:ATTR_W_CURRENCY_TotalNonDiscountedPrice">US$69.50</td>
-			</tr>
-
-			<tal:block tal:define="pricing context/purchase/Pricing;
-								   currency pricing/Currency">
-			<tr style="border-top-style: solid; border-top-width: 1px;" tal:condition="python:pricing.TotalNonDiscountedPrice and pricing.TotalPurchasePrice &lt; pricing.TotalNonDiscountedPrice">
-				<td style="text-align:left; font-size: 10pt; color: #757474; font-weight: 100">PROMO / DISCOUNTS: <span style="color: #b8b8b8" tal:content="context/purchase/Order/Coupon">FIVEDAYSALE</span></td>
-				<td style="text-align:right; color: #757474" tal:content="options/discount/currency:CURRENCY/?currency/formatted">$123</td>
-			</tr>
-			</tal:block>
-
-
-			<tr  style="border-top-style: solid; border-top-width: 1px;">
-				<td colspan="2" style="font-weight: bold; color: #494949; text-align: right">
-					ORDER TOTAL: <span tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</span>
-				</td>
-			</tr>
-
-			<tr style="border-top-style: solid; border-top-width: 1px; border-bottom-style: solid; border-bottom-width: 1px">
-				<td style="text-align:left; font-size: 10pt; color: #757474">
-					PAYMENT RECEIVED: ${options/today}  (**** **** **** ${context/charge/CardLast4})
-					<span style="color: #b8b8b8" tal:content="options/refund_blurb">All Sales Are Final</span>
-				</td>
-				<td  style="text-align:right; color: #757474" tal:content="context/charge/currency:ATTR_W_CURRENCY_Amount">US$64.50</td>
-			</tr>
-		</table>
-
-
-		<div style="margin-top: 50px; font-size: 12pt;">
-		Thank you for your order, ${options/informal_username}! <br />
-		Your items are available
-		<a href="${request/application_url}">here</a>.
+			</table>
 		</div>
-
-		<div style="margin-top: 20px; color: #b8b8b8; font-size: 10pt">
-			<center>
-			<img src="https://d2ixlfeu83tci.cloudfront.net/images/purchase_email_logo1.png" width="104" height="24"
-				 alt="NextThought Logo" />
-			<br />
-			<span>
-			Please keep a copy of this receipt for your records. <br />
-			If you have any questions, feel free to contact</span>
-			<a href="mailto:support@nextthought.com"
-				tal:attributes="href string:mailto:${options/support_email|default}"
-				tal:content="options/support_email">support@nextthought.com</a>.
-			</center>
-		</div>
-
+	</div>
 	</body>
 </html>
