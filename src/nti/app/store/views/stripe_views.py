@@ -31,6 +31,8 @@ from pyramid import httpexceptions as hexc
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
+from six.moves import urllib_parse
+
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.error import raise_json_error as raise_error
@@ -756,8 +758,12 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
         return s.decode(encoding=encoding, errors=errors) \
             if isinstance(s, bytes) else s
 
-    def url_with_params(self, root, params):
-        return root + '?' + urllib.urlencode(params)
+    def url_with_params(self, url, params):
+        url_parts = list(urllib_parse.urlparse(url))
+        query = dict(urllib_parse.parse_qsl(url_parts[4]))
+        query.update(params)
+        url_parts[4] = urllib_parse.urlencode(params)
+        return urllib_parse.urlunparse(url_parts)
 
     def redirect_with_params(self, loc, params):
         url = self.url_with_params(loc, params)
