@@ -7,6 +7,7 @@ from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
+from collections import OrderedDict
 
 from hamcrest import is_
 from hamcrest import none
@@ -18,6 +19,11 @@ from hamcrest import has_entry
 from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import greater_than_or_equal_to
+from hamcrest import not_
+from hamcrest import starts_with
+from hamcrest import has_properties
+from hamcrest import has_entries
+
 does_not = is_not
 
 import uuid
@@ -27,6 +33,8 @@ import fudge
 import stripe
 
 import simplejson as json
+
+from six.moves import urllib_parse
 
 from zope import interface
 
@@ -38,6 +46,10 @@ from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
+from nti.dataserver.authorization import ROLE_SITE_ADMIN
+
+from nti.dataserver.tests import mock_dataserver
+
 from nti.externalization.externalization import to_external_object
 
 from nti.store import PricingException
@@ -46,6 +58,8 @@ from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
 
 from nti.store.payments.stripe.interfaces import IStripeCoupon
+
+from nti.store.payments.stripe.storage import get_stripe_key_container
 
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
@@ -470,3 +484,156 @@ class TestStripeViews(ApplicationLayerTest):
                     has_entry('Value', is_not(none())))
         assert_that(json_body,
                     has_entry('ID', is_not(none())))
+
+
+class TestStripeConnectView(ApplicationLayerTest):
+
+    layer = ApplicationStoreTestLayer
+
+    default_origin = 'http://mathcounts.nextthought.com'
+
+    def _query_params(self, url):
+        url_parts = list(urllib_parse.urlparse(url))
+        # Query params are in index 4
+        return OrderedDict(urllib_parse.parse_qsl(url_parts[4]))
+
+    def _test_connect_stripe_account(self,
+                                     mock_open,
+                                     expected_dest_params,
+                                     code="AUTH_CODE_298",
+                                     error=None,
+                                     error_description=None):
+
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        class MockResponse(object):
+
+            def __init__(self, code):
+                self.code = code
+
+            def getcode(self):
+                return self.code
+
+            def read(self):
+                return json.dumps({
+                    "token_type": "bearer",
+                    "stripe_publishable_key": "PUB_KEY_111",
+                    "scope": "read_write",
+                    "livemode": False,
+                    "stripe_user_id": "ACCOUNT_ABC",
+                    "refresh_token": "REFRESH_TOKEN_222",
+                    "access_token": "ACCESS_TOKEN_333"
+                })
+
+        mock_open.is_callable().returns(MockResponse(200))
+
+        url = '/dataserver2/store/stripe/keys/@@connect_stripe_account'
+        body = {
+            'scope': 'read_write',
+        }
+        for key, val in (('code', code),
+                         ('error', error),
+                         ('error_description', error_description)):
+            if val:
+                body[key] = val
+
+        res = self.testapp.get(url,
+                               body,
+                               status=302,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+
+        location = res.headers['LOCATION']
+        assert_that(location, starts_with('http://localhost/stripe_connect'))
+
+        loc_params = self._query_params(location)
+        assert_that(loc_params, has_entries(expected_dest_params))
+
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            key_container = get_stripe_key_container(create=False)
+            if 'success' in loc_params:
+                assert_that(key_container, not_(none()))
+                assert_that(key_container, has_length(1))
+                assert_that(key_container['default'], has_properties({
+                    "Alias": "default",
+                    "TokenType":  "bearer",
+                    "PublicKey": "PUB_KEY_111",
+                    "LiveMode": False,
+                    "StripeUserID": "ACCOUNT_ABC",
+                    "RefreshToken": "REFRESH_TOKEN_222",
+                    "PrivateKey": "ACCESS_TOKEN_333"
+                }))
+            else:
+                assert_that(key_container, is_(none()))
+
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_success(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {"success": "true"})
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_no_params(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "Unknown",
+                                              "error_description": "An unknown error occurred"
+                                          },
+                                          code=None)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_stripe_error(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "stripe error abc",
+                                              "error_description": "user declined auth"
+                                          },
+                                          code=None,
+                                          error="stripe error abc",
+                                          error_description="user declined auth")
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_connect_stripe_account_site_admins_only(self):
+        self.testapp.get('/dataserver2/store/stripe/keys/@@connect_stripe_account',
+                           None,
+                           status=403)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    @fudge.patch('nti.app.store.views.stripe_views.requests.post')
+    def test_disconnect_stripe_account_success(self, mock_open, requests_post):
+        self._test_connect_stripe_account(mock_open,
+                                          {"success": "true"})
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        def post(url, data=None, timeout=None, auth=None):
+            return fudge.Fake().expects('raise_for_status').returns(None)
+
+        requests_post.is_callable().calls(post)
+        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
+                          '',
+                          status=204)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_disconnect_stripe_account_site_admins_only(self):
+        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
+                          '',
+                          status=403)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_disconnect_stripe_account_not_connected(self):
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
+                          '',
+                          status=422,
+                          extra_environ={
+                              b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                          })

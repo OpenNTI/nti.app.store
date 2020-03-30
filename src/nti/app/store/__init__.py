@@ -20,8 +20,13 @@ STORE = 'store'
 #: Stripe path
 STRIPE = 'stripe'
 
+#: Keys path
+KEYS = 'keys'
+
 #: Payeezy path
 PAYEEZY = 'payeezy'
 
 #: Purchasables path
 PURCHASABLES = 'purchasables'
+
+DEFAULT_STRIPE_KEY_ALIAS = u'default'

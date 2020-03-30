@@ -12,6 +12,7 @@
 
 	<!-- ACLs -->
 	<adapter factory=".acl.PurchasableACLProvider" />
+	<adapter factory=".acl.StripeConnectKeyContainerACLProvider" />
 
 	<!-- Adapters -->
 	<adapter factory=".adapters._PurchasableFileConstraints"

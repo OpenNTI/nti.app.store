@@ -10,7 +10,6 @@ from __future__ import absolute_import
 
 from six.moves.urllib_parse  import unquote
 
-from zope import component
 from zope import interface
 
 from zope.component.hooks import getSite
@@ -21,10 +20,13 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
 
-from nti.app.store import STORE
-from nti.app.store import STRIPE
+from nti.app.store import KEYS
 from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
+from nti.app.store import STORE
+from nti.app.store import STRIPE
+
+from nti.store.payments.stripe.storage import get_stripe_key_container
 
 from nti.store.purchasable import get_purchasable
 
@@ -57,6 +59,10 @@ class StripePathAdapter(object):
         self.__parent__ = parent
         self.__name__ = STRIPE
 
+    def __getitem__(self, key):
+        if key == KEYS:
+            return get_stripe_key_container()
+        raise KeyError(key)
 
 @interface.implementer(IPathAdapter, IContained)
 class PayeezyPathAdapter(object):

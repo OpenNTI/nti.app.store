@@ -8,7 +8,18 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import json
+import urllib
+import urllib2
+
+from uuid import uuid4
+
+import requests
+
+from requests.structures import CaseInsensitiveDict
+
 import sys
+
 from functools import partial
 
 from zope import component
@@ -25,6 +36,7 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_pve_int
@@ -60,13 +72,17 @@ from nti.store.interfaces import IPaymentProcessor
 from nti.store.interfaces import IPurchasablePricer
 from nti.store.interfaces import IPurchasableChoiceBundle
 
+from nti.store.payments.stripe import authorization as sauth
 from nti.store.payments.stripe import STRIPE
 from nti.store.payments.stripe import NoSuchStripeCoupon
 from nti.store.payments.stripe import InvalidStripeCoupon
 
+from nti.store.payments.stripe.interfaces import IStripeConnectConfig
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
+from nti.store.payments.stripe.interfaces import IStripeConnectKeyContainer
 
+from nti.store.payments.stripe.model import PersistentStripeConnectKey
 from nti.store.payments.stripe.model import StripeToken
 
 from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
@@ -78,9 +94,11 @@ from nti.store.payments.stripe.utils import replace_items_coupon
 from nti.store.store import get_gift_pending_purchases
 from nti.store.store import create_gift_purchase_attempt
 from nti.store.store import register_gift_purchase_attempt
+from zope.cachedescriptors.property import Lazy
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
+_REQUEST_TIMEOUT = 1.0
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -713,3 +731,161 @@ class RefundPaymentWithStripeView(AbstractPostView,
                request_method='POST')
 class RefundPaymentView(RefundPaymentWithStripeView):
     pass
+
+
+class StripeConnectViewMixin(object):
+
+    @Lazy
+    def stripe_conf(self):
+        return component.getUtility(IStripeConnectConfig)
+
+    @Lazy
+    def nti_secret_key(self):
+        return self.stripe_conf.SecretKey
+
+
+@view_config(name='connect_stripe_account')
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               request_method='GET',
+               context=IStripeConnectKeyContainer,
+               permission=sauth.ACT_LINK_STRIPE)
+class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
+
+    def _text(self, s, encoding='utf-8', errors='strict'):
+        return s.decode(encoding=encoding, errors=errors) \
+            if isinstance(s, bytes) else s
+
+    def url_with_params(self, root, params):
+        return root + '?' + urllib.urlencode(params)
+
+    def redirect_with_params(self, loc, params):
+        url = self.url_with_params(loc, params)
+        logger.info("Redirecting to %s", url)
+        return hexc.HTTPFound(url)
+
+    def error_response(self, loc, error='Unknown', desc='An unknown error occurred'):
+        return self.redirect_with_params(loc, {'error': error, 'error_description': desc})
+
+    def success_response(self, loc):
+        return self.redirect_with_params(loc, {'success': 'true'})
+
+    def retrieve_keys(self, code):
+        try:
+            data = urllib.urlencode({'client_secret': self.nti_secret_key})
+            url = self.url_with_params(self.stripe_conf.TokenEndpoint,
+                                       {
+                                           'grant_type': 'authorization_code',
+                                           'code': code
+                                       })
+            response = urllib2.urlopen(url, data)
+
+            response_code = response.getcode()
+
+            if response_code < 200 or response_code >= 300:
+                return self.error_response(self.dest_endpoint)
+
+            return self.persist_data(response)
+        except Exception as e:
+            error_uid = str(uuid4())
+            logger.exception("Exception making token request (%s): ", error_uid)
+            return self.error_response(self.dest_endpoint,
+                                       'Server Error',
+                                       "Error Reference: %s" % (error_uid,))
+
+    def persist_data(self, response):
+        try:
+            result = json.load(response)
+            connect_key = PersistentStripeConnectKey(
+                Alias=DEFAULT_STRIPE_KEY_ALIAS,
+                StripeUserID=self._text(result['stripe_user_id']),
+                LiveMode=bool(result['livemode']),
+                PrivateKey=self._text(result['access_token']),
+                RefreshToken=self._text(result['refresh_token']),
+                PublicKey=self._text(result['stripe_publishable_key']),
+                TokenType=self._text(result['token_type'])
+            )
+            connect_key.creator = self.remoteUser
+            self.context.add_key(connect_key)
+            response = self.success_response(self.dest_endpoint)
+
+            self.request.environ['nti.request_had_transaction_side_effects'] = 'True'
+            return response
+        except Exception as e:
+            error_uid = str(uuid4())
+            logger.exception("Exception persisting data (%s): ", error_uid)
+            return self.error_response(self.dest_endpoint,
+                                       'Server Error',
+                                       "Error Reference: %s" % (error_uid,))
+
+    @Lazy
+    def dest_endpoint(self):
+        return self.request.application_url + self.stripe_conf.CompletionRoutePrefix
+
+    def __call__(self):
+
+        code = None
+        error = 'Unknown'
+        error_description = 'An unknown error occurred'
+
+        request = self.request
+        params = CaseInsensitiveDict(request.params)
+        if params:
+            if 'code' in params:
+                code = self._text(params.get('code'))
+            if 'error' in params:
+                error = self._text(params.get('error'))
+            if 'error_description' in params:
+                error_description = self._text(params.get('error_description'))
+
+        if not code:
+            return self.error_response(self.dest_endpoint, error, error_description)
+        else:
+            return self.retrieve_keys(code)
+
+
+@view_config(name='disconnect_stripe_account')
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               request_method='POST',
+               context=IStripeConnectKeyContainer,
+               permission=sauth.ACT_LINK_STRIPE)
+class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
+
+    @Lazy
+    def _deauth_uri(self):
+        return self.stripe_conf.DeauthorizeEndpoint
+
+    def _deauth_stripe(self, user_key):
+        data = {
+            'client_id': self.stripe_conf.ClientId,
+            'stripe_user_id': user_key.StripeUserID
+        }
+        logger.info("data=%s" % (data,))
+        deauth = requests.post(self._deauth_uri,
+                               data=data,
+                               timeout=_REQUEST_TIMEOUT,
+                               auth=(self.nti_secret_key,''))
+
+        try:
+            deauth.raise_for_status()
+        except requests.RequestException as req_ex:
+            logger.exception("Unable to deauthorize platform access for user: %s",
+                             user_key.StripeUserID)
+            raise hexc.HTTPServerError(str(req_ex))
+
+    def __call__(self):
+        try:
+            default_key = self.context[DEFAULT_STRIPE_KEY_ALIAS]
+        except KeyError:
+            raise_error(self.request,
+                        hexc.HTTPUnprocessableEntity,
+                        {
+                            'message': _(u"No Stripe Connect key for site."),
+                            'code': "MissingKeyError"
+                        },
+                        None)
+
+        self._deauth_stripe(default_key)
+        self.context.remove_key(DEFAULT_STRIPE_KEY_ALIAS)
+        return hexc.HTTPNoContent()
