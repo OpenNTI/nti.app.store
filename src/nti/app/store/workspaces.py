@@ -148,8 +148,8 @@ class _StoreCollection(object):
             result.append(link)
         # stripe site admin links
         if is_site_admin(self.user):
-            stripe_connect_config = component.getUtility(IStripeConnectConfig)
             if not self._has_stripe_connect_key():
+                stripe_connect_config = component.getUtility(IStripeConnectConfig)
                 link = Link(stripe_connect_config.StripeOauthEndpoint, rel='connect_stripe_account')
             else:
                 link = Link('/%s/%s/%s/%s/@@disconnect_stripe_account' % (root, STORE, STRIPE, KEYS),
