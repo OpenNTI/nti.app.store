@@ -21,9 +21,11 @@ from pyramid.threadlocal import get_current_request
 
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
+from nti.app.store import KEYS
 from nti.app.store import STORE
 from nti.app.store import STRIPE
 from nti.app.store import PAYEEZY
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 
 from nti.app.store.interfaces import IStoreWorkspace
 
@@ -31,12 +33,17 @@ from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
 from nti.appserver.workspaces.interfaces import IContainerCollection
 
+from nti.dataserver.authorization import is_site_admin
+
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 
 from nti.links.links import Link
 
 from nti.property.property import alias
+
+from nti.store.payments.stripe.interfaces import IStripeConnectConfig
+from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
 from nti.traversal.traversal import find_interface
 
@@ -93,6 +100,10 @@ class _StoreCollection(object):
         self.__parent__ = user_workspace
 
     @property
+    def user(self):
+        return self.__parent__.user
+
+    @property
     def root(self):
         request = get_current_request()
         try:
@@ -101,6 +112,9 @@ class _StoreCollection(object):
             result = None
         root = result or "dataserver2"
         return root
+
+    def _has_stripe_connect_key(self):
+        return bool(component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS))
 
     @property
     def links(self):
@@ -131,6 +145,17 @@ class _StoreCollection(object):
             link = Link(href, rel=rel, elements=('@@' + name,))
             link.__name__ = ''
             interface.alsoProvides(link, ILocation)
+            result.append(link)
+        # stripe site admin links
+        if is_site_admin(self.user):
+            stripe_connect_config = component.getUtility(IStripeConnectConfig)
+            if not self._has_stripe_connect_key():
+                link = Link(stripe_connect_config.StripeOauthEndpoint, rel='connect_stripe_account')
+            else:
+                link = Link('/%s/%s/%s/%s/@@disconnect_stripe_account' % (root, STORE, STRIPE, KEYS),
+                            rel='disconnect_stripe_account')
+                link.__name__ = ''
+                interface.alsoProvides(link, ILocation)
             result.append(link)
         # payeezy links
         href = '/%s/%s/%s' % (root, STORE, PAYEEZY)

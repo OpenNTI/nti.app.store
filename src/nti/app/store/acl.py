@@ -20,11 +20,14 @@ from nti.dataserver.authorization import ROLE_CONTENT_ADMIN
 from nti.dataserver.authorization_acl import ace_allowing
 from nti.dataserver.authorization_acl import acl_from_aces
 
+from nti.dataserver.interfaces import ACE_DENY_ALL
 from nti.dataserver.interfaces import IACLProvider
 from nti.dataserver.interfaces import ALL_PERMISSIONS
 from nti.dataserver.interfaces import EVERYONE_USER_NAME
 
 from nti.store.interfaces import IPurchasable
+
+from nti.store.payments.stripe.interfaces import IStripeConnectKeyContainer
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -44,3 +47,15 @@ class PurchasableACLProvider(object):
             aces.append(ace_allowing(EVERYONE_USER_NAME, ACT_READ, type(self)))
         result = acl_from_aces(aces)
         return result
+
+
+@component.adapter(IStripeConnectKeyContainer)
+@interface.implementer(IACLProvider)
+class StripeConnectKeyContainerACLProvider(object):
+
+    def __init__(self, context):
+        self.context = context
+
+    @Lazy
+    def __acl__(self):
+        return acl_from_aces([ACE_DENY_ALL])
