@@ -18,6 +18,16 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import starts_with
 
+from zope.component.hooks import getSite
+
+from zope.securitypolicy.interfaces import IPrincipalRoleManager
+
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
+
+from nti.store.payments.stripe.model import PersistentStripeConnectKey
+
+from nti.store.payments.stripe.storage import get_stripe_key_container
+
 does_not = is_not
 
 from six.moves import urllib_parse
@@ -66,12 +76,16 @@ class TestWorkspaces(ApplicationLayerTest):
         # Query params are in index 4
         return OrderedDict(urllib_parse.parse_qsl(url_parts[4]))
 
+    def _assign_role_for_site(self, role, username, site=None):
+        role_manager = IPrincipalRoleManager(site or getSite())
+        role_name = getattr(role, "id", role)
+        role_manager.assignRoleToPrincipal(role_name, username)
+
     @WithSharedApplicationMockDS(users=True)
-    @fudge.patch('nti.app.store.workspaces._StoreCollection._has_stripe_connect_key')
-    def test_external_site_admin(self, has_connect_key):
-        has_connect_key.is_callable().returns(False)
-        with mock_dataserver.mock_db_trans(self.ds):
-            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+    def test_external_site_admin(self):
+        with mock_dataserver.mock_db_trans(self.ds, site_name="mathcounts.nextthought.com"):
+            self._assign_role_for_site(ROLE_SITE_ADMIN, 'sjohnson@nextthought.com')
+
             user = User.get_user(dataserver=self.ds,
                                  username=u'sjohnson@nextthought.com')
             service = UserService(user)
@@ -95,8 +109,18 @@ class TestWorkspaces(ApplicationLayerTest):
                                             "client_id",
                                             "scope"))
 
-        has_connect_key.is_callable().returns(True)
-        with mock_dataserver.mock_db_trans(self.ds):
+        with mock_dataserver.mock_db_trans(self.ds, site_name="mathcounts.nextthought.com"):
+            key_container = get_stripe_key_container()
+            connect_key = PersistentStripeConnectKey(
+                Alias=DEFAULT_STRIPE_KEY_ALIAS,
+                StripeUserID=u"user_id_1",
+                LiveMode=False,
+                PrivateKey=u"private_key_1",
+                RefreshToken=u"refresh_token_1",
+                PublicKey=u"public_key_1",
+                TokenType=u"bearer"
+            )
+            key_container.add_key(connect_key)
             user = User.get_user(dataserver=self.ds,
                                  username=u'sjohnson@nextthought.com')
             service = UserService(user)
@@ -106,7 +130,9 @@ class TestWorkspaces(ApplicationLayerTest):
                          if x['Title'] == 'store')
             store_coll = next(x for x in store_wss['Items']
                              if x['Title'] == 'store')
-            disconnect_stripe_link = self.link_href_with_rel(store_coll,
-                                                          'disconnect_stripe_account')
-            assert_that(disconnect_stripe_link,
-                        starts_with("/dataserver2/store/stripe/keys/@@disconnect_stripe_account"))
+            disconnect_stripe_link = self.link_with_rel(store_coll,
+                                                        'disconnect_stripe_account')
+            assert_that(disconnect_stripe_link['method'],
+                        starts_with("DELETE"))
+            assert_that(disconnect_stripe_link['href'],
+                        starts_with("/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"))

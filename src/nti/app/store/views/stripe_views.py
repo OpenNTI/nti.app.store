@@ -22,8 +22,6 @@ import sys
 
 from functools import partial
 
-from zope import component
-
 import transaction
 
 from pyramid import httpexceptions as hexc
@@ -32,6 +30,10 @@ from pyramid.view import view_config
 from pyramid.view import view_defaults
 
 from six.moves import urllib_parse
+
+from zope import component
+
+from zope.cachedescriptors.property import Lazy
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
@@ -96,7 +98,8 @@ from nti.store.payments.stripe.utils import replace_items_coupon
 from nti.store.store import get_gift_pending_purchases
 from nti.store.store import create_gift_purchase_attempt
 from nti.store.store import register_gift_purchase_attempt
-from zope.cachedescriptors.property import Lazy
+
+from nti.traversal.traversal import find_interface
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
@@ -859,12 +862,11 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
             return self.retrieve_keys(code)
 
 
-@view_config(name='disconnect_stripe_account')
-@view_defaults(route_name='objects.generic.traversal',
-               renderer='rest',
-               request_method='POST',
-               context=IStripeConnectKeyContainer,
-               permission=sauth.ACT_LINK_STRIPE)
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             request_method='DELETE',
+             context=IStripeConnectKey,
+             permission=sauth.ACT_LINK_STRIPE)
 class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
 
     @Lazy
@@ -876,7 +878,6 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
             'client_id': self.stripe_conf.ClientId,
             'stripe_user_id': user_key.StripeUserID
         }
-        logger.info("data=%s" % (data,))
         deauth = requests.post(self._deauth_uri,
                                data=data,
                                timeout=_REQUEST_TIMEOUT,
@@ -890,17 +891,7 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
             raise hexc.HTTPServerError(str(req_ex))
 
     def __call__(self):
-        try:
-            default_key = self.context[DEFAULT_STRIPE_KEY_ALIAS]
-        except KeyError:
-            raise_error(self.request,
-                        hexc.HTTPUnprocessableEntity,
-                        {
-                            'message': _(u"No Stripe Connect key for site."),
-                            'code': "MissingKeyError"
-                        },
-                        None)
-
-        self._deauth_stripe(default_key)
-        self.context.remove_key(DEFAULT_STRIPE_KEY_ALIAS)
+        container = find_interface(self.context, IStripeConnectKeyContainer)
+        self._deauth_stripe(self.context)
+        container.remove_key(DEFAULT_STRIPE_KEY_ALIAS)
         return hexc.HTTPNoContent()
