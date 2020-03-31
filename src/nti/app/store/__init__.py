@@ -21,7 +21,7 @@ STORE = 'store'
 STRIPE = 'stripe'
 
 #: Keys path
-KEYS = 'keys'
+REGISTERED_STRIPE_KEYS = 'keys'
 
 #: Payeezy path
 PAYEEZY = 'payeezy'
