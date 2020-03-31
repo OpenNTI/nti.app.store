@@ -21,7 +21,7 @@ from pyramid.threadlocal import get_current_request
 
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
-from nti.app.store import KEYS
+from nti.app.store import REGISTERED_STRIPE_KEYS
 from nti.app.store import STORE
 from nti.app.store import STRIPE
 from nti.app.store import PAYEEZY
@@ -152,7 +152,7 @@ class _StoreCollection(object):
                 stripe_connect_config = component.getUtility(IStripeConnectConfig)
                 link = Link(stripe_connect_config.StripeOauthEndpoint, rel='connect_stripe_account')
             else:
-                link = Link('/%s/%s/%s/%s/@@disconnect_stripe_account' % (root, STORE, STRIPE, KEYS),
+                link = Link('/%s/%s/%s/%s/@@disconnect_stripe_account' % (root, STORE, STRIPE, REGISTERED_STRIPE_KEYS),
                             rel='disconnect_stripe_account')
                 link.__name__ = ''
                 interface.alsoProvides(link, ILocation)

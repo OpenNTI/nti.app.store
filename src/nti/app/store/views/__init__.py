@@ -20,7 +20,7 @@ from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
 
-from nti.app.store import KEYS
+from nti.app.store import REGISTERED_STRIPE_KEYS
 from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 from nti.app.store import STORE
@@ -60,7 +60,7 @@ class StripePathAdapter(object):
         self.__name__ = STRIPE
 
     def __getitem__(self, key):
-        if key == KEYS:
+        if key == REGISTERED_STRIPE_KEYS:
             return get_stripe_key_container()
         raise KeyError(key)
 
