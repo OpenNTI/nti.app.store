@@ -24,6 +24,14 @@ from hamcrest import starts_with
 from hamcrest import has_properties
 from hamcrest import has_entries
 
+from zope.component.hooks import getSite
+
+from zope.securitypolicy.interfaces import IPrincipalRoleManager
+
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
+
+from nti.store.payments.stripe.model import PersistentStripeConnectKey
+
 does_not = is_not
 
 import uuid
@@ -603,37 +611,53 @@ class TestStripeConnectView(ApplicationLayerTest):
                            None,
                            status=403)
 
+    def _add_default_stripe_key(self):
+        key_container = get_stripe_key_container()
+        connect_key = PersistentStripeConnectKey(
+            Alias=DEFAULT_STRIPE_KEY_ALIAS,
+            StripeUserID=u"user_id_1",
+            LiveMode=False,
+            PrivateKey=u"private_key_1",
+            RefreshToken=u"refresh_token_1",
+            PublicKey=u"public_key_1",
+            TokenType=u"bearer"
+        )
+        key_container.add_key(connect_key)
+
+    def _assign_role_for_site(self, role, username, site=None):
+        role_manager = IPrincipalRoleManager(site or getSite())
+        role_name = getattr(role, "id", role)
+        role_manager.assignRoleToPrincipal(role_name, username)
+
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     @fudge.patch('nti.app.store.views.stripe_views.requests.post')
     def test_disconnect_stripe_account_success(self, mock_open, requests_post):
         self._test_connect_stripe_account(mock_open,
                                           {"success": "true"})
-        with mock_dataserver.mock_db_trans():
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
         def post(url, data=None, timeout=None, auth=None):
             return fudge.Fake().expects('raise_for_status').returns(None)
 
         requests_post.is_callable().calls(post)
-        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
-                          '',
-                          status=204)
+        url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
+        self.testapp.delete(url, status=204)
+        self.testapp.delete(url, status=404)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_disconnect_stripe_account_site_admins_only(self):
-        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
-                          '',
-                          status=403)
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            self._add_default_stripe_key()
+
+        url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
+        self.testapp.delete(url, status=403)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_disconnect_stripe_account_not_connected(self):
-        with mock_dataserver.mock_db_trans():
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        self.testapp.post('/dataserver2/store/stripe/keys/@@disconnect_stripe_account',
-                          '',
-                          status=422,
-                          extra_environ={
-                              b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
-                          })
+        url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
+        self.testapp.delete(url, status=404)
