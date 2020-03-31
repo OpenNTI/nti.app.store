@@ -753,6 +753,15 @@ class StripeConnectViewMixin(object):
                context=IStripeConnectKeyContainer,
                permission=sauth.ACT_LINK_STRIPE)
 class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
+    """
+    This is the redirection endpoint
+    (https://tools.ietf.org/html/rfc6749#section-3.1.2) of the OAuth flow
+    used when connecting a Stripe account for one of our sites
+    (https://stripe.com/docs/connect/standard-accounts).  It, thus, expects
+    a `code` parameter containing the authorization code to use in the
+    token request, or an `error` and `error_description` describing any
+    issue with the authorization.
+    """
 
     def _text(self, s, encoding='utf-8', errors='strict'):
         return s.decode(encoding=encoding, errors=errors) \
