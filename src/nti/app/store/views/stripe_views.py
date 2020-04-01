@@ -825,7 +825,13 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
                 TokenType=self._text(result['token_type'])
             )
             connect_key.creator = self.remoteUser
-            self.context.add_key(connect_key)
+            try:
+                self.context.add_key(connect_key)
+            except KeyError:
+                return self.error_response(self.dest_endpoint,
+                                           'Already Linked',
+                                           "Another account has already been linked for this site.")
+
             response = self.success_response(self.dest_endpoint)
 
             self.request.environ['nti.request_had_transaction_side_effects'] = 'True'
