@@ -510,7 +510,8 @@ class TestStripeConnectView(ApplicationLayerTest):
                                      expected_dest_params,
                                      code="AUTH_CODE_298",
                                      error=None,
-                                     error_description=None):
+                                     error_description=None,
+                                     verify_empty_on_fail=True):
 
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
@@ -573,7 +574,7 @@ class TestStripeConnectView(ApplicationLayerTest):
                     "RefreshToken": "REFRESH_TOKEN_222",
                     "PrivateKey": "ACCESS_TOKEN_333"
                 }))
-            else:
+            elif verify_empty_on_fail:
                 assert_that(key_container, is_(none()))
 
 
@@ -582,6 +583,22 @@ class TestStripeConnectView(ApplicationLayerTest):
     def test_connect_stripe_account_success(self, mock_open):
         self._test_connect_stripe_account(mock_open,
                                           {"success": "true"})
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_already_linked(self, mock_open):
+        # Ensure one has already been linked
+        self._test_connect_stripe_account(mock_open,
+                                          {"success": "true"})
+
+        # Attempt to link another should result in an error describing that.
+        error_desc = "Another account has already been linked for this site."
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "Already Linked",
+                                              "error_description": error_desc
+                                          },
+                                          verify_empty_on_fail=False)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
