@@ -40,6 +40,7 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
+from nti.app.store import CONNECT_STRIPE_ACCOUNT
 from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 
 from nti.app.store.utils import to_boolean
@@ -749,7 +750,7 @@ class StripeConnectViewMixin(object):
         return self.stripe_conf.SecretKey
 
 
-@view_config(name='connect_stripe_account')
+@view_config(name=CONNECT_STRIPE_ACCOUNT)
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                request_method='GET',

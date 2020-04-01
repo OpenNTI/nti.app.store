@@ -30,3 +30,6 @@ PAYEEZY = 'payeezy'
 PURCHASABLES = 'purchasables'
 
 DEFAULT_STRIPE_KEY_ALIAS = u'default'
+
+# OAuth Redirect Endpoint for connecting Stripe accounts
+CONNECT_STRIPE_ACCOUNT = 'connect_stripe_account'
