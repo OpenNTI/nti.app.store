@@ -107,7 +107,8 @@ class TestWorkspaces(ApplicationLayerTest):
                         contains_inanyorder("response_type",
                                             "stripe_landing",
                                             "client_id",
-                                            "scope"))
+                                            "scope",
+                                            "redirect_uri"))
 
         with mock_dataserver.mock_db_trans(self.ds, site_name="mathcounts.nextthought.com"):
             key_container = get_stripe_key_container()
