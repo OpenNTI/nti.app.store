@@ -9,8 +9,7 @@ from __future__ import absolute_import
 # pylint: disable=W0212,R0904
 from collections import OrderedDict
 
-import fudge
-from hamcrest import contains_inanyorder
+from hamcrest import is_
 from hamcrest import is_not
 from hamcrest import has_item
 from hamcrest import has_entry
@@ -102,13 +101,9 @@ class TestWorkspaces(ApplicationLayerTest):
             stripe_account_link = self.link_href_with_rel(store_coll,
                                                           'connect_stripe_account')
             assert_that(stripe_account_link,
-                        starts_with("https://connect.stripe.com/oauth/authorize"))
+                        is_("/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/@@stripe_connect_oauth1"))
             assert_that(self._query_params(stripe_account_link),
-                        contains_inanyorder("response_type",
-                                            "stripe_landing",
-                                            "client_id",
-                                            "scope",
-                                            "redirect_uri"))
+                        has_length(0))
 
         with mock_dataserver.mock_db_trans(self.ds, site_name="mathcounts.nextthought.com"):
             key_container = get_stripe_key_container()

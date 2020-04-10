@@ -537,9 +537,18 @@ class TestStripeConnectView(ApplicationLayerTest):
 
         mock_open.is_callable().returns(MockResponse(200))
 
-        url = '/dataserver2/store/stripe/keys/@@connect_stripe_account'
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        res = self.testapp.get(url,
+                               status=303,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+        params = self._query_params(res.headers['LOCATION'])
+
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth2'
         body = {
             'scope': 'read_write',
+            'state': params['state'],
         }
         for key, val in (('code', code),
                          ('error', error),
@@ -549,7 +558,7 @@ class TestStripeConnectView(ApplicationLayerTest):
 
         res = self.testapp.get(url,
                                body,
-                               status=302,
+                               status=303,
                                extra_environ={
                                    b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
                                })
@@ -591,14 +600,23 @@ class TestStripeConnectView(ApplicationLayerTest):
         self._test_connect_stripe_account(mock_open,
                                           {"success": "true"})
 
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        res = self.testapp.get(url,
+                               status=303,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+
         # Attempt to link another should result in an error describing that.
+        params = self._query_params(res.headers['LOCATION'])
         error_desc = "Another account has already been linked for this site."
-        self._test_connect_stripe_account(mock_open,
-                                          {
-                                              "error": "Already Linked",
-                                              "error_description": error_desc
-                                          },
-                                          verify_empty_on_fail=False)
+        assert_that(params, has_entries({
+            "error": "Already Linked",
+            "error_description": error_desc
+        }))
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
@@ -624,7 +642,7 @@ class TestStripeConnectView(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_connect_stripe_account_site_admins_only(self):
-        self.testapp.get('/dataserver2/store/stripe/keys/@@connect_stripe_account',
+        self.testapp.get('/dataserver2/store/stripe/keys/@@stripe_connect_oauth2',
                            None,
                            status=403)
 

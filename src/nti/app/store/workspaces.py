@@ -23,7 +23,7 @@ from pyramid.threadlocal import get_current_request
 
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
-from nti.app.store import CONNECT_STRIPE_ACCOUNT
+from nti.app.store import STRIPE_CONNECT_AUTH
 from nti.app.store import STORE
 from nti.app.store import STRIPE
 from nti.app.store import PAYEEZY
@@ -44,13 +44,11 @@ from nti.links.links import Link
 
 from nti.property.property import alias
 
-from nti.store.payments.stripe.interfaces import IStripeConnectConfig
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
 from nti.store.payments.stripe.storage import get_stripe_key_container
 
 from nti.traversal.traversal import find_interface
-from nti.traversal.traversal import normal_resource_path
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -121,19 +119,6 @@ class _StoreCollection(object):
     def _stripe_connect_key(self):
         return component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS)
 
-    def _get_stripe_key_container(self):
-        return get_stripe_key_container()
-
-    def _stripe_redirect_uri(self):
-        path = normal_resource_path(self._get_stripe_key_container())
-
-        if not path:
-            return None
-
-        path = urllib_parse.urljoin(get_current_request().application_url,
-                                    path)
-        return urllib_parse.urljoin(path + '/' if not path.endswith('/') else path,
-                                    "@@" + CONNECT_STRIPE_ACCOUNT)
 
     @property
     def links(self):
@@ -169,11 +154,8 @@ class _StoreCollection(object):
         if is_site_admin(self.user):
             stripe_connect_key = self._stripe_connect_key()
             if stripe_connect_key is None:
-                stripe_connect_config = component.getUtility(IStripeConnectConfig)
-                redirect_uri = self._stripe_redirect_uri()
-                connect_stripe_href = \
-                    stripe_connect_config.stripe_oauth_endpoint(redirect_uri=redirect_uri)
-                link = Link(connect_stripe_href,
+                link = Link(get_stripe_key_container(),
+                            elements=("@@" + STRIPE_CONNECT_AUTH,),
                             rel='connect_stripe_account')
             else:
                 link = Link(stripe_connect_key,
