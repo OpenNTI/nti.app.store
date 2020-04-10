@@ -31,5 +31,8 @@ PURCHASABLES = 'purchasables'
 
 DEFAULT_STRIPE_KEY_ALIAS = u'default'
 
-# OAuth Redirect Endpoint for connecting Stripe accounts
-CONNECT_STRIPE_ACCOUNT = 'connect_stripe_account'
+# Stripe Connect OAuth Redirect for Authorization
+STRIPE_CONNECT_AUTH = 'stripe_connect_oauth1'
+
+# Stripe Connect OAuth Redirect Endpoint for connecting Stripe accounts
+STRIPE_CONNECT_REDIRECT = 'stripe_connect_oauth2'

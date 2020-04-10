@@ -40,7 +40,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.error import raise_json_error as raise_error
 
 from nti.app.store import MessageFactory as _
-from nti.app.store import CONNECT_STRIPE_ACCOUNT
+from nti.app.store import STRIPE_CONNECT_AUTH
+from nti.app.store import STRIPE_CONNECT_REDIRECT
 from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 
 from nti.app.store.utils import to_boolean
@@ -63,6 +64,9 @@ from nti.app.store.views.view_mixin import GeneratePurchaseInvoiceViewMixin
 from nti.app.store.views.view_mixin import price_order
 
 from nti.base._compat import text_
+
+from nti.common.interfaces import IOAuthKeys
+from nti.common.interfaces import IOAuthService
 
 from nti.dataserver import authorization as nauth
 
@@ -90,6 +94,8 @@ from nti.store.payments.stripe.interfaces import IStripeConnectKeyContainer
 from nti.store.payments.stripe.model import PersistentStripeConnectKey
 from nti.store.payments.stripe.model import StripeToken
 
+from nti.store.payments.stripe.storage import get_stripe_key_container
+
 from nti.store.payments.stripe.stripe_purchase import create_stripe_priceable
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_item
 from nti.store.payments.stripe.stripe_purchase import create_stripe_purchase_order
@@ -101,6 +107,7 @@ from nti.store.store import create_gift_purchase_attempt
 from nti.store.store import register_gift_purchase_attempt
 
 from nti.traversal.traversal import find_interface
+from nti.traversal.traversal import normal_resource_path
 
 ITEMS = StandardExternalFields.ITEMS
 LAST_MODIFIED = StandardExternalFields.LAST_MODIFIED
@@ -746,11 +753,88 @@ class StripeConnectViewMixin(object):
         return component.getUtility(IStripeConnectConfig)
 
     @Lazy
+    def oauth_keys(self):
+        return component.getUtility(IOAuthKeys, name="stripe")
+
+    @Lazy
     def nti_secret_key(self):
-        return self.stripe_conf.SecretKey
+        return self.oauth_keys.SecretKey
+
+    @Lazy
+    def nti_client_id(self):
+        return self.oauth_keys.APIKey
+
+    @Lazy
+    def dest_endpoint(self):
+        return self.request.application_url + self.stripe_conf.CompletionRoutePrefix
+
+    def url_with_params(self, url, params):
+        url_parts = list(urllib_parse.urlparse(url))
+        query = dict(urllib_parse.parse_qsl(url_parts[4]))
+        query.update(params)
+        url_parts[4] = urllib_parse.urlencode(params)
+        return urllib_parse.urlunparse(url_parts)
+
+    def redirect_with_params(self, loc, params):
+        url = self.url_with_params(loc, params)
+        logger.info("Redirecting to %s", url)
+        return hexc.HTTPSeeOther(url)
+
+    def error_response(self, loc, error='Unknown', desc='An unknown error occurred'):
+        return self.redirect_with_params(loc, {'error': error, 'error_description': desc})
 
 
-@view_config(name=CONNECT_STRIPE_ACCOUNT)
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             request_method='GET',
+             context=IStripeConnectKeyContainer,
+             permission=sauth.ACT_LINK_STRIPE,
+             name=STRIPE_CONNECT_AUTH)
+class StripeConnectAuthorization(StripeConnectViewMixin, AbstractAuthenticatedView):
+    """
+    A redirect to the Stripe OAuth endpoint that will start the
+    authorization process to link a customer's Stripe account with ours.
+    """
+
+    @Lazy
+    def _stripe_connect_key(self):
+        return component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS)
+
+    def _stripe_redirect_uri(self):
+        path = normal_resource_path(get_stripe_key_container())
+
+        if not path:
+            return None
+
+        path = urllib_parse.urljoin(self.request.application_url,
+                                    path)
+        return urllib_parse.urljoin(path + '/' if not path.endswith('/') else path,
+                                    "@@" + STRIPE_CONNECT_REDIRECT)
+
+    def __call__(self):
+        if self._stripe_connect_key is not None:
+            return self.error_response(self.dest_endpoint,
+                                       'Already Linked',
+                                       "Another account has already been linked for this site.")
+
+        # redirect
+        auth_svc = component.getUtility(IOAuthService, name="stripe")
+        target = auth_svc.authorization_request_uri(
+            client_id=self.nti_client_id,
+            response_type="code",
+            scope="read_write",
+            redirect_uri=self._stripe_redirect_uri(),
+            stripe_landing="login"
+        )
+
+        # save state for validation, which could be modified by auth_svc
+        self.request.session['stripe.state'] = auth_svc.params['state']
+
+        response = hexc.HTTPSeeOther(location=target)
+        return response
+
+
+@view_config(name=STRIPE_CONNECT_REDIRECT)
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                request_method='GET',
@@ -770,21 +854,6 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
     def _text(self, s, encoding='utf-8', errors='strict'):
         return s.decode(encoding=encoding, errors=errors) \
             if isinstance(s, bytes) else s
-
-    def url_with_params(self, url, params):
-        url_parts = list(urllib_parse.urlparse(url))
-        query = dict(urllib_parse.parse_qsl(url_parts[4]))
-        query.update(params)
-        url_parts[4] = urllib_parse.urlencode(params)
-        return urllib_parse.urlunparse(url_parts)
-
-    def redirect_with_params(self, loc, params):
-        url = self.url_with_params(loc, params)
-        logger.info("Redirecting to %s", url)
-        return hexc.HTTPFound(url)
-
-    def error_response(self, loc, error='Unknown', desc='An unknown error occurred'):
-        return self.redirect_with_params(loc, {'error': error, 'error_description': desc})
 
     def success_response(self, loc):
         return self.redirect_with_params(loc, {'success': 'true'})
@@ -843,25 +912,33 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
                                        'Server Error',
                                        "Error Reference: %s" % (error_uid,))
 
-    @Lazy
-    def dest_endpoint(self):
-        return self.request.application_url + self.stripe_conf.CompletionRoutePrefix
-
     def __call__(self):
 
         code = None
         error = 'Unknown'
         error_description = 'An unknown error occurred'
 
-        request = self.request
-        params = CaseInsensitiveDict(request.params)
+        state = None
+        params = CaseInsensitiveDict( self.request.params)
         if params:
             if 'code' in params:
                 code = self._text(params.get('code'))
+            if 'state' in params:
+                state = self._text(params.get('state'))
             if 'error' in params:
                 error = self._text(params.get('error'))
             if 'error_description' in params:
                 error_description = self._text(params.get('error_description'))
+
+        session_state = self.request.session['stripe.state']
+        if not state or state != session_state:
+            error_uid = str(uuid4())
+            logger.error("State returned (%s) doesn't match state sent (%s)",
+                         state,
+                         session_state)
+            return self.error_response(self.dest_endpoint,
+                                       'Server Error',
+                                       "Error Reference: %s" % (error_uid,))
 
         if not code:
             return self.error_response(self.dest_endpoint, error, error_description)
@@ -882,7 +959,7 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
 
     def _deauth_stripe(self, user_key):
         data = {
-            'client_id': self.stripe_conf.ClientId,
+            'client_id': self.nti_client_id,
             'stripe_user_id': user_key.StripeUserID
         }
         deauth = requests.post(self._deauth_uri,
