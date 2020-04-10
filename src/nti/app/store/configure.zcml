@@ -1,6 +1,7 @@
 <!-- -*- mode: nxml -*- -->
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
+			xmlns:oauth="http://nextthought.com/ntp/oauth"
 			xmlns:zcml="http://namespaces.zope.org/zcml">
 
 	<include package="zope.component" file="meta.zcml" />
@@ -71,5 +72,21 @@
 			 provides="nti.store.interfaces.IStorePurchaseMetadataProvider" />
 
 	<include package=".views" />
+
+	<!-- Stripe IOAuthService -->
+	<include package="nti.common" file="meta.zcml" />
+	<configure zcml:condition="not-have production_env">
+		<!-- TODO: update authorization url when server is available -->
+		<oauth:registerOAuthService
+			authorization_url="http://localhost:6543/stripe/oauth1"
+			id="stripe"/>
+	</configure>
+
+	<configure zcml:condition="have production_env">
+		<!-- TODO: update authorization url when server is available -->
+		<oauth:registerOAuthService
+			authorization_url="https://oauth.nextthought.io/stripe/oauth1"
+			id="stripe"/>
+	</configure>
 
 </configure>
