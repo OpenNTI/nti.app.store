@@ -39,6 +39,8 @@ from nti.appserver.workspaces import UserService
 
 from nti.dataserver.authorization import ROLE_SITE_ADMIN
 
+from nti.dataserver.authorization_utils import zope_interaction
+
 from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
@@ -88,7 +90,10 @@ class TestWorkspaces(ApplicationLayerTest):
             user = User.get_user(dataserver=self.ds,
                                  username=u'sjohnson@nextthought.com')
             service = UserService(user)
-            ext_object = toExternalObject(service)
+
+            # Need a zope interaction for permission checks
+            with zope_interaction(user.username):
+                ext_object = toExternalObject(service)
 
             assert_that(ext_object['Items'],
                         has_item(has_entry('Title', 'store')))
@@ -120,7 +125,10 @@ class TestWorkspaces(ApplicationLayerTest):
             user = User.get_user(dataserver=self.ds,
                                  username=u'sjohnson@nextthought.com')
             service = UserService(user)
-            ext_object = toExternalObject(service)
+
+            # Need a zope interaction for permission checks
+            with zope_interaction(user.username):
+                ext_object = toExternalObject(service)
 
             store_wss = next(x for x in ext_object['Items']
                          if x['Title'] == 'store')
