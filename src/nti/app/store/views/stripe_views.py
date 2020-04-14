@@ -757,12 +757,12 @@ class StripeConnectViewMixin(object):
         return component.getUtility(IOAuthKeys, name="stripe")
 
     @Lazy
-    def nti_secret_key(self):
-        return self.oauth_keys.SecretKey
+    def nti_client_secret(self):
+        return self.oauth_keys.ClientSecret
 
     @Lazy
     def nti_client_id(self):
-        return self.oauth_keys.APIKey
+        return self.oauth_keys.ClientId
 
     @Lazy
     def dest_endpoint(self):
@@ -860,7 +860,7 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
 
     def retrieve_keys(self, code):
         try:
-            data = urllib.urlencode({'client_secret': self.nti_secret_key})
+            data = urllib.urlencode({'client_secret': self.nti_client_secret})
             url = self.url_with_params(self.stripe_conf.TokenEndpoint,
                                        {
                                            'grant_type': 'authorization_code',
@@ -965,7 +965,7 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
         deauth = requests.post(self._deauth_uri,
                                data=data,
                                timeout=_REQUEST_TIMEOUT,
-                               auth=(self.nti_secret_key,''))
+                               auth=(self.nti_client_secret,''))
 
         try:
             deauth.raise_for_status()
