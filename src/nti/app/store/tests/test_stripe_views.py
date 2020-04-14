@@ -20,6 +20,7 @@ from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import greater_than_or_equal_to
 from hamcrest import not_
+from hamcrest import not_none
 from hamcrest import starts_with
 from hamcrest import has_properties
 from hamcrest import has_entries
@@ -494,7 +495,9 @@ class TestStripeViews(ApplicationLayerTest):
                     has_entry('ID', is_not(none())))
 
 
-class TestStripeConnectView(ApplicationLayerTest):
+_UNINITIALIZED = object()
+
+class TestStripeConnectViews(ApplicationLayerTest):
 
     layer = ApplicationStoreTestLayer
 
@@ -509,6 +512,7 @@ class TestStripeConnectView(ApplicationLayerTest):
                                      mock_open,
                                      expected_dest_params,
                                      code="AUTH_CODE_298",
+                                     state_for_redirect=_UNINITIALIZED,
                                      error=None,
                                      error_description=None,
                                      verify_empty_on_fail=True):
@@ -548,8 +552,15 @@ class TestStripeConnectView(ApplicationLayerTest):
         url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth2'
         body = {
             'scope': 'read_write',
-            'state': params['state'],
         }
+
+        if state_for_redirect is _UNINITIALIZED:
+            body['state'] = params['state']
+        elif state_for_redirect is None:
+            pass
+        else:
+            body['state'] = state_for_redirect
+
         for key, val in (('code', code),
                          ('error', error),
                          ('error_description', error_description)):
@@ -595,38 +606,35 @@ class TestStripeConnectView(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
-    def test_connect_stripe_account_already_linked(self, mock_open):
-        # Ensure one has already been linked
-        self._test_connect_stripe_account(mock_open,
-                                          {"success": "true"})
-
-        with mock_dataserver.mock_db_trans():
-            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
-
-        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
-        res = self.testapp.get(url,
-                               status=303,
-                               extra_environ={
-                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
-                               })
-
-        # Attempt to link another should result in an error describing that.
-        params = self._query_params(res.headers['LOCATION'])
-        error_desc = "Another account has already been linked for this site."
-        assert_that(params, has_entries({
-            "error": "Already Linked",
-            "error_description": error_desc
-        }))
-
-    @WithSharedApplicationMockDS(users=True, testapp=True)
-    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     def test_connect_stripe_account_no_params(self, mock_open):
         self._test_connect_stripe_account(mock_open,
                                           {
-                                              "error": "Unknown",
-                                              "error_description": "An unknown error occurred"
+                                              "error": "Invalid Request",
+                                              "error_description": "Missing parameter: code"
                                           },
                                           code=None)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_no_state(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "Invalid Request",
+                                              "error_description": "Missing parameter: state"
+                                          },
+                                          state_for_redirect=None)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_invalid_state(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "Server Error",
+                                              "error_description": starts_with("Error Reference: "),
+                                          },
+                                          state_for_redirect='invalid')
+
+
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
@@ -636,7 +644,6 @@ class TestStripeConnectView(ApplicationLayerTest):
                                               "error": "stripe error abc",
                                               "error_description": "user declined auth"
                                           },
-                                          code=None,
                                           error="stripe error abc",
                                           error_description="user declined auth")
 
@@ -696,3 +703,50 @@ class TestStripeConnectView(ApplicationLayerTest):
 
         url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
         self.testapp.delete(url, status=404)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_stripe_connect_authorize_success(self):
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        res = self.testapp.get(url,
+                               status=303,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+
+        params = self._query_params(res.headers['LOCATION'])
+        assert_that(params, has_entries({
+            "client_id": "ca_1FSb6y5t7qj6DPOCQjEApTbc5Ou6XCHx",
+            "response_type": "code",
+            "scope": "read_write",
+            "state": not_none(),
+            "stripe_landing": "login",
+        }))
+        assert_that(params, not_(has_key("redirect_uri")))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_stripe_connect_authorize_already_linked(self, mock_open):
+        # Ensure one has already been linked
+        self._test_connect_stripe_account(mock_open,
+                                          {"success": "true"})
+
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        res = self.testapp.get(url,
+                               status=303,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+
+        # Attempt to link another should result in an error describing that.
+        params = self._query_params(res.headers['LOCATION'])
+        error_desc = "Another account has already been linked for this site."
+        assert_that(params, has_entries({
+            "error": "Already Linked",
+            "error_description": error_desc
+        }))

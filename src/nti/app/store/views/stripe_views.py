@@ -830,8 +830,7 @@ class StripeConnectAuthorization(StripeConnectViewMixin, AbstractAuthenticatedVi
         # save state for validation, which could be modified by auth_svc
         self.request.session['stripe.state'] = auth_svc.params['state']
 
-        response = hexc.HTTPSeeOther(location=target)
-        return response
+        return hexc.HTTPSeeOther(location=target)
 
 
 @view_config(name=STRIPE_CONNECT_REDIRECT)
@@ -913,37 +912,37 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
                                        "Error Reference: %s" % (error_uid,))
 
     def __call__(self):
-
-        code = None
-        error = 'Unknown'
-        error_description = 'An unknown error occurred'
-
-        state = None
         params = CaseInsensitiveDict( self.request.params)
-        if params:
-            if 'code' in params:
-                code = self._text(params.get('code'))
-            if 'state' in params:
-                state = self._text(params.get('state'))
-            if 'error' in params:
-                error = self._text(params.get('error'))
-            if 'error_description' in params:
-                error_description = self._text(params.get('error_description'))
+
+        if "error" in params or "error_description" in params:
+            return self.error_response(self.dest_endpoint,
+                                       self._text(params.get("error")),
+                                       self._text(params.get("error_description")))
+
+        if "code" not in params:
+            return self.error_response(self.dest_endpoint,
+                                       _(u"Invalid Request"),
+                                       _(u"Missing parameter: code"))
+        code = self._text(params.get('code'))
+
+        if "state" not in params:
+            return self.error_response(self.dest_endpoint,
+                                       _(u"Invalid Request"),
+                                       _(u"Missing parameter: state"))
+        state = self._text(params.get('state'))
 
         session_state = self.request.session['stripe.state']
         if not state or state != session_state:
             error_uid = str(uuid4())
-            logger.error("State returned (%s) doesn't match state sent (%s)",
+            logger.error("State returned (%s) doesn't match state sent (%s): %s",
                          state,
-                         session_state)
+                         session_state,
+                         error_uid)
             return self.error_response(self.dest_endpoint,
                                        'Server Error',
                                        "Error Reference: %s" % (error_uid,))
 
-        if not code:
-            return self.error_response(self.dest_endpoint, error, error_description)
-        else:
-            return self.retrieve_keys(code)
+        return self.retrieve_keys(code)
 
 
 @view_config(route_name='objects.generic.traversal',
