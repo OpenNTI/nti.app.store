@@ -8,8 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from six.moves import urllib_parse
-
 from zope import component
 from zope import interface
 
@@ -35,7 +33,7 @@ from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
 from nti.appserver.workspaces.interfaces import IContainerCollection
 
-from nti.dataserver.authorization import is_site_admin
+from nti.dataserver.authorization_acl import has_permission
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
@@ -43,6 +41,8 @@ from nti.dataserver.interfaces import IDataserverFolder
 from nti.links.links import Link
 
 from nti.property.property import alias
+
+from nti.store.payments.stripe.authorization import ACT_LINK_STRIPE
 
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
@@ -119,6 +119,11 @@ class _StoreCollection(object):
     def _stripe_connect_key(self):
         return component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS)
 
+    def can_link_stripe_account(self):
+        username = getattr(self.user, 'username', None)
+        return username and has_permission(ACT_LINK_STRIPE.id,
+                                           get_stripe_key_container(),
+                                           username)
 
     @property
     def links(self):
@@ -151,7 +156,7 @@ class _StoreCollection(object):
             interface.alsoProvides(link, ILocation)
             result.append(link)
         # stripe site admin links
-        if is_site_admin(self.user):
+        if self.can_link_stripe_account():
             stripe_connect_key = self._stripe_connect_key()
             if stripe_connect_key is None:
                 link = Link(get_stripe_key_container(),
