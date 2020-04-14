@@ -73,20 +73,4 @@
 
 	<include package=".views" />
 
-	<!-- Stripe IOAuthService -->
-	<include package="nti.common" file="meta.zcml" />
-	<configure zcml:condition="not-have production_env">
-		<!-- TODO: update authorization url when server is available -->
-		<oauth:registerOAuthService
-			authorization_url="http://localhost:6543/stripe/oauth1"
-			id="stripe"/>
-	</configure>
-
-	<configure zcml:condition="have production_env">
-		<!-- TODO: update authorization url when server is available -->
-		<oauth:registerOAuthService
-			authorization_url="https://oauth.nextthought.io/stripe/oauth1"
-			id="stripe"/>
-	</configure>
-
 </configure>
