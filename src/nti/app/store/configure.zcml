@@ -2,6 +2,7 @@
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
 			xmlns:oauth="http://nextthought.com/ntp/oauth"
+			xmlns:ext="http://nextthought.com/ntp/ext"
 			xmlns:zcml="http://namespaces.zope.org/zcml">
 
 	<include package="zope.component" file="meta.zcml" />
@@ -49,6 +50,11 @@
 				for="nti.store.interfaces.IPurchaseItem"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
 
+	<subscriber factory=".decorators._StripeIntegrationDecorator"
+				provides="nti.externalization.interfaces.IExternalObjectDecorator"
+				for=".interfaces.IStripeIntegration
+					 pyramid.interfaces.IRequest" />
+
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
@@ -72,5 +78,17 @@
 			 provides="nti.store.interfaces.IStorePurchaseMetadataProvider" />
 
 	<include package=".views" />
+
+	<!-- Integration -->
+	<utility factory=".integration.StripeIntegrationProvider"
+			 name="stripe" />
+
+	<!-- Externalization -->
+	<include package="nti.externalization" file="meta.zcml" />
+	<include package="nti.externalization" />
+
+	<ext:registerAutoPackageIO
+		root_interfaces=".interfaces.IStripeIntegration"
+		modules=".integration" />
 
 </configure>

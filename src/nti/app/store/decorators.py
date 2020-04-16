@@ -19,10 +19,14 @@ from zope.container.interfaces import ILocation
 
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
 
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
+from nti.app.store import STRIPE_CONNECT_AUTH
 from nti.app.store import STORE
 from nti.app.store import STRIPE
 from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
+
+from nti.app.store.interfaces import IStripeIntegration
 
 from nti.appserver.pyramid_authorization import has_permission
 
@@ -30,10 +34,13 @@ from nti.appserver.workspaces.interfaces import ICatalogWorkspaceLinkProvider
 
 from nti.dataserver.authorization import ACT_CONTENT_EDIT
 
+from nti.dataserver import authorization_acl as auth_acl
+
 from nti.dataserver.interfaces import IUser
 
-from nti.externalization.interfaces import StandardExternalFields
+from nti.externalization.interfaces import IExternalMappingDecorator
 from nti.externalization.interfaces import IExternalObjectDecorator
+from nti.externalization.interfaces import StandardExternalFields
 
 from nti.externalization.externalization import to_external_object
 
@@ -48,7 +55,11 @@ from nti.store.interfaces import IPurchaseItem
 
 from nti.store.payments.payeezy.interfaces import IPayeezyConnectKey
 
+from nti.store.payments.stripe.authorization import ACT_LINK_STRIPE
+
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
+
+from nti.store.payments.stripe.storage import get_stripe_key_container
 
 from nti.store.store import get_purchasable
 from nti.store.store import is_item_activated
@@ -276,3 +287,41 @@ class _CatalogWorkspaceAdminLinkDecorator(object):
         link.__parent__ = self.user
         interface.alsoProvides(link, ILocation)
         return (link,)
+
+
+@component.adapter(IStripeIntegration)
+@interface.implementer(IExternalMappingDecorator)
+class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
+
+    @Lazy
+    def _stripe_connect_key(self):
+        return component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS)
+
+    @Lazy
+    def _stripe_container_key(self):
+        return get_stripe_key_container()
+
+    def can_link_stripe_account(self, username):
+        return username and \
+               auth_acl.has_permission(ACT_LINK_STRIPE.id,
+                                       self._stripe_container_key,
+                                       username)
+
+    def _predicate(self, context, unused_result):
+        return super(_StripeIntegrationDecorator, self)._predicate(context, unused_result) \
+           and self.can_link_stripe_account(self.authenticated_userid)
+
+    def _do_decorate_external(self, context, result):
+        links = result.setdefault(LINKS, [])
+        if self._stripe_connect_key is None:
+            link = Link(self._stripe_container_key,
+                        elements=("@@" + STRIPE_CONNECT_AUTH,),
+                        rel='connect_stripe_account')
+        else:
+            link = Link(self._stripe_connect_key,
+                        method='DELETE',
+                        rel='disconnect_stripe_account')
+        interface.alsoProvides(link, ILocation)
+        link.__name__ = ''
+        link.__parent__ = context
+        links.append(link)
