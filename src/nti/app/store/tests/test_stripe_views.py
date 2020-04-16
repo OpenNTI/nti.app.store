@@ -723,8 +723,10 @@ class TestStripeConnectViews(ApplicationLayerTest):
             "scope": "read_write",
             "state": not_none(),
             "stripe_landing": "login",
+            "redirect_uri": "http://localhost/dataserver2/++etc++hostsites"
+                            "/mathcounts.nextthought.com/++etc++site"
+                            "/StripeConnectKeys/@@stripe_connect_oauth2"
         }))
-        assert_that(params, not_(has_key("redirect_uri")))
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
