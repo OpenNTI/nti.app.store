@@ -10,10 +10,13 @@ from __future__ import absolute_import
 
 import six
 import time
+
 from datetime import date
 from datetime import datetime
 
 from requests.structures import CaseInsensitiveDict
+
+from zope import interface
 
 from zope.interface.common.idatetime import IDate
 from zope.interface.common.idatetime import IDateTime
@@ -21,6 +24,8 @@ from zope.interface.common.idatetime import IDateTime
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+
+from nti.app.store.interfaces import IPurchasableDefaultFieldProvider
 
 from nti.common.string import is_true
 from nti.common.string import is_false
@@ -101,3 +106,23 @@ def parse_datetime(t, safe=False):
         if safe:
             return None
         raise e
+
+
+@interface.implementer(IPurchasableDefaultFieldProvider)
+class PurchasableDefaultFieldProvider(object):
+
+    #: Default fee, in percentage
+    DEFAULT_FEE = 0
+
+    DEFAULT_CURRENCY = u'USD'
+
+    DEFAULT_PROVIDER = 'default'
+
+    def get_default_fee(self):
+        return self.DEFAULT_FEE
+
+    def get_default_provider(self):
+        return self.DEFAULT_PROVIDER
+
+    def get_default_currency(self):
+        return self.DEFAULT_CURRENCY
