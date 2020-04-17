@@ -42,3 +42,25 @@ class IStripeIntegration(IIntegration):
     Stripe integration
     """
 
+
+class ISiteLicenseStorePolicy(interface.Interface):
+    """
+    The policy determining store usage based on the current site license.
+    """
+
+    def can_integrate():
+        """
+        Returns a bool whether or not we can integrate with a store
+        provider.
+        """
+
+    def can_create_purchasable():
+        """
+        Returns a bool whether or not a purchasable can be created.
+        """
+
+    def can_use_coupons():
+        """
+        Returns a bool whether or not coupons can be used. This includes
+        purchase time.
+        """

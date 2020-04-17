@@ -55,6 +55,23 @@
 				for=".interfaces.IStripeIntegration
 					 pyramid.interfaces.IRequest" />
 
+    <!-- License -->
+    <adapter factory=".license.TrialSiteLicenseStorePolicy"
+             provides=".interfaces.ISiteLicenseStorePolicy"
+             for="nti.site_license.interfaces.ITrialSiteLicense"/>
+
+    <adapter factory=".license.StarterSiteLicenseStorePolicy"
+             provides=".interfaces.ISiteLicenseStorePolicy"
+             for="nti.site_license.interfaces.IStarterSiteLicense"/>
+
+    <adapter factory=".license.GrowthSiteLicenseStorePolicy"
+             provides=".interfaces.ISiteLicenseStorePolicy"
+             for="nti.site_license.interfaces.IGrowthSiteLicense"/>
+
+    <adapter factory=".license.EnterpriseSiteLicenseStorePolicy"
+             provides=".interfaces.ISiteLicenseStorePolicy"
+             for="nti.site_license.interfaces.IEnterpriseSiteLicense"/>
+
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.StoreWorkspace"
 				provides=".interfaces.IStoreWorkspace" />
