@@ -74,6 +74,9 @@
 				for="nti.dataserver.interfaces.IUser" />
 
 	<!-- Utilities -->
+    <utility factory=".utils.PurchasableDefaultFieldProvider"
+             provides="nti.app.store.interfaces.IPurchasableDefaultFieldProvider" />
+
 	<utility factory=".subscribers.SitePurchaseMetadataProvider"
 			 provides="nti.store.interfaces.IStorePurchaseMetadataProvider" />
 
