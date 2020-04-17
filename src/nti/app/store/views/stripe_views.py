@@ -748,6 +748,14 @@ class RefundPaymentView(RefundPaymentWithStripeView):
     pass
 
 
+def url_with_params(url, params):
+    url_parts = list(urllib_parse.urlparse(url))
+    query = dict(urllib_parse.parse_qsl(url_parts[4]))
+    query.update(params)
+    url_parts[4] = urllib_parse.urlencode(params)
+    return urllib_parse.urlunparse(url_parts)
+
+
 class StripeConnectViewMixin(object):
 
     @Lazy
@@ -766,24 +774,29 @@ class StripeConnectViewMixin(object):
     def nti_client_id(self):
         return self.oauth_keys.ClientId
 
-    @Lazy
-    def dest_endpoint(self):
-        return self.request.application_url + self.stripe_conf.CompletionRoutePrefix
+    def _relative_url(self, base_url, path):
+        path_parts = urllib_parse.urlparse(path)
+        base_parts = urllib_parse.urlparse(base_url)
 
-    def url_with_params(self, url, params):
-        url_parts = list(urllib_parse.urlparse(url))
-        query = dict(urllib_parse.parse_qsl(url_parts[4]))
-        query.update(params)
-        url_parts[4] = urllib_parse.urlencode(params)
-        return urllib_parse.urlunparse(url_parts)
+        return urllib_parse.urlunparse(base_parts[:2] + path_parts[2:])
+
+    @Lazy
+    def success_endpoint(self):
+        return self._relative_url(self.request.application_url,
+                                  self.request.session.get("stripe.success"))
+
+    @Lazy
+    def failure_endpoint(self):
+        return self._relative_url(self.request.application_url,
+                                  self.request.session.get("stripe.failure"))
 
     def redirect_with_params(self, loc, params):
-        url = self.url_with_params(loc, params)
-        logger.info("Redirecting to %s", url)
+        url = url_with_params(loc, params)
         return hexc.HTTPSeeOther(url)
 
-    def error_response(self, loc, error='Unknown', desc='An unknown error occurred'):
-        return self.redirect_with_params(loc, {'error': error, 'error_description': desc})
+    def error_response(self, error='Unknown', desc='An unknown error occurred'):
+        return self.redirect_with_params(self.failure_endpoint,
+                                         {'error': error, 'error_description': desc})
 
 
 @view_config(route_name='objects.generic.traversal',
@@ -805,18 +818,22 @@ class StripeConnectAuthorization(StripeConnectViewMixin, AbstractAuthenticatedVi
     def _stripe_redirect_uri(self):
         path = normal_resource_path(get_stripe_key_container())
 
-        if not path:
-            return None
-
         path = urllib_parse.urljoin(self.request.application_url,
                                     path)
         return urllib_parse.urljoin(path + '/' if not path.endswith('/') else path,
                                     "@@" + STRIPE_CONNECT_REDIRECT)
 
     def __call__(self):
+        for key in ('success', 'failure'):
+            value = self.request.params.get(key)
+
+            if not value:
+                raise hexc.HTTPBadRequest("No %s endpoint specified." % (key,))
+
+            self.request.session['stripe.' + key] = value
+
         if self._stripe_connect_key is not None:
-            return self.error_response(self.dest_endpoint,
-                                       'Already Linked',
+            return self.error_response('Already Linked',
                                        "Another account has already been linked for this site.")
 
         if not can_integrate():
@@ -861,31 +878,34 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
         return s.decode(encoding=encoding, errors=errors) \
             if isinstance(s, bytes) else s
 
-    def success_response(self, loc):
-        return self.redirect_with_params(loc, {'success': 'true'})
+    def success_response(self):
+        return self.redirect_with_params(self.success_endpoint,
+                                         {'success': 'true'})
 
     def retrieve_keys(self, code):
         try:
             data = urllib.urlencode({'client_secret': self.nti_client_secret})
-            url = self.url_with_params(self.stripe_conf.TokenEndpoint,
-                                       {
-                                           'grant_type': 'authorization_code',
-                                           'code': code
-                                       })
+            url = url_with_params(self.stripe_conf.TokenEndpoint,
+                                  {
+                                      'grant_type': 'authorization_code',
+                                      'code': code
+                                  })
             response = urllib2.urlopen(url, data)
 
             response_code = response.getcode()
 
             if response_code < 200 or response_code >= 300:
-                return self.error_response(self.dest_endpoint)
+                return self.error_response()
 
             return self.persist_data(response)
         except Exception as e:
             error_uid = str(uuid4())
             logger.exception("Exception making token request (%s): ", error_uid)
-            return self.error_response(self.dest_endpoint,
-                                       'Server Error',
+            return self.error_response('Server Error',
                                        "Error Reference: %s" % (error_uid,))
+
+    def _add_key(self, connect_key):
+        self.context.add_key(connect_key)
 
     def persist_data(self, response):
         try:
@@ -901,40 +921,35 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
             )
             connect_key.creator = self.remoteUser
             try:
-                self.context.add_key(connect_key)
+                self._add_key(connect_key)
             except KeyError:
-                return self.error_response(self.dest_endpoint,
-                                           'Already Linked',
+                return self.error_response('Already Linked',
                                            "Another account has already been linked for this site.")
 
-            response = self.success_response(self.dest_endpoint)
+            response = self.success_response()
 
             self.request.environ['nti.request_had_transaction_side_effects'] = 'True'
             return response
         except Exception as e:
             error_uid = str(uuid4())
             logger.exception("Exception persisting data (%s): ", error_uid)
-            return self.error_response(self.dest_endpoint,
-                                       'Server Error',
+            return self.error_response('Server Error',
                                        "Error Reference: %s" % (error_uid,))
 
     def __call__(self):
         params = CaseInsensitiveDict( self.request.params)
 
         if "error" in params or "error_description" in params:
-            return self.error_response(self.dest_endpoint,
-                                       self._text(params.get("error")),
+            return self.error_response(self._text(params.get("error")),
                                        self._text(params.get("error_description")))
 
         if "code" not in params:
-            return self.error_response(self.dest_endpoint,
-                                       _(u"Invalid Request"),
+            return self.error_response(_(u"Invalid Request"),
                                        _(u"Missing parameter: code"))
         code = self._text(params.get('code'))
 
         if "state" not in params:
-            return self.error_response(self.dest_endpoint,
-                                       _(u"Invalid Request"),
+            return self.error_response(_(u"Invalid Request"),
                                        _(u"Missing parameter: state"))
         state = self._text(params.get('state'))
 
@@ -945,8 +960,7 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
                          state,
                          session_state,
                          error_uid)
-            return self.error_response(self.dest_endpoint,
-                                       'Server Error',
+            return self.error_response('Server Error',
                                        "Error Reference: %s" % (error_uid,))
 
         return self.retrieve_keys(code)
