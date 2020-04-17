@@ -9,6 +9,7 @@ from __future__ import absolute_import
 # pylint: disable=W0212,R0904
 from collections import OrderedDict
 
+from hamcrest import contains_string
 from hamcrest import is_
 from hamcrest import none
 from hamcrest import is_not
@@ -48,6 +49,7 @@ from six.moves import urllib_parse
 from zope import interface
 
 from nti.app.store.views.stripe_views import process_purchase
+from nti.app.store.views.stripe_views import url_with_params
 
 from nti.app.store.tests import ApplicationStoreTestLayer
 
@@ -495,7 +497,15 @@ class TestStripeViews(ApplicationLayerTest):
                     has_entry('ID', is_not(none())))
 
 
+class MessageCapturingLogger(object):
+    msg = None
+
+    def __call__(self, msg, *args, **kwargs):
+        self.msg = msg
+
+
 _UNINITIALIZED = object()
+
 
 class TestStripeConnectViews(ApplicationLayerTest):
 
@@ -508,46 +518,59 @@ class TestStripeConnectViews(ApplicationLayerTest):
         # Query params are in index 4
         return OrderedDict(urllib_parse.parse_qsl(url_parts[4]))
 
-    def _test_connect_stripe_account(self,
-                                     mock_open,
-                                     expected_dest_params,
-                                     code="AUTH_CODE_298",
-                                     state_for_redirect=_UNINITIALIZED,
-                                     error=None,
-                                     error_description=None,
-                                     verify_empty_on_fail=True):
+    def authorize_redirect(self, params=None, status=303):
+        if params is None:
+            params = {
+                "success": "http://success.com/huzzah",
+                "failure": "http://failure.com/ohnoes"
+            }
+
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        url = url_with_params(url, params)
+        res = self.testapp.get(url,
+                               status=status,
+                               extra_environ={
+                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
+                               })
+        return res
+
+    def _test_stripe_connect_oauth2(self,
+                                    mock_open,
+                                    authorize_location,
+                                    expected_dest_params,
+                                    code="AUTH_CODE_298",
+                                    state_for_redirect=_UNINITIALIZED,
+                                    error=None,
+                                    error_description=None,
+                                    verify_empty_on_fail=True,
+                                    token_response_status=200):
 
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        class MockResponse(object):
+        if mock_open is not None:
+            class MockResponse(object):
 
-            def __init__(self, code):
-                self.code = code
+                def __init__(self, code):
+                    self.code = code
 
-            def getcode(self):
-                return self.code
+                def getcode(self):
+                    return self.code
 
-            def read(self):
-                return json.dumps({
-                    "token_type": "bearer",
-                    "stripe_publishable_key": "PUB_KEY_111",
-                    "scope": "read_write",
-                    "livemode": False,
-                    "stripe_user_id": "ACCOUNT_ABC",
-                    "refresh_token": "REFRESH_TOKEN_222",
-                    "access_token": "ACCESS_TOKEN_333"
-                })
+                def read(self):
+                    return json.dumps({
+                        "token_type": "bearer",
+                        "stripe_publishable_key": "PUB_KEY_111",
+                        "scope": "read_write",
+                        "livemode": False,
+                        "stripe_user_id": "ACCOUNT_ABC",
+                        "refresh_token": "REFRESH_TOKEN_222",
+                        "access_token": "ACCESS_TOKEN_333"
+                    })
 
-        mock_open.is_callable().returns(MockResponse(200))
+            mock_open.is_callable().returns(MockResponse(token_response_status))
 
-        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
-        res = self.testapp.get(url,
-                               status=303,
-                               extra_environ={
-                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
-                               })
-        params = self._query_params(res.headers['LOCATION'])
+        params = self._query_params(authorize_location)
 
         url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth2'
         body = {
@@ -575,7 +598,6 @@ class TestStripeConnectViews(ApplicationLayerTest):
                                })
 
         location = res.headers['LOCATION']
-        assert_that(location, starts_with('http://localhost/stripe_connect'))
 
         loc_params = self._query_params(location)
         assert_that(loc_params, has_entries(expected_dest_params))
@@ -583,6 +605,8 @@ class TestStripeConnectViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
             key_container = get_stripe_key_container(create=False)
             if 'success' in loc_params:
+                assert_that(location, starts_with('http://localhost/huzzah'))
+
                 assert_that(key_container, not_(none()))
                 assert_that(key_container, has_length(1))
                 assert_that(key_container['default'], has_properties({
@@ -594,9 +618,37 @@ class TestStripeConnectViews(ApplicationLayerTest):
                     "RefreshToken": "REFRESH_TOKEN_222",
                     "PrivateKey": "ACCESS_TOKEN_333"
                 }))
-            elif verify_empty_on_fail:
-                assert_that(key_container, is_(none()))
+            else:
+                assert_that(location, starts_with('http://localhost/ohnoes'))
 
+                if verify_empty_on_fail:
+                    assert_that(key_container, is_(none()))
+
+    def _test_connect_stripe_account(self,
+                                     mock_open,
+                                     expected_dest_params,
+                                     code="AUTH_CODE_298",
+                                     state_for_redirect=_UNINITIALIZED,
+                                     error=None,
+                                     error_description=None,
+                                     verify_empty_on_fail=True,
+                                     token_response_status=200):
+
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        authorize_location = self.authorize_redirect().headers['LOCATION']
+
+        self._test_stripe_connect_oauth2(
+            mock_open,
+            authorize_location,
+            expected_dest_params,
+            code=code,
+            state_for_redirect=state_for_redirect,
+            error=error,
+            error_description=error_description,
+            verify_empty_on_fail=verify_empty_on_fail,
+            token_response_status=token_response_status)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
@@ -634,8 +686,6 @@ class TestStripeConnectViews(ApplicationLayerTest):
                                           },
                                           state_for_redirect='invalid')
 
-
-
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     def test_connect_stripe_account_stripe_error(self, mock_open):
@@ -646,6 +696,85 @@ class TestStripeConnectViews(ApplicationLayerTest):
                                           },
                                           error="stripe error abc",
                                           error_description="user declined auth")
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_stripe_http_error(self, mock_open):
+        self._test_connect_stripe_account(mock_open,
+                                          {
+                                              "error": "Unknown",
+                                              "error_description": "An unknown error occurred"
+                                          },
+                                          token_response_status=400)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen',
+                 'nti.app.store.views.stripe_views.logger')
+    def test_connect_stripe_account_stripe_http_exception(self,
+                                                          mock_open,
+                                                          logger):
+        def urlopen(*args, **kwargs):
+            raise ValueError('SSL support not available')
+
+        mock_open.is_callable().calls(urlopen)
+
+        # Capture the exception log that should be called to verify later
+        capturing_logger = MessageCapturingLogger()
+        logger.provides('exception').calls(capturing_logger)
+
+        expected_params = {
+            "error": "Server Error",
+            "error_description": starts_with("Error Reference: ")
+        }
+        self._test_connect_stripe_account(None, expected_params)
+
+        assert_that(capturing_logger.msg,
+                    starts_with("Exception making token request"))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen',
+                 'nti.app.store.views.stripe_views.ConnectStripeAccount._add_key',
+                 'nti.app.store.views.stripe_views.logger')
+    def test_connect_stripe_account_persist_exception(self,
+                                                      mock_open,
+                                                      add_key,
+                                                      logger):
+        # Make sure we get an error while persisting
+        add_key.is_callable().raises(ValueError("Oh noes!"))
+
+        # Capture the exception log that should be called to verify later
+        capturing_logger = MessageCapturingLogger()
+        logger.provides('exception').calls(capturing_logger)
+
+        expected_params = {
+            "error": "Server Error",
+            "error_description": starts_with("Error Reference: ")
+        }
+        self._test_connect_stripe_account(mock_open, expected_params)
+
+        assert_that(capturing_logger.msg,
+                    starts_with("Exception persisting data"))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
+    def test_connect_stripe_account_already_linked(self, mock_open):
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        authorize_location = self.authorize_redirect().headers['LOCATION']
+
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            self._add_default_stripe_key()
+
+        error_desc = "Another account has already been linked for this site."
+        self._test_stripe_connect_oauth2(
+            mock_open,
+            authorize_location,
+            {
+                "error": "Already Linked",
+                "error_description": error_desc
+            },
+            verify_empty_on_fail=False)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_connect_stripe_account_site_admins_only(self):
@@ -709,7 +838,8 @@ class TestStripeConnectViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
+        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1' \
+            + '?success=huzzah&failure=ohnoes&ignored=ignored'
         res = self.testapp.get(url,
                                status=303,
                                extra_environ={
@@ -727,6 +857,9 @@ class TestStripeConnectViews(ApplicationLayerTest):
                             "/mathcounts.nextthought.com/++etc++site"
                             "/StripeConnectKeys/@@stripe_connect_oauth2"
         }))
+        assert_that(params, not_(has_key("success")))
+        assert_that(params, not_(has_key("failure")))
+        assert_that(params, not_(has_key("ignored")))
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
@@ -738,12 +871,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1'
-        res = self.testapp.get(url,
-                               status=303,
-                               extra_environ={
-                                   b'HTTP_ORIGIN': b'http://mathcounts.nextthought.com'
-                               })
+        res = self.authorize_redirect()
 
         # Attempt to link another should result in an error describing that.
         params = self._query_params(res.headers['LOCATION'])
@@ -752,3 +880,27 @@ class TestStripeConnectViews(ApplicationLayerTest):
             "error": "Already Linked",
             "error_description": error_desc
         }))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_stripe_connect_authorize_missing_failure_param(self):
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        res = self.authorize_redirect(params={
+                                          "success": "/success"
+                                      },
+                                      status=400)
+
+        assert_that(res.body, contains_string("No failure endpoint specified"))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_stripe_connect_authorize_missing_success_param(self):
+        with mock_dataserver.mock_db_trans():
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        res = self.authorize_redirect(params={
+                                          "failure": "/failure"
+                                      },
+                                      status=400)
+
+        assert_that(res.body, contains_string("No success endpoint specified"))
