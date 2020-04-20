@@ -44,6 +44,8 @@ from nti.app.store import STRIPE_CONNECT_AUTH
 from nti.app.store import STRIPE_CONNECT_REDIRECT
 from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 
+from nti.app.store.license_utils import can_integrate
+
 from nti.app.store.utils import to_boolean
 from nti.app.store.utils import is_valid_pve_int
 from nti.app.store.utils import is_valid_boolean
@@ -816,6 +818,11 @@ class StripeConnectAuthorization(StripeConnectViewMixin, AbstractAuthenticatedVi
             return self.error_response(self.dest_endpoint,
                                        'Already Linked',
                                        "Another account has already been linked for this site.")
+
+        if not can_integrate():
+            return self.error_response(self.dest_endpoint,
+                                       'Cannot link account',
+                                       "This site is not permitted to link stripe accounts.")
 
         # redirect
         auth_svc = component.getUtility(IOAuthService, name="stripe")

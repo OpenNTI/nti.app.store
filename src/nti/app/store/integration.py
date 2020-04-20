@@ -16,6 +16,8 @@ from nti.app.products.integration.interfaces import IIntegrationCollectionProvid
 
 from nti.app.store.interfaces import IStripeIntegration
 
+from nti.app.store.license_utils import can_integrate
+
 from nti.externalization.representation import WithRepr
 
 from nti.schema.fieldproperty import createDirectFieldProperties
@@ -46,5 +48,7 @@ class StripeIntegrationProvider(object):
         Return a StripeIntegration object on which we can decorate the
         links for connecting or disconnecting Stripe accounts.
         """
-        return StripeIntegration(title=u'Integrate with Stripe'),
-
+        result = ()
+        if can_integrate():
+            result = (StripeIntegration(title=u'Integrate with Stripe'),)
+        return result
