@@ -25,6 +25,8 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
+from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
+
 from nti.app.store.interfaces import IPurchasableDefaultFieldProvider
 
 from nti.common.string import is_true
@@ -116,7 +118,7 @@ class PurchasableDefaultFieldProvider(object):
 
     DEFAULT_CURRENCY = u'USD'
 
-    DEFAULT_PROVIDER = 'default'
+    DEFAULT_PROVIDER = DEFAULT_STRIPE_KEY_ALIAS
 
     def get_default_fee(self):
         return self.DEFAULT_FEE
