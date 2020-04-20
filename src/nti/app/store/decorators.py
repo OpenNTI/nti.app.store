@@ -10,6 +10,8 @@ from __future__ import absolute_import
 
 from six.moves import urllib_parse
 
+from ZODB.interfaces import IConnection
+
 from zope import component
 from zope import interface
 
@@ -295,7 +297,8 @@ class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
     @Lazy
     def _stripe_connect_key(self):
-        return component.queryUtility(IStripeConnectKey, name=DEFAULT_STRIPE_KEY_ALIAS)
+        return component.queryUtility(IStripeConnectKey,
+                                      name=DEFAULT_STRIPE_KEY_ALIAS)
 
     @Lazy
     def _stripe_container_key(self):
@@ -313,15 +316,18 @@ class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
     def _do_decorate_external(self, context, result):
         links = result.setdefault(LINKS, [])
+        link = None
         if self._stripe_connect_key is None:
             link = Link(self._stripe_container_key,
                         elements=("@@" + STRIPE_CONNECT_AUTH,),
                         rel='connect_stripe_account')
-        else:
+        elif IConnection(self._stripe_connect_key, None) is not None:
+            # Only persistent keys can be deactivated
             link = Link(self._stripe_connect_key,
                         method='DELETE',
                         rel='disconnect_stripe_account')
-        interface.alsoProvides(link, ILocation)
-        link.__name__ = ''
-        link.__parent__ = context
-        links.append(link)
+        if link is not None:
+            interface.alsoProvides(link, ILocation)
+            link.__name__ = ''
+            link.__parent__ = context
+            links.append(link)
