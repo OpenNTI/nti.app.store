@@ -752,7 +752,7 @@ def url_with_params(url, params):
     url_parts = list(urllib_parse.urlparse(url))
     query = dict(urllib_parse.parse_qsl(url_parts[4]))
     query.update(params)
-    url_parts[4] = urllib_parse.urlencode(params)
+    url_parts[4] = urllib_parse.urlencode(query)
     return urllib_parse.urlunparse(url_parts)
 
 
@@ -790,8 +790,8 @@ class StripeConnectViewMixin(object):
         return self._relative_url(self.request.application_url,
                                   self.request.session.get("stripe.failure"))
 
-    def redirect_with_params(self, loc, params):
-        url = url_with_params(loc, params)
+    def redirect_with_params(self, loc, params=None):
+        url = url_with_params(loc, params or {})
         return hexc.HTTPSeeOther(url)
 
     def error_response(self, error='Unknown', desc='An unknown error occurred'):
@@ -879,8 +879,7 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
             if isinstance(s, bytes) else s
 
     def success_response(self):
-        return self.redirect_with_params(self.success_endpoint,
-                                         {'success': 'true'})
+        return self.redirect_with_params(self.success_endpoint)
 
     def retrieve_keys(self, code):
         try:
