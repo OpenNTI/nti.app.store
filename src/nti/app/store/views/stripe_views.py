@@ -92,6 +92,7 @@ from nti.store.payments.stripe.interfaces import IStripeConnectConfig
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 from nti.store.payments.stripe.interfaces import IStripePurchaseOrder
 from nti.store.payments.stripe.interfaces import IStripeConnectKeyContainer
+from nti.store.payments.stripe.interfaces import IStripeAccountInfo
 
 from nti.store.payments.stripe.model import PersistentStripeConnectKey
 from nti.store.payments.stripe.model import StripeToken
@@ -998,3 +999,17 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
         self._deauth_stripe(self.context)
         container.remove_key(DEFAULT_STRIPE_KEY_ALIAS)
         return hexc.HTTPNoContent()
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=IStripeConnectKeyContainer,
+             permission=sauth.ACT_VIEW_STRIPE_ACCOUNT,
+             name="account_info")
+class ViewAccount(AbstractAuthenticatedView,
+                  GetProcesorConnectKeyViewMixin,
+                  BaseStripeViewMixin):
+
+    def __call__(self):
+        connect_key = super(ViewAccount, self).__call__()
+        return IStripeAccountInfo(connect_key)

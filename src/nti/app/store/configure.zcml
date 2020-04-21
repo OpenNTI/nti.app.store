@@ -56,7 +56,12 @@
 				for="nti.store.interfaces.IPurchaseItem"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"/>
 
-	<subscriber factory=".decorators._StripeIntegrationDecorator"
+	<subscriber factory=".decorators._StripeConnectLinksDecorator"
+				provides="nti.externalization.interfaces.IExternalObjectDecorator"
+				for=".interfaces.IStripeIntegration
+					 pyramid.interfaces.IRequest" />
+
+	<subscriber factory=".decorators._StripeAccountInfoDecorator"
 				provides="nti.externalization.interfaces.IExternalObjectDecorator"
 				for=".interfaces.IStripeIntegration
 					 pyramid.interfaces.IRequest" />

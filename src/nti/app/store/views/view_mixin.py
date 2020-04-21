@@ -70,7 +70,7 @@ class BaseProcessorViewMixin(object):
     key_interface = None
 
     def get_connect_key(self, params=None):
-        params if params else self.request.params
+        params = params or self.request.params
         keyname = CaseInsensitiveDict(params).get('provider')
         if keyname: # check key
             return component.queryUtility(self.key_interface, keyname)
