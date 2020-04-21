@@ -204,8 +204,8 @@ def get_purchases_for_items(*purchasables):
 
 
 def count_purchases_for_items(*purchasables):
-    result = get_purchases_for_items(*purchasables)
-    return result.count()
+    result = tuple(get_purchases_for_items(*purchasables))
+    return len(result) if result else 0
 
 
 @view_config(route_name='objects.generic.traversal',

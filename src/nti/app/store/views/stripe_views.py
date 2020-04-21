@@ -898,7 +898,7 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
                 return self.error_response()
 
             return self.persist_data(response)
-        except Exception as e:
+        except Exception:
             error_uid = str(uuid4())
             logger.exception("Exception making token request (%s): ", error_uid)
             return self.error_response('Server Error',
@@ -930,7 +930,7 @@ class ConnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView):
 
             self.request.environ['nti.request_had_transaction_side_effects'] = 'True'
             return response
-        except Exception as e:
+        except Exception:
             error_uid = str(uuid4())
             logger.exception("Exception persisting data (%s): ", error_uid)
             return self.error_response('Server Error',
