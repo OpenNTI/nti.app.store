@@ -21,6 +21,12 @@
 			 for="nti.store.interfaces.IPurchasable"
 			 provides="nti.namedfile.interfaces.IFileConstraints" />
 
+    <adapter name="StripeConnectKeys"
+             for="nti.site.interfaces.IHostPolicySiteManager
+                  pyramid.interfaces.IRequest"
+             factory=".adapters.StripeConnectKeysPathAdapter"
+             provides="zope.traversing.interfaces.IPathAdapter" />
+
 	<!-- Decorators -->
 	<subscriber factory=".decorators._CatalogWorkspaceAdminLinkDecorator"
                 provides="nti.appserver.workspaces.interfaces.ICatalogWorkspaceLinkProvider"/>
