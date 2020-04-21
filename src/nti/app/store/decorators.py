@@ -58,6 +58,7 @@ from nti.store.interfaces import IPurchaseItem
 from nti.store.payments.payeezy.interfaces import IPayeezyConnectKey
 
 from nti.store.payments.stripe.authorization import ACT_LINK_STRIPE
+from nti.store.payments.stripe.authorization import ACT_VIEW_STRIPE_ACCOUNT
 
 from nti.store.payments.stripe.interfaces import IStripeConnectKey
 
@@ -73,6 +74,14 @@ LINKS = StandardExternalFields.LINKS
 logger = __import__('logging').getLogger(__name__)
 
 
+def ds_path(request):
+    try:
+        ds2 = request.path_info_peek()
+    except AttributeError:  # in unit test we see this
+        ds2 = "dataserver2"
+    return ds2
+
+
 @interface.implementer(IExternalObjectDecorator)
 class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
@@ -81,13 +90,7 @@ class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
     @property
     def ds_store_path(self):
-        request = self.request
-        try:
-            ds2 = request.path_info_peek()
-        except AttributeError:  # in unit test we see this
-            ds2 = "dataserver2"
-        ds_store_path = '/%s/%s/' % (ds2, STORE)
-        return ds_store_path
+        return '/%s/%s/' % (ds_path(self.request), STORE)
 
 
 @component.adapter(IPurchasable)
@@ -291,9 +294,14 @@ class _CatalogWorkspaceAdminLinkDecorator(object):
         return (link,)
 
 
-@component.adapter(IStripeIntegration)
-@interface.implementer(IExternalMappingDecorator)
-class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
+def located_link(parent, link):
+    interface.alsoProvides(link, ILocation)
+    link.__name__ = ''
+    link.__parent__ = parent
+    return link
+
+
+class _AbstractStripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
     @Lazy
     def _stripe_connect_key(self):
@@ -301,24 +309,29 @@ class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
                                       name=DEFAULT_STRIPE_KEY_ALIAS)
 
     @Lazy
-    def _stripe_container_key(self):
+    def _stripe_key_container(self):
         return get_stripe_key_container()
+
+
+@component.adapter(IStripeIntegration)
+@interface.implementer(IExternalMappingDecorator)
+class _StripeConnectLinksDecorator(_AbstractStripeIntegrationDecorator):
 
     def can_link_stripe_account(self, username):
         return username and \
                auth_acl.has_permission(ACT_LINK_STRIPE.id,
-                                       self._stripe_container_key,
+                                       self._stripe_key_container,
                                        username)
 
     def _predicate(self, context, unused_result):
-        return super(_StripeIntegrationDecorator, self)._predicate(context, unused_result) \
+        return super(_StripeConnectLinksDecorator, self)._predicate(context, unused_result) \
            and self.can_link_stripe_account(self.authenticated_userid)
 
     def _do_decorate_external(self, context, result):
         links = result.setdefault(LINKS, [])
         link = None
         if self._stripe_connect_key is None:
-            link = Link(self._stripe_container_key,
+            link = Link(self._stripe_key_container,
                         elements=("@@" + STRIPE_CONNECT_AUTH,),
                         rel='connect_stripe_account')
         elif IConnection(self._stripe_connect_key, None) is not None:
@@ -327,7 +340,37 @@ class _StripeIntegrationDecorator(AbstractAuthenticatedRequestAwareDecorator):
                         method='DELETE',
                         rel='disconnect_stripe_account')
         if link is not None:
-            interface.alsoProvides(link, ILocation)
-            link.__name__ = ''
-            link.__parent__ = context
-            links.append(link)
+            links.append(located_link(context, link))
+
+
+@component.adapter(IStripeIntegration)
+@interface.implementer(IExternalMappingDecorator)
+class _StripeAccountInfoDecorator(_AbstractStripeIntegrationDecorator):
+
+    def can_view_stripe_account(self, username):
+        return username and \
+               auth_acl.has_permission(ACT_VIEW_STRIPE_ACCOUNT.id,
+                                       self._stripe_key_container,
+                                       username)
+
+    def _predicate(self, context, unused_result):
+        return super(_StripeAccountInfoDecorator, self)._predicate(context, unused_result) \
+               and self._stripe_connect_key \
+               and self.can_view_stripe_account(self.authenticated_userid)
+
+    @property
+    def keys_path(self):
+        return '/%s/%s/%s/%s' % (ds_path(self.request),
+                                 STORE,
+                                 'stripe',
+                                 'keys')
+
+    def _do_decorate_external(self, context, result):
+        links = result.setdefault(LINKS, [])
+        link = Link(self.keys_path,
+                    elements=("@@account_info",),
+                    params={'provider': DEFAULT_STRIPE_KEY_ALIAS},
+                    method='GET',
+                    rel='account_info')
+        links.append(located_link(context, link))
+

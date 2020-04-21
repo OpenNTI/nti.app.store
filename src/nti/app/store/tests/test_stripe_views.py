@@ -507,6 +507,20 @@ class MessageCapturingLogger(object):
 _UNINITIALIZED = object()
 
 
+def _add_default_stripe_key():
+    key_container = get_stripe_key_container()
+    connect_key = PersistentStripeConnectKey(
+        Alias=DEFAULT_STRIPE_KEY_ALIAS,
+        StripeUserID=u"user_id_1",
+        LiveMode=False,
+        PrivateKey=u"private_key_1",
+        RefreshToken=u"refresh_token_1",
+        PublicKey=u"public_key_1",
+        TokenType=u"bearer"
+    )
+    key_container.add_key(connect_key)
+
+
 class TestStripeConnectViews(ApplicationLayerTest):
 
     layer = ApplicationStoreTestLayer
@@ -600,11 +614,13 @@ class TestStripeConnectViews(ApplicationLayerTest):
         location = res.headers['LOCATION']
 
         loc_params = self._query_params(location)
-        assert_that(loc_params, has_entries(expected_dest_params))
+
+        if expected_dest_params:
+            assert_that(loc_params, has_entries(expected_dest_params))
 
         with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
             key_container = get_stripe_key_container(create=False)
-            if 'success' in loc_params:
+            if 'error' not in loc_params:
                 assert_that(location, starts_with('http://localhost/huzzah'))
 
                 assert_that(key_container, not_(none()))
@@ -653,8 +669,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     def test_connect_stripe_account_success(self, mock_open):
-        self._test_connect_stripe_account(mock_open,
-                                          {"success": "true"})
+        self._test_connect_stripe_account(mock_open, None)
 
     @WithSharedApplicationMockDS(users=True, testapp=True)
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
@@ -764,7 +779,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
         authorize_location = self.authorize_redirect().headers['LOCATION']
 
         with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
-            self._add_default_stripe_key()
+            _add_default_stripe_key()
 
         error_desc = "Another account has already been linked for this site."
         self._test_stripe_connect_oauth2(
@@ -782,19 +797,6 @@ class TestStripeConnectViews(ApplicationLayerTest):
                            None,
                            status=403)
 
-    def _add_default_stripe_key(self):
-        key_container = get_stripe_key_container()
-        connect_key = PersistentStripeConnectKey(
-            Alias=DEFAULT_STRIPE_KEY_ALIAS,
-            StripeUserID=u"user_id_1",
-            LiveMode=False,
-            PrivateKey=u"private_key_1",
-            RefreshToken=u"refresh_token_1",
-            PublicKey=u"public_key_1",
-            TokenType=u"bearer"
-        )
-        key_container.add_key(connect_key)
-
     def _assign_role_for_site(self, role, username, site=None):
         role_manager = IPrincipalRoleManager(site or getSite())
         role_name = getattr(role, "id", role)
@@ -804,8 +806,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     @fudge.patch('nti.app.store.views.stripe_views.requests.post')
     def test_disconnect_stripe_account_success(self, mock_open, requests_post):
-        self._test_connect_stripe_account(mock_open,
-                                          {"success": "true"})
+        self._test_connect_stripe_account(mock_open, None)
         with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
@@ -820,7 +821,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_disconnect_stripe_account_site_admins_only(self):
         with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
-            self._add_default_stripe_key()
+            _add_default_stripe_key()
 
         url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
         self.testapp.delete(url, status=403)
@@ -865,8 +866,7 @@ class TestStripeConnectViews(ApplicationLayerTest):
     @fudge.patch('nti.app.store.views.stripe_views.urllib2.urlopen')
     def test_stripe_connect_authorize_already_linked(self, mock_open):
         # Ensure one has already been linked
-        self._test_connect_stripe_account(mock_open,
-                                          {"success": "true"})
+        self._test_connect_stripe_account(mock_open, None)
 
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
@@ -904,3 +904,49 @@ class TestStripeConnectViews(ApplicationLayerTest):
                                       status=400)
 
         assert_that(res.body, contains_string("No success endpoint specified"))
+
+
+class TestStripeAccountInfo(ApplicationLayerTest):
+
+    layer = ApplicationStoreTestLayer
+
+    default_origin = 'http://mathcounts.nextthought.com'
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_success(self):
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            _add_default_stripe_key()
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = "/dataserver2/store/stripe/keys/@@account_info?provider=default"
+        res = self.testapp.get(url)
+        assert_that(res.json_body, has_entries({
+            "StripeUserID": "user_id_1",
+            "LiveMode": False
+        }))
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_admin_only(self):
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            _add_default_stripe_key()
+
+        url = "/dataserver2/store/stripe/keys/@@account_info?provider=default"
+        self.testapp.get(url, status=403)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_missing_provider_param(self):
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            _add_default_stripe_key()
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = "/dataserver2/store/stripe/keys/@@account_info"
+        self.testapp.get(url, status=404)
+
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_missing_provider(self):
+        with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
+            _add_default_stripe_key()
+            self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
+
+        url = "/dataserver2/store/stripe/keys/@@account_info?provider=other"
+        self.testapp.get(url, status=404)
