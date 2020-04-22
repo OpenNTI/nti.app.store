@@ -217,7 +217,7 @@ class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
 
 
 @component.adapter(IPurchasable)
-@interface.implementer(IExternalObjectDecorator)
+@interface.implementer(IExternalMappingDecorator)
 class _PurchasableEditionLinksDecorator(_BaseRequestAwareDecorator):
 
     @Lazy
