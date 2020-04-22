@@ -74,14 +74,6 @@ LINKS = StandardExternalFields.LINKS
 logger = __import__('logging').getLogger(__name__)
 
 
-def ds_path(request):
-    try:
-        ds2 = request.path_info_peek()
-    except AttributeError:  # in unit test we see this
-        ds2 = "dataserver2"
-    return ds2
-
-
 @interface.implementer(IExternalObjectDecorator)
 class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
@@ -90,7 +82,13 @@ class _BaseRequestAwareDecorator(AbstractAuthenticatedRequestAwareDecorator):
 
     @property
     def ds_store_path(self):
-        return '/%s/%s/' % (ds_path(self.request), STORE)
+        request = self.request
+        try:
+            ds2 = request.path_info_peek()
+        except AttributeError:  # in unit test we see this
+            ds2 = "dataserver2"
+        ds_store_path = '/%s/%s/' % (ds2, STORE)
+        return ds_store_path
 
 
 @component.adapter(IPurchasable)
@@ -358,16 +356,9 @@ class _StripeAccountInfoDecorator(_AbstractStripeIntegrationDecorator):
                and self._stripe_connect_key \
                and self.can_view_stripe_account(self.authenticated_userid)
 
-    @property
-    def keys_path(self):
-        return '/%s/%s/%s/%s' % (ds_path(self.request),
-                                 STORE,
-                                 'stripe',
-                                 'keys')
-
     def _do_decorate_external(self, context, result):
         links = result.setdefault(LINKS, [])
-        link = Link(self.keys_path,
+        link = Link(self._stripe_key_container,
                     elements=("@@account_info",),
                     params={'provider': DEFAULT_STRIPE_KEY_ALIAS},
                     method='GET',
