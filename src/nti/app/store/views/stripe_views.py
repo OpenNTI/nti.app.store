@@ -15,6 +15,7 @@ import urllib2
 from uuid import uuid4
 
 import requests
+import stripe
 
 from requests.structures import CaseInsensitiveDict
 
@@ -979,6 +980,17 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
     def _deauth_uri(self):
         return self.stripe_conf.DeauthorizeEndpoint
 
+    def _authorized_for_acct(self, stripe_user_id, client_user_id=None):
+        # If we get back a PermissionError when retrieving the account,
+        # the account has already been deauthorized
+        try:
+            client_user_id = client_user_id or self.nti_client_secret
+            stripe.Account.retrieve(stripe_user_id,
+                                    api_key=client_user_id)
+            return True
+        except stripe.error.PermissionError as e:
+            return False
+
     def _deauth_stripe(self, user_key):
         data = {
             'client_id': self.nti_client_id,
@@ -992,9 +1004,15 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
         try:
             deauth.raise_for_status()
         except requests.RequestException as req_ex:
-            logger.exception("Unable to deauthorize platform access for user: %s",
-                             user_key.StripeUserID)
-            raise hexc.HTTPServerError(str(req_ex))
+            json_body = deauth.json()
+            logger.exception("Unable to deauthorize platform access for "
+                             "user: %s, error: %s, error_description: %s",
+                             user_key.StripeUserID,
+                             json_body.get('error'),
+                             json_body.get('error_description'))
+
+            if self._authorized_for_acct(user_key.StripeUserID):
+                raise hexc.HTTPServerError(str(req_ex))
 
     def __call__(self):
         container = find_interface(self.context, IStripeConnectKeyContainer)
