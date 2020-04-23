@@ -70,6 +70,8 @@ from nti.base._compat import text_
 from nti.common.interfaces import IOAuthKeys
 from nti.common.interfaces import IOAuthService
 
+from nti.common.string import is_true
+
 from nti.dataserver import authorization as nauth
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -996,7 +998,8 @@ class DisconnectStripeAccount(StripeConnectViewMixin, AbstractAuthenticatedView)
 
     def __call__(self):
         container = find_interface(self.context, IStripeConnectKeyContainer)
-        self._deauth_stripe(self.context)
+        if not is_true(self.request.params.get('skip_deauth')):
+            self._deauth_stripe(self.context)
         container.remove_key(DEFAULT_STRIPE_KEY_ALIAS)
         return hexc.HTTPNoContent()
 
