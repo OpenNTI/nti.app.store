@@ -88,7 +88,7 @@ def send_purchase_confirmation(event,
     policy = component.queryUtility(ISitePolicyUserEventListener)
     support_email = getattr(policy, 'SUPPORT_EMAIL', '')
     site_alias = getattr(policy, 'COM_ALIAS', '')
-    refund_blurb = getattr(policy, 'REFUND_BLURB', u'All Sales Are Final')
+    refund_blurb = getattr(policy, 'REFUND_BLURB', u'')
 
     args = {'profile': profile,
             'context': event,
