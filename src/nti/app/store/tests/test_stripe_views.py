@@ -553,23 +553,10 @@ class StripeTestMixin(object):
         finally:
             # cleanup
             with mock_dataserver.mock_db_trans(site_name=site_name):
-                sm = component.getSiteManager()
-
-                if proxyService is not None:
-                    sm.unregisterUtility(provided=IOAuthService,
-                                         name="stripe")
-                    utility = component.queryUtility(IOAuthService, name="stripe")
-                    assert_that(utility, is_(none()))
-
-                if keys is not None:
-                    sm.unregisterUtility(provided=IOAuthKeys, name="stripe")
-                    utility = component.queryUtility(IOAuthKeys, name="stripe")
-                    assert_that(utility, is_(none()))
-
-                if config is not None:
-                    sm.unregisterUtility(provided=IStripeConnectConfig)
-                    utility = component.queryUtility(IStripeConnectConfig,)
-                    assert_that(utility, is_(none()))
+                sm.unregisterUtility(provided=IOAuthService,
+                                     name="stripe")
+                sm.unregisterUtility(provided=IOAuthKeys, name="stripe")
+                sm.unregisterUtility(provided=IStripeConnectConfig)
 
 
 class TestStripeConnectViews(StripeTestMixin, ApplicationLayerTest):
@@ -706,7 +693,7 @@ class TestStripeConnectViews(StripeTestMixin, ApplicationLayerTest):
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        with self._oauth_registrations(site_name='http://mathcounts.nextthought.com'):
+        with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             authorize_location = self.authorize_redirect().headers['LOCATION']
 
             self._test_stripe_connect_oauth2(
@@ -830,7 +817,7 @@ class TestStripeConnectViews(StripeTestMixin, ApplicationLayerTest):
         with mock_dataserver.mock_db_trans():
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
-        with self._oauth_registrations(site_name='http://mathcounts.nextthought.com'):
+        with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             authorize_location = self.authorize_redirect().headers['LOCATION']
 
             with mock_dataserver.mock_db_trans(site_name='mathcounts.nextthought.com'):
@@ -870,7 +857,7 @@ class TestStripeConnectViews(StripeTestMixin, ApplicationLayerTest):
 
         requests_post.is_callable().calls(post)
         url = "/dataserver2/++etc++hostsites/mathcounts.nextthought.com/++etc++site/StripeConnectKeys/default"
-        with self._oauth_registrations(site_name='http://mathcounts.nextthought.com'):
+        with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             self.testapp.delete(url, status=204)
             self.testapp.delete(url, status=404)
 
@@ -897,7 +884,7 @@ class TestStripeConnectViews(StripeTestMixin, ApplicationLayerTest):
 
         url = '/dataserver2/store/stripe/keys/@@stripe_connect_oauth1' \
             + '?success=huzzah&failure=ohnoes&ignored=ignored'
-        with self._oauth_registrations(site_name='http://mathcounts.nextthought.com'):
+        with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             res = self.testapp.get(url,
                                    status=303,
                                    extra_environ={
@@ -976,7 +963,7 @@ class TestStripeAccountInfo(StripeTestMixin, ApplicationLayerTest):
             self._assign_role(ROLE_SITE_ADMIN, username='sjohnson@nextthought.com')
 
         url = "/dataserver2/store/stripe/keys/@@account_info?provider=default"
-        with self._oauth_registrations(site_name='http://mathcounts.nextthought.com'):
+        with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             res = self.testapp.get(url)
         assert_that(res.json_body, has_entries({
             "StripeUserID": "user_id_1",
