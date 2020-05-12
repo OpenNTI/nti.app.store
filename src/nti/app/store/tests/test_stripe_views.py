@@ -966,7 +966,7 @@ class TestStripeAccountInfo(StripeTestMixin, ApplicationLayerTest):
         with self._oauth_registrations(site_name='mathcounts.nextthought.com'):
             res = self.testapp.get(url)
         assert_that(res.json_body, has_entries({
-            "StripeUserID": "user_id_1",
+            "StripeAccountID": "user_id_1",
             "LiveMode": False
         }))
 
