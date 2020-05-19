@@ -12,6 +12,26 @@
 
 	<include package="nti.store" />
 
+	<!-- Roles and permissions -->
+    <include package="zope.securitypolicy" file="meta.zcml" />
+    <include package="zope.security" file="meta.zcml" />
+
+    <include package="nti.securitypolicy" file="meta.zcml"  />
+
+    <permission
+        id="nti.actions.stripe_connect.link"
+        title="Link stripe account" />
+
+    <permission
+        id="nti.actions.stripe_connect.view_account"
+        title="View linked Stripe account" />
+
+    <grant  permission="nti.actions.stripe_connect.link"
+            role="role:nti.dataserver.site-admin"/>
+
+    <grant  permission="nti.actions.stripe_connect.view_account"
+            role="role:nti.dataserver.site-admin"/>
+
 	<!-- ACLs -->
 	<adapter factory=".acl.PurchasableACLProvider" />
 	<adapter factory=".acl.StripeConnectKeyContainerACLProvider" />
