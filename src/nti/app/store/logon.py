@@ -15,7 +15,6 @@ from pyramid.interfaces import IRequest
 
 from nti.app.store import STORE
 from nti.app.store import STRIPE
-from nti.app.store import PAYEEZY
 
 from nti.appserver.interfaces import IAuthenticatedUserLinkProvider
 from nti.appserver.interfaces import IUnauthenticatedUserLinkProvider
@@ -50,14 +49,6 @@ class _BaseStoreLinkProvider(object):
                            'gift_payment_preflight'),
                           ('price_purchasable_with_stripe_coupon', 'price_purchasable')):
             elements = (STORE, STRIPE, '@@' + name)
-            link = Link(root, elements=elements, rel=rel)
-            result[rel] = link
-        # payeezy links
-        for rel, name in (('gift_payeezy_payment', 'gift_payment'),
-                          ('gift_payeezy_payment_preflight',
-                           'gift_payment_preflight'),
-                          ('price_purchasable_with_payeezy', 'price_purchasable')):
-            elements = (STORE, PAYEEZY, '@@' + name)
             link = Link(root, elements=elements, rel=rel)
             result[rel] = link
         return result

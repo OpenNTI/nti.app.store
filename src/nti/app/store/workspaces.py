@@ -23,7 +23,6 @@ from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
 from nti.app.store import STORE
 from nti.app.store import STRIPE
-from nti.app.store import PAYEEZY
 
 from nti.app.store.interfaces import IStoreWorkspace
 
@@ -128,15 +127,6 @@ class _StoreCollection(object):
         for rel, name in (('gift_stripe_payment', 'gift_payment'),
                           ('gift_stripe_payment_preflight', 'gift_payment_preflight'),
                           ('price_purchasable_with_stripe_coupon', 'price_purchasable')):
-            link = Link(href, rel=rel, elements=('@@' + name,))
-            link.__name__ = ''
-            interface.alsoProvides(link, ILocation)
-            result.append(link)
-        # payeezy links
-        href = '/%s/%s/%s' % (root, STORE, PAYEEZY)
-        for rel, name in (('gift_payeezy_payment', 'gift_payment'),
-                          ('gift_payeezy_payment_preflight', 'gift_payment_preflight'),
-                          ('price_purchasable_with_payeezy', 'price_purchasable')):
             link = Link(href, rel=rel, elements=('@@' + name,))
             link.__name__ = ''
             interface.alsoProvides(link, ILocation)

@@ -43,7 +43,7 @@ class TestWorkspaces(ApplicationLayerTest):
             store_wss = next(x for x in ext_object['Items']
                          if x['Title'] == 'store')
             assert_that(store_wss['Items'],
-                        has_item(has_entry('Links', has_length(15))))
+                        has_item(has_entry('Links', has_length(12))))
 
             # Catalog
             assert_that(ext_object['Items'],

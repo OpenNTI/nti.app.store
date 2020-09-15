@@ -21,7 +21,6 @@ from zope.traversing.interfaces import IPathAdapter
 from pyramid import httpexceptions as hexc
 
 from nti.app.store import REGISTERED_STRIPE_KEYS
-from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 from nti.app.store import STORE
 from nti.app.store import STRIPE
@@ -64,14 +63,6 @@ class StripePathAdapter(object):
             return get_stripe_key_container()
         raise KeyError(key)
 
-@interface.implementer(IPathAdapter, IContained)
-class PayeezyPathAdapter(object):
-
-    def __init__(self, parent, request):
-        self.request = request
-        self.__parent__ = parent
-        self.__name__ = PAYEEZY
-
 
 @interface.implementer(IPathAdapter, IContained)
 class StorePathAdapter(object):
@@ -88,8 +79,6 @@ class StorePathAdapter(object):
             return PurchasablesPathAdapter(self, self.request)
         elif key == STRIPE:
             return StripePathAdapter(self, self.request)
-        elif key == PAYEEZY:
-            return PayeezyPathAdapter(self, self.request)
         raise KeyError(key)
 
 

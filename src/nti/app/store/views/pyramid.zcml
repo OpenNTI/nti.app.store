@@ -3,14 +3,13 @@
 			xmlns:i18n="http://namespaces.zope.org/i18n"
 			xmlns:zcml="http://namespaces.zope.org/zcml"
 			xmlns:pyramid="http://pylonshq.com/pyramid">
-			
+
 	<include package="pyramid_zcml" />
 
 	<pyramid:scan package='.admin_views' />
 	<pyramid:scan package='.redeem_views' />
 	<pyramid:scan package='.stripe_views' />
 	<pyramid:scan package='.general_views' />
-	<pyramid:scan package='.payeezy_views' />
 	<pyramid:scan package='.purchasable_views' />
-	
+
 </configure>
