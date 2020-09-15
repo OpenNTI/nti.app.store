@@ -23,9 +23,6 @@ STRIPE = 'stripe'
 #: Keys path
 REGISTERED_STRIPE_KEYS = 'keys'
 
-#: Payeezy path
-PAYEEZY = 'payeezy'
-
 #: Purchasables path
 PURCHASABLES = 'purchasables'
 

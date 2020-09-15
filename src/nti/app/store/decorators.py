@@ -25,7 +25,6 @@ from nti.app.store import DEFAULT_STRIPE_KEY_ALIAS
 from nti.app.store import STRIPE_CONNECT_AUTH
 from nti.app.store import STORE
 from nti.app.store import STRIPE
-from nti.app.store import PAYEEZY
 from nti.app.store import PURCHASABLES
 
 from nti.app.store.interfaces import IStripeIntegration
@@ -54,8 +53,6 @@ from nti.ntiids.ntiids import find_object_with_ntiid
 
 from nti.store.interfaces import IPurchasable
 from nti.store.interfaces import IPurchaseItem
-
-from nti.store.payments.payeezy.interfaces import IPayeezyConnectKey
 
 from nti.store.payments.stripe.authorization import ACT_LINK_STRIPE
 from nti.store.payments.stripe.authorization import ACT_VIEW_STRIPE_ACCOUNT
@@ -175,46 +172,6 @@ class _StripePurchasableDecorator(_BaseRequestAwareDecorator):
         if result is not None and original.Amount:
             self.set_links(original, external)
             external['StripeConnectKey'] = to_external_object(result)
-
-
-@component.adapter(IPurchasable)
-class _PayeezyPurchasableDecorator(_BaseRequestAwareDecorator):
-
-    def set_links(self, original, external):
-        payeezy_path = '%s/%s/' % (self.ds_store_path, PAYEEZY)
-        links = external.setdefault(LINKS, [])
-        quoted = urllib_parse.quote(original.Provider)
-        # set common links
-        for name, rel, meth in (
-                ('create_token', 'create_payeezy_token', 'POST'),
-                ('get_connect_key', 'get_payeezy_connect_key', 'GET'),
-                ('price_purchasable', 'price_purchasable_with_payeezy', 'POST')):
-            params = {'provider': quoted} if meth == 'GET' else None
-            href = payeezy_path + '@@' + name
-            link = Link(href,
-                        rel=rel,
-                        method=meth,
-                        params=params)
-            interface.alsoProvides(link, ILocation)
-            links.append(link)
-        # set links authenticated users
-        if self._is_authenticated:
-            href = payeezy_path + '@@post_payment'
-            link = Link(href, rel="post_payeezy_payment", method='POST')
-            interface.alsoProvides(link, ILocation)
-            links.append(link)
-        # set links giftable objects
-        if original.Giftable:
-            href = payeezy_path + '@@gift_payment'
-            link = Link(href, rel="gift_payeezy_payment", method='POST')
-            interface.alsoProvides(link, ILocation)
-            links.append(link)
-
-    def _do_decorate_external(self, original, external):
-        keyname = original.Provider
-        result = component.queryUtility(IPayeezyConnectKey, keyname)
-        if result is not None and original.Amount:
-            self.set_links(original, external)
 
 
 @component.adapter(IPurchasable)
