@@ -196,23 +196,12 @@
 
 					<div style="margin-top: 50px; font-size: 12pt;">
 						Thank you for your order, ${options/informal_username}! <br />
+						Please keep a copy of this receipt for your records. <br />
 						Your items are available
 						<a href="${request/application_url}">here</a>.
 					</div>
 
-					<div style="margin-top: 20px; color: #b8b8b8; font-size: 10pt">
-						<center>
-						<img src="https://d2ixlfeu83tci.cloudfront.net/images/purchase_email_logo1.png" width="104" height="24"
-							alt="NextThought Logo" />
-						<br />
-						<span>
-						Please keep a copy of this receipt for your records. <br />
-						If you have any questions, feel free to contact</span>
-						<a href="mailto:support@nextthought.com"
-							tal:attributes="href string:mailto:${options/support_email|default}"
-							tal:content="options/support_email">support@nextthought.com</a>.
-						</center>
-					</div>
+					<div metal:use-macro="macro:footer"></div>
 					</td>
 				</tr>
 			</table>
